@@ -1,0 +1,25 @@
+{
+  "cli": { "version": ">= 16.0.0", "appVersionSource": "remote" },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "ios": { "simulator": true }
+    },
+    "preview": {
+      "distribution": "internal"
+    },
+    "e2e-test": {
+      "withoutCredentials": true,
+      "ios": { "simulator": true },
+      "android": { "buildType": "apk" }
+    },
+    "production": {
+      "autoIncrement": true
+    },
+    "dapp-store": {
+      "extends": "production",
+      "android": { "buildType": "apk" }
+    }
+  }
+}
