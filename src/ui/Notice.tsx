@@ -4,7 +4,7 @@ import { WarningOctagonIcon } from "phosphor-react-native/src/icons/WarningOctag
 import { StyleSheet, View } from "react-native";
 import { readAsOne } from "./accessibility";
 import { Text } from "./Text";
-import { colors, radius, space, type ColorToken } from "./theme";
+import { colors, fonts, layout, radius, size, type ColorToken } from "./theme";
 
 export type NoticeTone = "info" | "warning" | "danger";
 
@@ -31,10 +31,10 @@ export function Notice({ tone = "info", title, children }: NoticeProps) {
       accessibilityRole={tone === "info" ? "text" : "alert"}
       style={[styles.notice, tone !== "info" && { borderColor: colors[accent] }]}
     >
-      <Icon size={18} color={colors[accent]} />
+      <Icon size={size.iconSmall} color={colors[accent]} />
       <View style={styles.copy}>
         {title !== undefined && <Text style={styles.title}>{title}</Text>}
-        <Text variant="faint" tone={tone === "info" ? "dim" : accent}>
+        <Text variant="note" tone={tone === "info" ? "dim" : accent}>
           {children}
         </Text>
       </View>
@@ -45,13 +45,13 @@ export function Notice({ tone = "info", title, children }: NoticeProps) {
 const styles = StyleSheet.create({
   notice: {
     flexDirection: "row",
-    gap: space[3],
-    padding: space[4],
+    gap: layout.inset,
+    padding: layout.group,
     borderRadius: radius.panel,
     borderWidth: 1,
     borderColor: colors["line-subtle"],
     backgroundColor: colors.surface,
   },
-  copy: { flex: 1, gap: space[1] },
-  title: { fontSize: 13, lineHeight: 18 },
+  copy: { flex: 1, gap: layout.hairline },
+  title: { fontFamily: fonts.medium },
 });

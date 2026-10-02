@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Pressable, StyleSheet } from "react-native";
-import { colors, MIN_TARGET, radius } from "./theme";
+import { colors, radius, size } from "./theme";
 
 type IconButtonProps = {
   label: string;
@@ -24,8 +24,8 @@ export function IconButton({ label, onPress, children }: IconButtonProps) {
 
 const styles = StyleSheet.create({
   target: {
-    width: MIN_TARGET,
-    height: MIN_TARGET,
+    width: size.minTarget,
+    height: size.minTarget,
     alignItems: "center",
     justifyContent: "center",
     borderRadius: radius.tile,

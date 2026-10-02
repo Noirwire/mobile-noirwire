@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, View } from "react-native";
+import { selectionHaptic } from "./haptics";
 import { Text } from "./Text";
-import { colors, MIN_TARGET, radius } from "./theme";
+import { colors, opacity, radius, size } from "./theme";
 
 type SegmentedProps<Option extends string> = {
   /** Names the choice being made, for a screen reader. */
@@ -17,6 +18,12 @@ export function Segmented<Option extends string>({
   value,
   onChange,
 }: SegmentedProps<Option>) {
+  function choose(option: Option) {
+    if (option === value) return;
+    selectionHaptic();
+    onChange(option);
+  }
+
   return (
     <View accessibilityRole="radiogroup" accessibilityLabel={label} style={styles.track}>
       {options.map((option) => {
@@ -27,10 +34,14 @@ export function Segmented<Option extends string>({
             accessibilityRole="radio"
             accessibilityLabel={option}
             accessibilityState={{ checked: selected }}
-            onPress={() => onChange(option)}
-            style={[styles.segment, selected && styles.selected]}
+            onPress={() => choose(option)}
+            style={({ pressed }) => [
+              styles.segment,
+              selected && styles.selected,
+              pressed && !selected && styles.pressed,
+            ]}
           >
-            <Text tone={selected ? "base" : "dim"} style={styles.option} numberOfLines={1}>
+            <Text variant="note" tone={selected ? "base" : "dim"} numberOfLines={1}>
               {option}
             </Text>
           </Pressable>
@@ -44,16 +55,16 @@ const styles = StyleSheet.create({
   track: {
     flexDirection: "row",
     borderRadius: radius.tile,
-    borderWidth: 1,
+    borderWidth: size.stroke,
     borderColor: colors.line,
   },
   segment: {
     flex: 1,
-    minHeight: MIN_TARGET,
+    minHeight: size.minTarget,
     alignItems: "center",
     justifyContent: "center",
     borderRadius: radius.tile,
   },
   selected: { backgroundColor: colors["ink-strong"] },
-  option: { fontSize: 14 },
+  pressed: { opacity: opacity.pressed },
 });

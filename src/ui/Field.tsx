@@ -4,8 +4,8 @@ import { useState } from "react";
 import { StyleSheet, TextInput, View, type TextInputProps } from "react-native";
 import { IconButton } from "./IconButton";
 import { Text } from "./Text";
-import { colors, fonts, MIN_TARGET, radius, space } from "./theme";
-import { maxFontScale } from "./typography";
+import { colors, fonts, layout, radius, size } from "./theme";
+import { controlText, maxFontScale } from "./typography";
 
 type FieldProps = Omit<TextInputProps, "style" | "secureTextEntry"> & {
   label: string;
@@ -41,7 +41,7 @@ export function Field({ label, error, secure = false, ...input }: FieldProps) {
             label={revealed ? `Hide ${label}` : `Show ${label}`}
             onPress={() => setRevealed((shown) => !shown)}
           >
-            <VisibilityIcon size={20} color={colors.faint} />
+            <VisibilityIcon size={size.icon} color={colors.dim} />
           </IconButton>
         )}
       </View>
@@ -55,9 +55,9 @@ export function Field({ label, error, secure = false, ...input }: FieldProps) {
 }
 
 const styles = StyleSheet.create({
-  field: { gap: space[2] },
+  field: { gap: layout.tight },
   box: {
-    minHeight: MIN_TARGET,
+    minHeight: size.control,
     flexDirection: "row",
     alignItems: "center",
     borderRadius: radius.tile,
@@ -69,10 +69,10 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     minWidth: 0,
-    minHeight: MIN_TARGET,
-    paddingHorizontal: space[4],
+    minHeight: size.control,
+    paddingHorizontal: layout.group,
+    fontSize: controlText.fontSize,
     fontFamily: fonts.regular,
-    fontSize: 15,
     color: colors.ink,
   },
 });

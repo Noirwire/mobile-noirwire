@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { ScrollView, StyleSheet } from "react-native";
 import { SafeAreaView, type Edge } from "react-native-safe-area-context";
-import { colors, space } from "./theme";
+import { colors, layout } from "./theme";
 
 type ScreenProps = {
   children: ReactNode;
@@ -29,5 +29,5 @@ export function Screen({ children, edges = ALL_EDGES }: ScreenProps) {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.base },
   scroll: { flex: 1 },
-  content: { flexGrow: 1, padding: space[5], gap: space[5] },
+  content: { flexGrow: 1, padding: layout.gutter, gap: layout.section },
 });

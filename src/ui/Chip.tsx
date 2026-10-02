@@ -1,6 +1,6 @@
 import { Pressable, StyleSheet } from "react-native";
 import { Text } from "./Text";
-import { colors, MIN_TARGET, radius, space } from "./theme";
+import { colors, layout, radius, size } from "./theme";
 
 type ChipProps = {
   label: string;
@@ -26,10 +26,10 @@ export function Chip({ label, active = false, onPress }: ChipProps) {
 
 const styles = StyleSheet.create({
   chip: {
-    minHeight: MIN_TARGET,
+    minHeight: size.minTarget,
     alignSelf: "flex-start",
     justifyContent: "center",
-    paddingHorizontal: space[4],
+    paddingHorizontal: layout.group,
     borderRadius: radius.pill,
     borderWidth: 1,
     borderColor: colors.line,

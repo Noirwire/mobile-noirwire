@@ -1,4 +1,3 @@
-import * as Haptics from "expo-haptics";
 import {
   ActivityIndicator,
   Pressable,
@@ -7,8 +6,10 @@ import {
   type PressableProps,
   type ViewStyle,
 } from "react-native";
+import { lightHaptic } from "./haptics";
 import { Text } from "./Text";
-import { colors, fonts, MIN_TARGET, radius, space, type ColorToken } from "./theme";
+import { colors, fonts, layout, opacity, radius, size, type ColorToken } from "./theme";
+import { controlText } from "./typography";
 
 export type ButtonVariant = "primary" | "quiet" | "danger";
 
@@ -44,8 +45,7 @@ export function Button({
 
   function press(event: GestureResponderEvent) {
     if (variant === "primary") {
-      // A device with no haptic engine rejects; the press itself must still go through.
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
+      lightHaptic();
     }
     onPress?.(event);
   }
@@ -86,13 +86,13 @@ export function Button({
 
 const styles = StyleSheet.create({
   base: {
-    minHeight: MIN_TARGET,
+    minHeight: size.control,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: space[2],
-    paddingHorizontal: space[5],
-    borderRadius: radius.tile,
+    gap: layout.tight,
+    paddingHorizontal: layout.gutter,
+    borderRadius: radius.button,
     borderWidth: 1,
     borderColor: "transparent",
   },
@@ -100,8 +100,8 @@ const styles = StyleSheet.create({
   quiet: {},
   danger: { borderColor: colors.danger },
   pressed: { transform: [{ translateY: 1 }] },
-  inert: { opacity: 0.4 },
-  label: { fontFamily: fonts.medium },
+  inert: { opacity: opacity.inert },
+  label: { ...controlText, fontFamily: fonts.medium },
 });
 
 const pressedStyles = StyleSheet.create({

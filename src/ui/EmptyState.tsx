@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { StyleSheet, View } from "react-native";
 import { Mark } from "./Mark";
 import { Text } from "./Text";
-import { space } from "./theme";
+import { layout } from "./theme";
 
 type EmptyStateProps = {
   title: string;
@@ -31,8 +31,8 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     alignItems: "center",
     justifyContent: "center",
-    gap: space[3],
-    paddingVertical: space[10],
+    gap: layout.inset,
+    paddingVertical: layout.section,
   },
   centered: { textAlign: "center" },
 });

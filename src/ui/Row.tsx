@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { StyleSheet, View } from "react-native";
 import { readAsOne } from "./accessibility";
 import { Text } from "./Text";
-import { colors, space } from "./theme";
+import { colors, layout } from "./theme";
 
 type RowProps = {
   label: string;
@@ -27,8 +27,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    gap: space[4],
-    paddingVertical: space[4],
+    gap: layout.group,
+    paddingVertical: layout.group,
   },
   ruled: { borderBottomWidth: 1, borderBottomColor: colors["line-subtle"] },
   value: { flexShrink: 1, textAlign: "right" },

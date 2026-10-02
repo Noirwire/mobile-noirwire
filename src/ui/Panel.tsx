@@ -1,5 +1,5 @@
 import { StyleSheet, View, type ViewProps } from "react-native";
-import { colors, radius, space } from "./theme";
+import { colors, layout, radius } from "./theme";
 
 type PanelProps = ViewProps & { raised?: boolean };
 
@@ -13,7 +13,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors["line-subtle"],
     backgroundColor: colors.surface,
-    padding: space[4],
+    padding: layout.group,
   },
   raised: { borderColor: colors.line, backgroundColor: colors["surface-raised"] },
 });

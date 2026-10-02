@@ -1,82 +1,138 @@
-import { XIcon } from "phosphor-react-native/src/icons/X";
-import type { ReactNode } from "react";
-import { Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { useCallback, type ReactNode } from "react";
+import { Modal, Pressable, StyleSheet, View } from "react-native";
+import { GestureDetector, GestureHandlerRootView } from "react-native-gesture-handler";
+import { KeyboardAvoidingView, KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import Animated, { Easing, FadeIn, SlideInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { IconButton } from "./IconButton";
-import { Text } from "./Text";
-import { colors, motion, overlayColor, radius, space } from "./theme";
+import { confirmDiscard } from "./confirmDiscard";
+import { SheetHeader } from "./SheetHeader";
+import { colors, layout, motion, overlayColor, radius } from "./theme";
+import { useSheetSwipe } from "./useSheetSwipe";
 
 type SheetProps = {
   open: boolean;
   onClose: () => void;
   title: string;
   children: ReactNode;
+  /** The step's primary action, held above the bottom edge and above the keyboard. */
+  footer?: ReactNode;
+  /** Given from the second step on: the leading control goes one step back, never out. */
+  onBack?: () => void;
+  /** Something has been entered: leaving asks "Discard this?" first. */
+  dirty?: boolean;
+  /** An action is in flight after Confirm: the sheet cannot be dismissed or stepped back. */
+  busy?: boolean;
 };
 
 const RISE = SlideInDown.duration(motion.sheetMs).easing(Easing.bezier(0.16, 1, 0.3, 1));
 const DIM = FadeIn.duration(motion.overlayMs);
 
 /**
- * A sheet that rises from the bottom edge over a dimmed screen. Children are
- * only mounted while open, so a reopened sheet starts with fresh state. Both
- * animations are skipped when the system asks for reduced motion.
+ * A sheet that rises from the bottom edge over a dimmed screen. It is pulled
+ * down by its header, closed from the scrim, the close control or the system
+ * back, and every one of those routes asks first when there is input and does
+ * nothing while an action is in flight. Children are mounted only while open,
+ * so a reopened sheet starts with fresh state. Both entrance animations are
+ * skipped when the system asks for reduced motion.
  */
-export function Sheet({ open, onClose, title, children }: SheetProps) {
+export function Sheet({
+  open,
+  onClose,
+  title,
+  children,
+  footer,
+  onBack,
+  dirty = false,
+  busy = false,
+}: SheetProps) {
   const insets = useSafeAreaInsets();
+
+  const requestClose = useCallback(() => {
+    if (busy) return;
+    if (dirty) confirmDiscard(onClose);
+    else onClose();
+  }, [busy, dirty, onClose]);
+
+  const swipe = useSheetSwipe({
+    closable: !dirty && !busy,
+    locked: busy,
+    onDismiss: onClose,
+    onDismissRequest: requestClose,
+  });
+
+  function systemBack() {
+    if (busy) return;
+    if (onBack) onBack();
+    else requestClose();
+  }
+
   if (!open) return null;
 
   return (
-    <Modal transparent statusBarTranslucent animationType="none" onRequestClose={onClose}>
-      <Animated.View entering={DIM} style={styles.overlay}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Close"
-          onPress={onClose}
-          style={StyleSheet.absoluteFill}
-        />
-        <Animated.View
-          entering={RISE}
-          accessibilityViewIsModal
-          style={[styles.sheet, { paddingBottom: insets.bottom + space[6] }]}
-        >
-          <View style={styles.header}>
-            <Text variant="h2" style={styles.title}>
-              {title}
-            </Text>
-            <IconButton label={`Close ${title}`} onPress={onClose}>
-              <XIcon size={18} color={colors.faint} />
-            </IconButton>
-          </View>
-          <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
-            {children}
-          </ScrollView>
+    <Modal
+      transparent
+      statusBarTranslucent
+      navigationBarTranslucent
+      animationType="none"
+      onRequestClose={systemBack}
+    >
+      <GestureHandlerRootView style={styles.fill}>
+        <Animated.View entering={DIM} style={styles.overlay}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Close"
+            disabled={busy}
+            onPress={requestClose}
+            style={StyleSheet.absoluteFill}
+          />
+          <KeyboardAvoidingView behavior="padding" style={styles.avoider}>
+            <Animated.View entering={RISE} style={styles.frame}>
+              <Animated.View
+                accessibilityViewIsModal
+                onAccessibilityEscape={busy ? undefined : requestClose}
+                onLayout={(event) => swipe.onLayout(event.nativeEvent.layout.height)}
+                style={[styles.sheet, { paddingBottom: insets.bottom + layout.group }, swipe.style]}
+              >
+                <GestureDetector gesture={swipe.gesture}>
+                  <View>
+                    <SheetHeader
+                      title={title}
+                      onBack={busy ? undefined : onBack}
+                      onClose={busy ? undefined : requestClose}
+                    />
+                  </View>
+                </GestureDetector>
+                <KeyboardAwareScrollView
+                  bottomOffset={layout.group}
+                  keyboardShouldPersistTaps="handled"
+                  style={styles.scroll}
+                  contentContainerStyle={styles.content}
+                >
+                  {children}
+                </KeyboardAwareScrollView>
+                {footer !== undefined && <View style={styles.footer}>{footer}</View>}
+              </Animated.View>
+            </Animated.View>
+          </KeyboardAvoidingView>
         </Animated.View>
-      </Animated.View>
+      </GestureHandlerRootView>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  overlay: { flex: 1, justifyContent: "flex-end", backgroundColor: overlayColor },
+  fill: { flex: 1 },
+  overlay: { flex: 1, backgroundColor: overlayColor },
+  avoider: { flex: 1, justifyContent: "flex-end", pointerEvents: "box-none" },
+  frame: { maxHeight: "92%" },
   sheet: {
-    maxHeight: "92%",
-    paddingTop: space[6],
-    paddingHorizontal: space[6],
+    flexShrink: 1,
+    paddingHorizontal: layout.gutter,
     borderTopLeftRadius: radius.sheet,
     borderTopRightRadius: radius.sheet,
-    borderWidth: 1,
-    borderBottomWidth: 0,
-    borderColor: colors["line-subtle"],
     backgroundColor: colors.surface,
   },
-  header: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    justifyContent: "space-between",
-    gap: space[6],
-    marginBottom: space[4],
-  },
-  title: { flex: 1 },
-  content: { gap: space[4] },
+  scroll: { flexGrow: 0, flexShrink: 1 },
+  content: { gap: layout.group, paddingTop: layout.tight, paddingBottom: layout.group },
+  footer: { gap: layout.tight, paddingTop: layout.tight },
 });
