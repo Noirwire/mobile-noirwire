@@ -4,10 +4,17 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
-      "ios": { "simulator": true }
+      "ios": { "simulator": true },
+      "android": { "buildType": "apk" }
+    },
+    "development-device": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "android": { "buildType": "apk" }
     },
     "preview": {
-      "distribution": "internal"
+      "distribution": "internal",
+      "android": { "buildType": "apk" }
     },
     "e2e-test": {
       "withoutCredentials": true,
