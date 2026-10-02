@@ -1,7 +1,7 @@
 import { useRouter } from "expo-router";
 import { StyleSheet, View } from "react-native";
 import { Button, Mark, Screen, Text } from "@/ui";
-import { space } from "@/ui/theme";
+import { layout } from "@/ui/theme";
 
 export default function Welcome() {
   const router = useRouter();
@@ -27,6 +27,6 @@ export default function Welcome() {
 }
 
 const styles = StyleSheet.create({
-  intro: { flexGrow: 1, justifyContent: "center", gap: space[4] },
-  actions: { gap: space[2] },
+  intro: { flexGrow: 1, justifyContent: "center", gap: layout.group },
+  actions: { gap: layout.tight },
 });

@@ -3,6 +3,7 @@ import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { StyleSheet, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { RuntimeGate } from "@/boot/RuntimeGate";
 import { stackScreenOptions } from "@/navigation/stackOptions";
@@ -25,7 +26,9 @@ export default function RootLayout() {
       <StatusBar style="light" />
       <RuntimeGate>
         <SafeAreaProvider>
-          <Routes />
+          <KeyboardProvider>
+            <Routes />
+          </KeyboardProvider>
         </SafeAreaProvider>
       </RuntimeGate>
     </GestureHandlerRootView>

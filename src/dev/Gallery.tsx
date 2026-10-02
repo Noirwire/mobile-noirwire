@@ -2,7 +2,10 @@ import { Link } from "expo-router";
 import { useState, type ReactNode } from "react";
 import { StyleSheet, View } from "react-native";
 import {
+  Acknowledge,
+  BalanceHeader,
   Button,
+  CameraAccess,
   Chart,
   Chip,
   Delta,
@@ -14,20 +17,70 @@ import {
   Money,
   Notice,
   Panel,
+  PhraseGrid,
+  PieRing,
+  QRCode,
   Row,
+  Scanner,
   Screen,
   Segmented,
   Sheet,
   Skeleton,
+  Stepper,
+  StepList,
+  Switch,
   Text,
+  type Step,
 } from "@/ui";
 import { IDENTITY_GLYPHS, IDENTITY_TINTS, type IdentityGlyph } from "@/ui/identityGlyphs";
-import { space } from "@/ui/theme";
+import { layout } from "@/ui/theme";
+import { SheetDemo } from "./SheetDemo";
 
 const RANGES = ["1D", "1W", "1M", "1Y"] as const;
 const PAY_WITH = ["USDC", "SOL"] as const;
 const RISING = [12, 14, 13, 17, 16, 21, 19, 24, 27, 26, 31];
 const FALLING = [31, 28, 29, 24, 25, 20, 22, 17, 15, 16, 12];
+const TWELVE =
+  "orbit lunar velvet canyon maple ember quartz harbor willow signal pepper drift".split(" ");
+const TWENTY_FOUR = [
+  ...TWELVE,
+  ..."cobalt meadow falcon tundra amber ripple saddle cinder glacier hollow marble thistle".split(
+    " ",
+  ),
+];
+const TARGET = [50, 30, 12, 8];
+const NOW = [46.9, 29.1, 14.4, 9.6];
+const FUNDING: Step[] = [
+  {
+    key: "sent",
+    title: "Sent to the private route",
+    caption: "Signed by your funding wallet and handed to the settlement queue.",
+    status: "done",
+  },
+  {
+    key: "queue",
+    title: "Waiting in the queue",
+    caption: "Delivered after 2 to 15 seconds, split across several entries.",
+    status: "current",
+  },
+  {
+    key: "arrived",
+    title: "Arrived in Investing",
+    caption: "Confirmed by reading this portfolio's real balance.",
+    status: "waiting",
+  },
+];
+const ORDERS: Step[] = [
+  { key: "sp", title: "SP500", status: "done", statusLabel: "Placed" },
+  {
+    key: "nq",
+    title: "Nasdaq",
+    status: "failed",
+    statusLabel: "Failed",
+    reason: "The price moved past your minimum. Nothing was traded.",
+  },
+  { key: "nv", title: "NVIDIA", status: "skipped", statusLabel: "Not placed" },
+];
 const ROUTES = [
   "/welcome",
   "/create",
@@ -66,6 +119,12 @@ export function Gallery() {
   const [chip, setChip] = useState("All");
   const [sheetOpen, setSheetOpen] = useState(false);
   const [password, setPassword] = useState("");
+  const [phraseShown, setPhraseShown] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [biometrics, setBiometrics] = useState(false);
+  const [analytics, setAnalytics] = useState(true);
+  const [share, setShare] = useState(50);
+  const [scanned, setScanned] = useState<string | null>(null);
 
   return (
     <Screen edges={["right", "bottom", "left"]}>
@@ -77,13 +136,35 @@ export function Gallery() {
         </View>
       </Section>
 
+      <Section title="BalanceHeader">
+        <BalanceHeader
+          label="Total value"
+          value="$8,729.89"
+          change="+$98.79 (1.2%) held trackers · 24h indicative"
+          changeTone="safe"
+        />
+        <BalanceHeader
+          label="Total value"
+          value="$1,248,729.89"
+          change="-$12,480.12 (0.99%) held trackers · 24h indicative"
+          changeTone="danger"
+        />
+        <BalanceHeader
+          label="Total value"
+          value="Value unavailable"
+          change="Waiting for current balances or market prices"
+          unavailable
+        />
+      </Section>
+
       <Section title="Text">
         <Text variant="h1">Heading one</Text>
         <Text variant="h2">Heading two</Text>
         <Text variant="lead">Lead text introduces a screen in a sentence or two.</Text>
         <Text>Body text carries everything else.</Text>
+        <Text variant="note">Note text is secondary copy that still has to be read.</Text>
         <Text variant="label">Label</Text>
-        <Text variant="faint">Faint supporting text</Text>
+        <Text variant="faint">Faint caption, for nonessential lines only</Text>
       </Section>
 
       <Section title="Button">
@@ -106,6 +187,94 @@ export function Gallery() {
       <Section title="Segmented">
         <Segmented label="Chart range" options={RANGES} value={range} onChange={setRange} />
         <Segmented label="Pay with" options={PAY_WITH} value={payWith} onChange={setPayWith} />
+      </Section>
+
+      <Section title="Acknowledge">
+        <Acknowledge
+          label="I have saved these words for the next step."
+          checked={saved}
+          onChange={setSaved}
+        />
+        <Button label="Continue" disabled={!saved} onPress={() => undefined} />
+        <Acknowledge label="Checked" checked onChange={() => undefined} />
+        <Acknowledge label="Disabled" checked={false} disabled onChange={() => undefined} />
+      </Section>
+
+      <Section title="Switch">
+        <Switch
+          label="Unlock with Face ID"
+          caption="Your password is still needed to view your recovery phrase and to change the password."
+          value={biometrics}
+          onValueChange={setBiometrics}
+        />
+        <Switch label="Usage analytics" value={analytics} onValueChange={setAnalytics} />
+        <Switch label="Disabled" value={false} disabled onValueChange={() => undefined} />
+      </Section>
+
+      <Section title="Stepper">
+        <View style={styles.between}>
+          <Text>NVDAx</Text>
+          <Stepper label="NVDAx share in percent" value={share} onChange={setShare} />
+        </View>
+        <View style={styles.between}>
+          <Text tone="dim">At the minimum</Text>
+          <Stepper label="Minimum example" value={0} onChange={() => undefined} />
+        </View>
+        <View style={styles.between}>
+          <Text tone="dim">At the maximum</Text>
+          <Stepper label="Maximum example" value={100} onChange={() => undefined} />
+        </View>
+      </Section>
+
+      <Section title="PieRing">
+        <View style={styles.wrap}>
+          <PieRing target={TARGET} current={NOW} label="Example mix against its target">
+            <Text variant="faint">Invested</Text>
+            <Money amount={3196.66} />
+          </PieRing>
+          <PieRing target={TARGET} size={88} thickness={9} label="Example target mix, 4 trackers">
+            <Text variant="note">4</Text>
+          </PieRing>
+        </View>
+        <View style={styles.wrap}>
+          <PieRing
+            target={TARGET}
+            current={[0, 0, 0, 0]}
+            size={120}
+            label="Target mix, nothing invested"
+          >
+            <Text variant="faint">Target</Text>
+            <Text variant="note">4 trackers</Text>
+          </PieRing>
+          <PieRing target={[100]} current={[100]} size={120} label="One tracker at 100 percent" />
+          <PieRing target={[]} size={120} label="An empty portfolio" />
+        </View>
+      </Section>
+
+      <Section title="StepList">
+        <StepList steps={FUNDING} />
+        <StepList steps={ORDERS} />
+      </Section>
+
+      <Section title="PhraseGrid">
+        <PhraseGrid words={TWELVE} revealed={phraseShown} onReveal={() => setPhraseShown(true)} />
+        {phraseShown && (
+          <Button label="Hide phrase" variant="quiet" onPress={() => setPhraseShown(false)} />
+        )}
+        <Text variant="faint">Twenty-four words, revealed, with the warned Copy:</Text>
+        <PhraseGrid words={TWENTY_FOUR} revealed onReveal={() => undefined} copyable />
+      </Section>
+
+      <Section title="QRCode">
+        <QRCode value="noirwire-gallery-example" label="Example QR code" />
+      </Section>
+
+      <Section title="Scanner">
+        <Scanner hint="Point the camera at the recipient's address code." onRead={setScanned} />
+        {scanned !== null && <Text variant="note">{`Read: ${scanned}`}</Text>}
+        <Text variant="faint">Without the camera, before and after it is refused:</Text>
+        <CameraAccess state="ask" onAllow={() => undefined} />
+        <CameraAccess state="blocked" onAllow={() => undefined} />
       </Section>
 
       <Section title="Chip">
@@ -180,10 +349,18 @@ export function Gallery() {
 
       <Section title="Sheet">
         <Button label="Open a sheet" variant="quiet" onPress={() => setSheetOpen(true)} />
-        <Sheet open={sheetOpen} onClose={() => setSheetOpen(false)} title="A sheet">
-          <Text tone="dim">It rises from the bottom edge and closes from the backdrop.</Text>
-          <Button label="Done" onPress={() => setSheetOpen(false)} />
+        <Sheet
+          open={sheetOpen}
+          onClose={() => setSheetOpen(false)}
+          title="A sheet"
+          footer={<Button label="Done" onPress={() => setSheetOpen(false)} />}
+        >
+          <Text tone="dim">
+            It rises from the bottom edge, and closes from the backdrop, the close control or a pull
+            down on its header.
+          </Text>
         </Sheet>
+        <SheetDemo />
       </Section>
 
       <Section title="EmptyState">
@@ -206,7 +383,8 @@ export function Gallery() {
 }
 
 const styles = StyleSheet.create({
-  section: { gap: space[3] },
-  wrap: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: space[3] },
-  route: { paddingVertical: space[3] },
+  section: { gap: layout.group },
+  wrap: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: layout.group },
+  between: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  route: { paddingVertical: layout.inset },
 });

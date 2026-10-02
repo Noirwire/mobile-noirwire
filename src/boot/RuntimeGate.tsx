@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
-import { colors } from "@/ui/theme";
+import { colors, layout } from "@/ui/theme";
 import { failedRuntimeChecks } from "./runtimeChecks";
 
 /**
@@ -52,7 +52,7 @@ export function RuntimeFailure({ failures }: { failures: string[] }) {
 
 const styles = StyleSheet.create({
   blank: { flex: 1, backgroundColor: colors.base },
-  failure: { flexGrow: 1, justifyContent: "center", padding: 24, gap: 16 },
+  failure: { flexGrow: 1, justifyContent: "center", padding: layout.gutter, gap: layout.group },
   title: { fontSize: 24, fontWeight: "500", color: colors.ink },
   detail: { fontSize: 15, lineHeight: 22, color: colors.dim },
   failed: { fontSize: 15, color: colors.danger },
