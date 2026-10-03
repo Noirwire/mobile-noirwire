@@ -41,6 +41,9 @@ const config: ExpoConfig = {
       backgroundColor: BASE_COLOUR,
     },
     blockedPermissions: UNUSED_ANDROID_PERMISSIONS,
+    // The encrypted wallet record must not leave the phone in a cloud or
+    // device-to-device backup; the paper phrase is the backup.
+    allowBackup: false,
   },
   web: { bundler: "metro", output: "single", favicon: "./assets/favicon.png" },
   plugins: [
