@@ -3,11 +3,19 @@ import { TrackerScreen } from "@/features/markets/TrackerScreen";
 import { followTrackerIntent } from "@/features/markets/trackerRoutes";
 import { isAddressFreeParam } from "@/navigation/routeParams";
 
-export default function Tracker() {
+export default function VisitorTracker() {
   const router = useRouter();
   const { symbol } = useLocalSearchParams<{ symbol: string }>();
   const safe = isAddressFreeParam(symbol) ? symbol : "";
   return (
-    <TrackerScreen symbol={safe} onIntent={(intent) => followTrackerIntent(router, safe, intent)} />
+    <TrackerScreen
+      symbol={safe}
+      visitor
+      onIntent={(intent) =>
+        intent.kind === "markets"
+          ? router.replace("/look-around")
+          : followTrackerIntent(router, safe, intent)
+      }
+    />
   );
 }

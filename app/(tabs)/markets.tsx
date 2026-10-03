@@ -1,5 +1,11 @@
-import { Placeholder } from "@/navigation/Placeholder";
+import { useRouter } from "expo-router";
+import { MarketsScreen } from "@/features/markets/MarketsScreen";
 
 export default function Markets() {
-  return <Placeholder title="Markets" detail="Trackers you can buy will be listed here." />;
+  const router = useRouter();
+  return (
+    <MarketsScreen
+      onOpen={(symbol) => router.push({ pathname: "/markets/[symbol]", params: { symbol } })}
+    />
+  );
 }
