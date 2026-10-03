@@ -1,0 +1,10 @@
+appId: com.noirwire.app
+---
+- tapOn: "Password"
+- eraseText
+- inputText: "${PASSWORD}"
+- hideKeyboard
+- tapOn: "Unlock"
+- extendedWaitUntil:
+    visible: "Lock wallet"
+    timeout: 60000

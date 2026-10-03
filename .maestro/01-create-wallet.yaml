@@ -1,0 +1,11 @@
+appId: com.noirwire.app
+env:
+  PASSWORD: harbor-velvet-orbit-canyon-meadow
+name: Create a wallet with the phrase check, then an empty Home
+tags:
+  - onboarding
+---
+- runFlow: subflows/launch-fresh.yaml
+- runFlow: subflows/create-wallet.yaml
+- assertVisible: "How to add money"
+- assertVisible: "Home"

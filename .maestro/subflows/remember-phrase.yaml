@@ -1,0 +1,148 @@
+appId: com.noirwire.app
+---
+# Reveals the phrase and keeps every word in output.words, by position.
+- tapOn: "Reveal phrase"
+- runFlow:
+    when:
+      visible: "Word 1, .*"
+    commands:
+      - copyTextFrom: "Word 1, .*"
+      - runScript: ../scripts/remember-words.js
+- runFlow:
+    when:
+      visible: "Word 2, .*"
+    commands:
+      - copyTextFrom: "Word 2, .*"
+      - runScript: ../scripts/remember-words.js
+- runFlow:
+    when:
+      visible: "Word 3, .*"
+    commands:
+      - copyTextFrom: "Word 3, .*"
+      - runScript: ../scripts/remember-words.js
+- runFlow:
+    when:
+      visible: "Word 4, .*"
+    commands:
+      - copyTextFrom: "Word 4, .*"
+      - runScript: ../scripts/remember-words.js
+- runFlow:
+    when:
+      visible: "Word 5, .*"
+    commands:
+      - copyTextFrom: "Word 5, .*"
+      - runScript: ../scripts/remember-words.js
+- runFlow:
+    when:
+      visible: "Word 6, .*"
+    commands:
+      - copyTextFrom: "Word 6, .*"
+      - runScript: ../scripts/remember-words.js
+- runFlow:
+    when:
+      visible: "Word 7, .*"
+    commands:
+      - copyTextFrom: "Word 7, .*"
+      - runScript: ../scripts/remember-words.js
+- runFlow:
+    when:
+      visible: "Word 8, .*"
+    commands:
+      - copyTextFrom: "Word 8, .*"
+      - runScript: ../scripts/remember-words.js
+- runFlow:
+    when:
+      visible: "Word 9, .*"
+    commands:
+      - copyTextFrom: "Word 9, .*"
+      - runScript: ../scripts/remember-words.js
+- runFlow:
+    when:
+      visible: "Word 10, .*"
+    commands:
+      - copyTextFrom: "Word 10, .*"
+      - runScript: ../scripts/remember-words.js
+- runFlow:
+    when:
+      visible: "Word 11, .*"
+    commands:
+      - copyTextFrom: "Word 11, .*"
+      - runScript: ../scripts/remember-words.js
+- runFlow:
+    when:
+      visible: "Word 12, .*"
+    commands:
+      - copyTextFrom: "Word 12, .*"
+      - runScript: ../scripts/remember-words.js
+- runFlow:
+    when:
+      visible: "Word 13, .*"
+    commands:
+      - copyTextFrom: "Word 13, .*"
+      - runScript: ../scripts/remember-words.js
+- runFlow:
+    when:
+      visible: "Word 14, .*"
+    commands:
+      - copyTextFrom: "Word 14, .*"
+      - runScript: ../scripts/remember-words.js
+- runFlow:
+    when:
+      visible: "Word 15, .*"
+    commands:
+      - copyTextFrom: "Word 15, .*"
+      - runScript: ../scripts/remember-words.js
+- runFlow:
+    when:
+      visible: "Word 16, .*"
+    commands:
+      - copyTextFrom: "Word 16, .*"
+      - runScript: ../scripts/remember-words.js
+- runFlow:
+    when:
+      visible: "Word 17, .*"
+    commands:
+      - copyTextFrom: "Word 17, .*"
+      - runScript: ../scripts/remember-words.js
+- runFlow:
+    when:
+      visible: "Word 18, .*"
+    commands:
+      - copyTextFrom: "Word 18, .*"
+      - runScript: ../scripts/remember-words.js
+- runFlow:
+    when:
+      visible: "Word 19, .*"
+    commands:
+      - copyTextFrom: "Word 19, .*"
+      - runScript: ../scripts/remember-words.js
+- runFlow:
+    when:
+      visible: "Word 20, .*"
+    commands:
+      - copyTextFrom: "Word 20, .*"
+      - runScript: ../scripts/remember-words.js
+- runFlow:
+    when:
+      visible: "Word 21, .*"
+    commands:
+      - copyTextFrom: "Word 21, .*"
+      - runScript: ../scripts/remember-words.js
+- runFlow:
+    when:
+      visible: "Word 22, .*"
+    commands:
+      - copyTextFrom: "Word 22, .*"
+      - runScript: ../scripts/remember-words.js
+- runFlow:
+    when:
+      visible: "Word 23, .*"
+    commands:
+      - copyTextFrom: "Word 23, .*"
+      - runScript: ../scripts/remember-words.js
+- runFlow:
+    when:
+      visible: "Word 24, .*"
+    commands:
+      - copyTextFrom: "Word 24, .*"
+      - runScript: ../scripts/remember-words.js

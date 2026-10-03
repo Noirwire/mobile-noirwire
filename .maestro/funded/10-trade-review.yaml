@@ -1,0 +1,24 @@
+appId: com.noirwire.app
+env:
+  PASSWORD: harbor-velvet-orbit-canyon-meadow
+  PORTFOLIO: Portfolio 1
+name: A buy order reaches its review with a live quote
+tags:
+  - funded
+---
+- runFlow: ../subflows/import-funded.yaml
+- tapOn: "Markets"
+- tapOn: "Search trackers"
+- inputText: "nvda"
+- hideKeyboard
+- tapOn: "NVIDIA, NVDAx.*"
+- tapOn: "Buy"
+- assertVisible: "Buy NVIDIA tracker"
+- tapOn: "Spend \\$"
+- inputText: "10"
+- hideKeyboard
+- tapOn: "Review buy"
+- extendedWaitUntil:
+    visible: "Spend \\$10\\.00 from .*"
+    timeout: 30000
+- assertVisible: "Minimum you will receive"

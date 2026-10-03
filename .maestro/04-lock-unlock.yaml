@@ -1,0 +1,20 @@
+appId: com.noirwire.app
+env:
+  PASSWORD: harbor-velvet-orbit-canyon-meadow
+name: Lock the wallet and unlock it, refusing a wrong password
+tags:
+  - security
+---
+- runFlow: subflows/launch-fresh.yaml
+- runFlow: subflows/create-wallet.yaml
+- tapOn: "Lock wallet"
+- assertVisible: "Unlock NoirWire"
+- tapOn: "Password"
+- inputText: "not-the-password"
+- tapOn: "Unlock"
+- assertNotVisible: "Lock wallet"
+- runFlow: subflows/unlock.yaml
+- stopApp
+- launchApp
+- assertVisible: "Unlock NoirWire"
+- runFlow: subflows/unlock.yaml

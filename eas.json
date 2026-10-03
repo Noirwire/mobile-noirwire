@@ -22,7 +22,9 @@
       "android": { "buildType": "apk" }
     },
     "production": {
-      "autoIncrement": true
+      "distribution": "store",
+      "autoIncrement": true,
+      "android": { "buildType": "app-bundle" }
     },
     "dapp-store": {
       "extends": "production",

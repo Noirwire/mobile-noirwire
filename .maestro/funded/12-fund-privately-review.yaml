@@ -1,0 +1,19 @@
+appId: com.noirwire.app
+env:
+  PASSWORD: harbor-velvet-orbit-canyon-meadow
+  PORTFOLIO: Portfolio 1
+name: Funding a portfolio privately reaches its review with both fees
+tags:
+  - funded
+---
+- runFlow: ../subflows/import-funded.yaml
+- tapOn: "Move money to .*"
+- assertVisible: "Add money privately"
+- tapOn: "Amount in USDC"
+- inputText: "1"
+- hideKeyboard
+- tapOn: "Review"
+- extendedWaitUntil:
+    visible: "Total leaving your funding wallet"
+    timeout: 30000
+- assertVisible: "Confirm"

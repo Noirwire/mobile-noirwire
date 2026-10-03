@@ -1,0 +1,24 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      expo:
+        patterns: ["expo", "expo-*", "@expo/*", "jest-expo", "eslint-config-expo"]
+      react-native:
+        patterns: ["react-native", "react-native-*", "@react-native/*", "@react-native-community/*"]
+      solana:
+        patterns: ["@solana/*", "@scure/*", "ed25519-hd-key"]
+      tooling:
+        dependency-type: development
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]

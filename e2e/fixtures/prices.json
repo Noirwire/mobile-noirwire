@@ -1,0 +1,15 @@
+{
+  "prices": {
+    "NVDAx": { "usd": 235.91, "change24h": 2.21 },
+    "SPYx": { "usd": 769.26, "change24h": 0.51 },
+    "SPCXx": { "usd": 157.09, "change24h": 4.2 },
+    "QQQx": { "usd": 748.58, "change24h": 0.86 },
+    "CRCLx": { "usd": 82.11, "change24h": -3.05 },
+    "TSLAx": { "usd": 412.1, "change24h": 4.34 },
+    "ORCLx": { "usd": 301.4, "change24h": 5.86 },
+    "TQQQx": { "usd": 102.3, "change24h": 4.53 },
+    "AAPLx": { "usd": 255.2, "change24h": 0.12 },
+    "GLDx": { "usd": 341.9, "change24h": -0.4 },
+    "MSFTx": { "usd": 517.3, "change24h": 0.9 }
+  }
+}

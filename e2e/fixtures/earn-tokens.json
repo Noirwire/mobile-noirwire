@@ -1,0 +1,10 @@
+[
+  {
+    "address": "9BEcn9aPEmhSPbPQeFGjidRiEKki46fVQDyPpSQXPA2D",
+    "asset": { "address": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v" },
+    "totalRate": "416",
+    "supplyRate": "379",
+    "rewardsRate": "37",
+    "convertToAssets": "1000000"
+  }
+]

@@ -28,6 +28,8 @@ expo-env.d.ts
 
 # Tooling
 coverage/
+test-results/
+playwright-report/
 *.tsbuildinfo
 npm-debug.*
 .DS_Store

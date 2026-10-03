@@ -1,0 +1,21 @@
+appId: com.noirwire.app
+env:
+  PASSWORD: harbor-velvet-orbit-canyon-meadow
+  PORTFOLIO: Portfolio 1
+name: An Earn deposit reaches its review
+tags:
+  - funded
+---
+- runFlow: ../subflows/import-funded.yaml
+- tapOn: "Earn"
+- assertVisible: "Current variable rate"
+- tapOn: "Deposit"
+- tapOn: "${PORTFOLIO}, .* cash"
+- tapOn: "Continue"
+- tapOn: "Amount in USDC"
+- inputText: "1"
+- hideKeyboard
+- tapOn: "Review"
+- extendedWaitUntil:
+    visible: "Goes into Earn"
+    timeout: 30000

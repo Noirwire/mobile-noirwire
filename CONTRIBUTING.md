@@ -2,16 +2,21 @@
 
 ## Before you commit
 
-Run all four. CI runs the same checks and a pull request does not merge until they pass.
+Run these. CI runs the same checks, plus `npm run doctor` and the web export, and a pull request does not merge until they pass.
 
 ```sh
 npm run typecheck
 npm run lint
 npm run format:check
 npm test
+npm run test:e2e
 ```
 
-`npm run format` fixes formatting.
+`npm run format` fixes formatting. The first `npm run test:e2e` needs Chromium: `npx playwright install chromium`.
+
+## UI tests
+
+A change to a screen keeps its journeys passing in both UI suites: `e2e/` (Playwright on the web export, run in CI) and `.maestro/` (Maestro on a native build, run on a device). Select elements by role and accessible label, the way a person using a screen reader finds them, and add a `testID` only where no label can tell an element apart. A new relay route the app calls needs a fixture in `e2e/support/relay.ts`; the suite fails on any request it does not answer.
 
 ## Commits
 
@@ -31,7 +36,7 @@ npm test
 
 ## The guarantees
 
-Read the Guarantees section of the README first. A change that weakens one of them will not be merged, whatever else it does. In particular: never put a wallet address in a route parameter, a log line or an error message.
+Read the Security section of the README first. A change that weakens one of them will not be merged, whatever else it does. In particular: never put a wallet address in a route parameter, a log line or an error message.
 
 ## Text people read
 

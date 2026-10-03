@@ -1,0 +1,22 @@
+appId: com.noirwire.app
+env:
+  PASSWORD: harbor-velvet-orbit-canyon-meadow
+  PORTFOLIO: Portfolio 1
+name: Sending to the wallet's own funding address warns that it links the two
+tags:
+  - funded
+---
+- runFlow: ../subflows/import-funded.yaml
+- tapOn: "${PORTFOLIO},.*"
+- tapOn: "Send"
+- assertVisible: "Send from ${PORTFOLIO}"
+- tapOn: "Recipient address"
+- inputText: "${FUNDING_ADDRESS}"
+- tapOn: "Amount in USDC"
+- inputText: "1"
+- hideKeyboard
+- tapOn: "Review"
+- extendedWaitUntil:
+    visible: "This links the two addresses publicly.*"
+    timeout: 30000
+- assertVisible: "I understand this links them"

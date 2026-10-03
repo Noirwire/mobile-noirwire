@@ -34,7 +34,7 @@ module.exports = {
     // React Native test environment asks for.
     "^rpc-websockets$": "<rootDir>/node_modules/rpc-websockets/dist/index.browser.cjs",
   },
-  testPathIgnorePatterns: ["/node_modules/", "/ios/", "/android/", "/dist/"],
+  testPathIgnorePatterns: ["/node_modules/", "/ios/", "/android/", "/dist/", "/e2e/"],
   transform: { ...preset.transform, "\\.[jt]sx?$": scriptTransform, "\\.mjs$": scriptTransform },
   transformIgnorePatterns: [
     packagesToTransform.replace("(?!(", `(?!(${ES_MODULE_PACKAGES.join("|")}|`),

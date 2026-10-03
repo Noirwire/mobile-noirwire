@@ -4,5 +4,7 @@ dist
 ios
 android
 coverage
+test-results
+playwright-report
 package-lock.json
 expo-env.d.ts

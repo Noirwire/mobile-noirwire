@@ -1,0 +1,13 @@
+appId: com.noirwire.app
+env:
+  PASSWORD: harbor-velvet-orbit-canyon-meadow
+  PORTFOLIO: Portfolio 1
+name: Home shows the funded wallet's portfolio
+tags:
+  - funded
+---
+- runFlow: ../subflows/import-funded.yaml
+- assertVisible: "${PORTFOLIO},.*"
+- assertNotVisible: "How to add money"
+- tapOn: "${PORTFOLIO},.*"
+- assertVisible: "See public view"

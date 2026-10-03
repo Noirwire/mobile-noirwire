@@ -1,0 +1,10 @@
+# Maestro workspace for the NoirWire app on a real build.
+# `maestro test .maestro/` runs every flow in this folder; the funded flows
+# need a wallet that holds USDC and run only when asked for (see README).
+flows:
+  - "*.yaml"
+  - "funded/*.yaml"
+excludeTags:
+  - funded
+executionOrder:
+  continueOnFailure: false

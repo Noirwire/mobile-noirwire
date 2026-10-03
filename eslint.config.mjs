@@ -21,7 +21,16 @@ const eslintConfig = defineConfig([
       ],
     },
   },
-  globalIgnores([".expo/**", "dist/**", "ios/**", "android/**", "coverage/**", "expo-env.d.ts"]),
+  globalIgnores([
+    ".expo/**",
+    "dist/**",
+    "ios/**",
+    "android/**",
+    "coverage/**",
+    "test-results/**",
+    "playwright-report/**",
+    "expo-env.d.ts",
+  ]),
 ]);
 
 export default eslintConfig;

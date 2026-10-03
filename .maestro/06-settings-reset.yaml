@@ -1,0 +1,25 @@
+appId: com.noirwire.app
+env:
+  PASSWORD: harbor-velvet-orbit-canyon-meadow
+name: Settings reset deletes the wallet only after RESET is typed
+tags:
+  - security
+---
+- runFlow: subflows/launch-fresh.yaml
+- runFlow: subflows/create-wallet.yaml
+- tapOn: "Settings"
+- scrollUntilVisible:
+    element: "Reset wallet.*"
+- tapOn: "Reset wallet.*"
+- assertVisible: "Type RESET to confirm"
+- tapOn: "Type RESET to confirm"
+- inputText: "reset"
+- tapOn: "Delete this wallet"
+- assertVisible: "Type RESET to confirm"
+- eraseText
+- inputText: "RESET"
+- hideKeyboard
+- tapOn: "Delete this wallet"
+- extendedWaitUntil:
+    visible: "Create my wallet"
+    timeout: 30000

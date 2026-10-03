@@ -1,0 +1,8 @@
+appId: com.noirwire.app
+---
+- launchApp:
+    clearState: true
+    clearKeychain: true
+- extendedWaitUntil:
+    visible: "Create my wallet"
+    timeout: 30000

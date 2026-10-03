@@ -1,0 +1,31 @@
+name: Bug report
+description: Something in the app does not work as it should.
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead. Never paste a recovery phrase, a password or a wallet address.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+    validations:
+      required: true
+  - type: input
+    id: build
+    attributes:
+      label: App version and build
+      description: From Settings, About NoirWire.
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Device and OS
+      placeholder: Pixel 8, Android 16 / iPhone 15, iOS 26 / Solana Seeker
+    validations:
+      required: true

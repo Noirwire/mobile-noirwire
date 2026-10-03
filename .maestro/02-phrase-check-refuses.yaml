@@ -1,0 +1,20 @@
+appId: com.noirwire.app
+env:
+  PASSWORD: harbor-velvet-orbit-canyon-meadow
+name: The phrase check refuses a wrong word
+tags:
+  - onboarding
+---
+- runFlow: subflows/launch-fresh.yaml
+- tapOn: "Create my wallet"
+- runFlow: subflows/remember-phrase.yaml
+- tapOn: "I have saved these words for the next step."
+- tapOn: "Continue"
+- assertVisible: "Question 1 of 3"
+- copyTextFrom: "Which word is number \\d+\\?"
+- runScript: scripts/wrong-answer.js
+- tapOn:
+    text: "${output.wrong}"
+    index: 0
+- assertVisible: "Check word \\d+ on your paper\\."
+- assertNotVisible: "Question 2 of 3"

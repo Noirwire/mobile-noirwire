@@ -1,0 +1,23 @@
+appId: com.noirwire.app
+env:
+  PASSWORD: harbor-velvet-orbit-canyon-meadow
+  # Made for tests alone. It has never held anything and must never be funded.
+  TEST_PHRASE: style report excuse fitness region hour enroll honey broccoli already surge leisure
+name: Import a wallet from a recovery phrase
+tags:
+  - onboarding
+---
+- runFlow: subflows/launch-fresh.yaml
+- tapOn: "Import an existing wallet"
+- tapOn: "Recovery phrase"
+- inputText: "${TEST_PHRASE}"
+- hideKeyboard
+- tapOn: "Continue"
+- extendedWaitUntil:
+    visible: "Where did this phrase come from?"
+    timeout: 60000
+- tapOn: "NoirWire\\..*"
+- tapOn: "Open this wallet"
+- tapOn: "Continue"
+- runFlow: subflows/set-password.yaml
+- assertVisible: "How to add money"

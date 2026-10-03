@@ -1,0 +1,21 @@
+appId: com.noirwire.app
+---
+# Creates a wallet: reveals the phrase, remembers every word, passes the
+# three-question check and sets the password in ${PASSWORD}.
+- tapOn: "Create my wallet"
+- runFlow: remember-phrase.yaml
+- tapOn: "I have saved these words for the next step."
+- tapOn: "Continue"
+- assertVisible: "Question 1 of 3"
+- copyTextFrom: "Which word is number \\d+\\?"
+- runScript: ../scripts/answer-question.js
+- tapOn: "${output.answer}"
+- assertVisible: "Question 2 of 3"
+- copyTextFrom: "Which word is number \\d+\\?"
+- runScript: ../scripts/answer-question.js
+- tapOn: "${output.answer}"
+- assertVisible: "Question 3 of 3"
+- copyTextFrom: "Which word is number \\d+\\?"
+- runScript: ../scripts/answer-question.js
+- tapOn: "${output.answer}"
+- runFlow: set-password.yaml
