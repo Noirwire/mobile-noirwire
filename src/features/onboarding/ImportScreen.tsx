@@ -2,12 +2,13 @@ import { commonCopy, onboardingCopy, mobileOnboardingCopy } from "@noirwire/shar
 import { parseRecoveryPhrase, type ImportResolution } from "@noirwire/shared/infrastructure";
 import { useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
-import { Button, Field, Notice, Screen, Text } from "@/ui";
+import { Button, Field, Notice, Screen, StepList, Text } from "@/ui";
 import { errorHaptic } from "@/ui/haptics";
 import { layout } from "@/ui/theme";
 import { useCaptureProtection } from "@/ui/useCaptureProtection";
 import { useServices } from "../services";
 import { useAppLeaves } from "../security/useAppLeaves";
+import { importProgressCopy, importSteps, LAST_STEP_AFTER_MS, withRetries } from "./importProgress";
 
 type ImportScreenProps = {
   onFound: (words: string[], resolution: ImportResolution) => void;
@@ -25,6 +26,8 @@ const wordsIn = (text: string) => text.trim().split(/\s+/).filter(Boolean).lengt
 /**
  * Spec 2.5: a 12 or 24 word phrase, checked on the phone and then against
  * the chain through the relay, each candidate address in its own request.
+ * While that runs the form gives way to a progress list, a failed lookup is
+ * tried again quietly, and only a lookup that keeps failing is reported.
  * The field is cleared whenever the app leaves the foreground.
  */
 export function ImportScreen({ onFound, onBusyChange }: ImportScreenProps) {
@@ -34,7 +37,8 @@ export function ImportScreen({ onFound, onBusyChange }: ImportScreenProps) {
   const [touched, setTouched] = useState(false);
   const [checking, setChecking] = useState(false);
   const [slow, setSlow] = useState(false);
-  const [networkFailed, setNetworkFailed] = useState(false);
+  const [lastStep, setLastStep] = useState(false);
+  const [failed, setFailed] = useState(false);
   useCaptureProtection(true);
   useAppLeaves(() => {
     if (!checking) setPhrase("");
@@ -43,10 +47,13 @@ export function ImportScreen({ onFound, onBusyChange }: ImportScreenProps) {
   useEffect(() => onBusyChange?.(checking), [checking, onBusyChange]);
   useEffect(() => {
     if (!checking) return;
-    const timer = setTimeout(() => setSlow(true), SLOW_CHECK_MS);
+    const slowTimer = setTimeout(() => setSlow(true), SLOW_CHECK_MS);
+    const stepTimer = setTimeout(() => setLastStep(true), LAST_STEP_AFTER_MS);
     return () => {
-      clearTimeout(timer);
+      clearTimeout(slowTimer);
+      clearTimeout(stepTimer);
       setSlow(false);
+      setLastStep(false);
     };
   }, [checking]);
 
@@ -61,16 +68,32 @@ export function ImportScreen({ onFound, onBusyChange }: ImportScreenProps) {
       return;
     }
     setChecking(true);
-    setNetworkFailed(false);
+    setFailed(false);
+    const words = parsed.words;
     try {
-      const resolution = await resolveImport(parsed.words.join(" "));
+      const resolution = await withRetries(() => resolveImport(words.join(" ")));
       setChecking(false);
-      onFound(parsed.words, resolution);
+      onFound(words, resolution);
     } catch {
       setChecking(false);
-      setNetworkFailed(true);
+      setFailed(true);
       errorHaptic();
     }
+  }
+
+  if (checking) {
+    return (
+      <Screen edges={["right", "bottom", "left"]}>
+        <View style={styles.intro}>
+          <Text variant="display" accessibilityRole="header">
+            {importProgressCopy.title}
+          </Text>
+          <Text tone="dim">{importProgressCopy.lead}</Text>
+        </View>
+        <StepList steps={importSteps(lastStep)} />
+        {slow && <Text variant="faint">{importProgressCopy.slow}</Text>}
+      </Screen>
+    );
   }
 
   return (
@@ -88,7 +111,6 @@ export function ImportScreen({ onFound, onBusyChange }: ImportScreenProps) {
           value={phrase}
           onChangeText={setPhrase}
           onBlur={() => setTouched(true)}
-          editable={!checking}
           multiline
           numberOfLines={4}
           autoCapitalize="none"
@@ -105,22 +127,18 @@ export function ImportScreen({ onFound, onBusyChange }: ImportScreenProps) {
           <Button
             label={mobile.paste}
             variant="quiet"
-            disabled={checking}
             onPress={() => void readClipboard().then((text) => setPhrase(text))}
           />
         </View>
       </View>
-      {networkFailed && <Notice tone="danger">{mobile.networkFailed}</Notice>}
+      {failed && <Notice tone="danger">{importProgressCopy.failed}</Notice>}
       <View style={styles.group}>
         <Button
           label={commonCopy.continue}
-          loading={checking}
-          loadingLabel={mobile.checking}
           disabled={!online || invalid !== null}
           onPress={() => void submit()}
         />
         {!online && <Text variant="faint">{mobile.offline}</Text>}
-        {checking && slow && <Text variant="faint">{mobile.slow}</Text>}
       </View>
     </Screen>
   );

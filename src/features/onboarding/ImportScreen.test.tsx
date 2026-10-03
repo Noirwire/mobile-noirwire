@@ -1,6 +1,7 @@
 import type { ImportResolution } from "@noirwire/shared/infrastructure";
 import { act, fireEvent, screen } from "@testing-library/react-native";
 import { installTestPlatform, renderWith, testServices } from "../testServices";
+import { IMPORT_ATTEMPTS, RETRY_PAUSE_MS } from "./importProgress";
 import { ImportScreen, SLOW_CHECK_MS } from "./ImportScreen";
 
 const PHRASE =
@@ -43,32 +44,56 @@ describe("ImportScreen", () => {
     expect(onFound).toHaveBeenCalledWith(PHRASE.split(" "), RESOLUTION);
   });
 
-  it("says when the check is slow, and holds the field while it runs", async () => {
+  it("shows the import as progress while it runs, and says so when it is slow", async () => {
     jest.useFakeTimers();
     let finish!: (value: ImportResolution) => void;
     const resolveImport = () => new Promise<ImportResolution>((resolve) => (finish = resolve));
     await renderWith(await testServices({ resolveImport }), <ImportScreen onFound={jest.fn()} />);
     await fireEvent.changeText(field(), PHRASE);
     await fireEvent.press(screen.getByRole("button", { name: "Continue" }));
-    expect(
-      screen.getByRole("button", { name: "Checking what this phrase holds..." }),
-    ).toBeDisabled();
-    expect(field().props.editable).toBe(false);
+    expect(screen.getByRole("header", { name: "Importing your wallet" })).toBeOnTheScreen();
+    expect(screen.queryByLabelText("Recovery phrase")).toBeNull();
+    expect(screen.getByText("Finding your portfolios")).toBeOnTheScreen();
     await act(() => jest.advanceTimersByTime(SLOW_CHECK_MS));
     expect(
-      screen.getByText("Looking for portfolios this phrase already has. This can take a moment."),
+      screen.getByText("Still working. A wallet with many portfolios takes a little longer."),
     ).toBeOnTheScreen();
     await act(async () => finish(RESOLUTION));
     jest.useRealTimers();
   });
 
-  it("says the network could not be reached", async () => {
-    await renderWith(await testServices(), <ImportScreen onFound={jest.fn()} />);
+  it("tries a failed lookup again without saying anything", async () => {
+    jest.useFakeTimers();
+    const resolveImport = jest
+      .fn<Promise<ImportResolution>, [string]>()
+      .mockRejectedValueOnce(new Error("busy"))
+      .mockResolvedValue(RESOLUTION);
+    const onFound = jest.fn();
+    await renderWith(await testServices({ resolveImport }), <ImportScreen onFound={onFound} />);
     await fireEvent.changeText(field(), PHRASE);
     await fireEvent.press(screen.getByRole("button", { name: "Continue" }));
+    await act(() => jest.advanceTimersByTimeAsync(RETRY_PAUSE_MS));
+    expect(resolveImport).toHaveBeenCalledTimes(2);
+    expect(onFound).toHaveBeenCalledWith(PHRASE.split(" "), RESOLUTION);
+    expect(screen.queryByRole("alert")).toBeNull();
+    jest.useRealTimers();
+  });
+
+  it("says plainly when the import cannot finish, after every try", async () => {
+    jest.useFakeTimers();
+    const resolveImport = jest.fn(async () => {
+      throw new Error("down");
+    });
+    await renderWith(await testServices({ resolveImport }), <ImportScreen onFound={jest.fn()} />);
+    await fireEvent.changeText(field(), PHRASE);
+    await fireEvent.press(screen.getByRole("button", { name: "Continue" }));
+    await act(() => jest.advanceTimersByTimeAsync(RETRY_PAUSE_MS * IMPORT_ATTEMPTS));
+    expect(resolveImport).toHaveBeenCalledTimes(IMPORT_ATTEMPTS);
     expect(screen.getByRole("alert")).toHaveTextContent(
-      "Could not reach the network to check this phrase. Try again.",
+      "We couldn't finish importing your wallet. Nothing was saved on this phone. Try again.",
     );
+    expect(field()).toBeOnTheScreen();
+    jest.useRealTimers();
   });
 
   it("is unavailable offline, with the reason", async () => {
