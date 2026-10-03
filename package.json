@@ -6,8 +6,12 @@
   "main": "./index.js",
   "scripts": {
     "start": "expo start --dev-client",
-    "ios": "expo run:ios",
-    "android": "expo run:android",
+    "ios:sim": "expo run:ios",
+    "ios:device": "node scripts/require-apple-team-id.js && expo run:ios --device",
+    "ios:archive": "node scripts/require-apple-team-id.js && expo run:ios --configuration Release --device generic --output ./build",
+    "android:debug": "expo run:android",
+    "android:apk": "expo prebuild --platform android && cd android && ./gradlew assembleRelease",
+    "android:bundle": "expo prebuild --platform android && cd android && ./gradlew bundleRelease",
     "web": "expo start --web",
     "export:web": "expo export --platform web",
     "lint": "eslint .",
@@ -22,7 +26,7 @@
   "dependencies": {
     "@expo-google-fonts/figtree": "^0.4.1",
     "@expo/metro-runtime": "~57.0.16",
-    "@noirwire/shared": "github:Noirwire/shared-noirwire#v0.2.0",
+    "@noirwire/shared": "https://github.com/Noirwire/shared-noirwire/releases/download/v0.4.0/noirwire-shared-0.4.0.tgz",
     "@react-native-community/netinfo": "12.0.1",
     "@scure/bip39": "1.6.0",
     "@solana/spl-token": "0.4.15",
