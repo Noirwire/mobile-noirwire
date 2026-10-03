@@ -8,7 +8,7 @@ import {
   TOKEN_2022_PROGRAM_ID,
   TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
-import { ALL_STOCKS } from "@noirwire/shared/infrastructure";
+import { ALL_STOCKS, LEND_RECEIPT_MINT } from "@noirwire/shared/infrastructure";
 import { Keypair, PublicKey } from "@solana/web3.js";
 import earnTokens from "../fixtures/earn-tokens.json";
 import history from "../fixtures/history.json";
@@ -39,13 +39,14 @@ type AccountValue = {
   space: number;
 };
 
-function tokenAccountData(owner: PublicKey, usdc: number): Buffer {
+/** A token account of `owner`'s holding `amount` of a six-decimal `mint`. */
+function tokenAccountData(mint: PublicKey, owner: PublicKey, amount: number): Buffer {
   const data = Buffer.alloc(ACCOUNT_SIZE);
   AccountLayout.encode(
     {
-      mint: USDC_MINT,
+      mint,
       owner,
-      amount: BigInt(Math.round(usdc * 1e6)),
+      amount: BigInt(Math.round(amount * 1e6)),
       delegateOption: 0,
       delegate: PublicKey.default,
       state: 1,
@@ -129,10 +130,19 @@ export class FixtureRelay {
 
   /** Gives `owner` a USDC token account holding `usdc`. */
   holdUsdc(owner: string, usdc: number): void {
+    this.hold(USDC_MINT, owner, usdc);
+  }
+
+  /** Lends `usdc` of `owner`'s through Earn: the vault's receipt token, which the fixture vault redeems one for one. */
+  holdEarn(owner: string, usdc: number): void {
+    this.hold(LEND_RECEIPT_MINT, owner, usdc);
+  }
+
+  private hold(mint: PublicKey, owner: string, amount: number): void {
     const wallet = new PublicKey(owner);
-    const account = getAssociatedTokenAddressSync(USDC_MINT, wallet, true);
+    const account = getAssociatedTokenAddressSync(mint, wallet, true);
     this.accounts.set(account.toBase58(), {
-      data: tokenAccountData(wallet, usdc),
+      data: tokenAccountData(mint, wallet, amount),
       program: TOKEN_PROGRAM_ID,
     });
   }
@@ -255,6 +265,7 @@ export class FixtureRelay {
     if (pathname.startsWith("/api/history/")) return json(history);
     if (pathname === "/api/event") return route.fulfill({ status: 204, headers: CORS });
     if (pathname === "/api/jupiter/lend/v1/earn/tokens") return json(earnTokens);
+    if (pathname === "/api/jupiter/lend/v1/earn/earnings") return json([{ earnings: "0" }]);
     if (pathname === "/api/jupiter/swap/v2/order" && body) return json(this.order(body));
     if (pathname === "/api/relayer") {
       const reply = this.relayer(request.method(), body ?? {});

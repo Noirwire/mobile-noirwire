@@ -1,8 +1,8 @@
+import type { PortfolioRowView } from "@noirwire/shared/presentation";
 import type { ReactNode } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { IdentityMark, Text } from "@/ui";
 import { layout, opacity } from "@/ui/theme";
-import type { PortfolioRowView } from "./portfolioSummary";
 
 type PortfolioRowProps = {
   row: PortfolioRowView;

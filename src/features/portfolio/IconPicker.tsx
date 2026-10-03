@@ -1,4 +1,4 @@
-import { portfolioCopy } from "@noirwire/shared/copy";
+import { mobilePortfolioCopy, portfolioCopy } from "@noirwire/shared/copy";
 import {
   PORTFOLIO_ICON_GLYPHS,
   PORTFOLIO_ICON_TINTS,
@@ -10,9 +10,8 @@ import { Button, IdentityMark, Text } from "@/ui";
 import { selectionHaptic } from "@/ui/haptics";
 import { IDENTITY_GLYPHS } from "@/ui/identityGlyphs";
 import { colors, layout, radius, size } from "@/ui/theme";
-import { mobilePortfolioCopy } from "./copy";
 
-const copy = mobilePortfolioCopy.icon;
+const copy = { ...portfolioCopy.icon, ...mobilePortfolioCopy.icon };
 
 type IconPickerProps = {
   value: PortfolioIcon;

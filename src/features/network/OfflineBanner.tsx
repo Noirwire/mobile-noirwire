@@ -1,10 +1,10 @@
+import { mobileAppCopy } from "@noirwire/shared/copy";
 import { WarningIcon } from "phosphor-react-native/src/icons/Warning";
 import { StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Text } from "@/ui";
 import { colors, layout, radius, size } from "@/ui/theme";
 import { useServices } from "../services";
-import { mobileNetworkCopy } from "./copy";
 
 type OfflineBannerProps = {
   /**
@@ -32,7 +32,7 @@ export function OfflineBanner({ pinned = false }: OfflineBannerProps) {
     >
       <WarningIcon size={size.iconSmall} color={colors.warning} />
       <Text variant="faint" tone="warning" style={styles.text}>
-        {mobileNetworkCopy.offline}
+        {mobileAppCopy.network.offline}
       </Text>
     </View>
   );

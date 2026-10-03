@@ -1,7 +1,8 @@
 import { getSnapshot } from "@noirwire/shared/wallet";
 import { act, fireEvent, screen } from "@testing-library/react-native";
 import { forgetWallet, installTestPlatform, renderWith, testServices } from "../testServices";
-import { installFakeRelay, walletWith } from "../trade/testDoubles";
+import { portfoliosWith as walletWith } from "../network/testMoney";
+import { installFakeRelay } from "../trade/testDoubles";
 import { MarketsScreen } from "./MarketsScreen";
 
 afterEach(async () => {

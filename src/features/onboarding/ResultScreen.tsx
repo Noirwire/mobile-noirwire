@@ -1,4 +1,4 @@
-import { commonCopy, onboardingCopy } from "@noirwire/shared/copy";
+import { commonCopy, onboardingCopy, mobileOnboardingCopy } from "@noirwire/shared/copy";
 import type { SchemeActivity } from "@noirwire/shared/infrastructure";
 import { useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
@@ -6,8 +6,7 @@ import { Button, Screen, Text } from "@/ui";
 import { successHaptic } from "@/ui/haptics";
 import { layout } from "@/ui/theme";
 import { useCaptureProtection } from "@/ui/useCaptureProtection";
-import { mobileOnboardingCopy } from "./copy";
-import { groupsOfFour, resultView } from "./importFindings";
+import { groupsOfFour, importResultView } from "@noirwire/shared/presentation";
 
 type ResultScreenProps = {
   activity: SchemeActivity;
@@ -26,7 +25,7 @@ export function ResultScreen({
   onContinue,
   onOtherSet,
 }: ResultScreenProps) {
-  const view = resultView(activity);
+  const view = importResultView(activity);
   const [shown, setShown] = useState(false);
   useCaptureProtection(shown);
 

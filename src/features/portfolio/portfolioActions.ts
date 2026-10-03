@@ -12,7 +12,6 @@ import {
   unlockedSession,
   updateWallet,
 } from "@noirwire/shared/wallet";
-import { mobilePortfolioCopy } from "./copy";
 
 const track = () => getPlatform().track;
 
@@ -41,10 +40,7 @@ export async function addPortfolio(
   );
   if (result.kind === "created") return { portfolio: result.portfolio };
   if (result.kind === "invalidPie") return { error: pieProblemMessage(result.problem) };
-  return {
-    error:
-      result.reason === "portfolioNotSaved" ? mobilePortfolioCopy.notSaved : refusalMessage(result),
-  };
+  return { error: refusalMessage(result, "mobile") };
 }
 
 function changePortfolio(id: string, change: (portfolio: Portfolio) => Portfolio) {

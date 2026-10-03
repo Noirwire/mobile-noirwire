@@ -1,3 +1,4 @@
+import { tradeParams } from "@noirwire/shared/presentation";
 import type { Href, useRouter } from "expo-router";
 import { Linking } from "react-native";
 import type { TrackerIntent } from "./TrackerScreen";
@@ -10,8 +11,8 @@ export const ISSUER_FAQ = "https://docs.xstocks.fi/docs/frequently-asked-questio
 /** Where each choice on a tracker's page leads, for a wallet holder. Only symbols and ids travel in a route. */
 export function followTrackerIntent(router: Router, symbol: string, intent: TrackerIntent) {
   const go: Record<TrackerIntent["kind"], () => void> = {
-    buy: () => router.push({ pathname: "/trade", params: { side: "buy", symbol } }),
-    sell: () => router.push({ pathname: "/trade", params: { side: "sell", symbol } }),
+    buy: () => router.push({ pathname: "/trade", params: tradeParams({ side: "buy", symbol }) }),
+    sell: () => router.push({ pathname: "/trade", params: tradeParams({ side: "sell", symbol }) }),
     createWallet: () => router.replace("/welcome"),
     createPortfolio: () => router.push("/new-portfolio"),
     portfolio: () =>

@@ -1,4 +1,4 @@
-import { onboardingCopy, walletCopy } from "@noirwire/shared/copy";
+import { onboardingCopy, walletCopy, mobileOnboardingCopy } from "@noirwire/shared/copy";
 import type { WalletDraft } from "@noirwire/shared/wallet";
 import { useState } from "react";
 import { StyleSheet, View } from "react-native";
@@ -9,7 +9,6 @@ import { NewPasswordFields } from "../password/NewPasswordFields";
 import { useNewPassword } from "../password/newPassword";
 import { useAppLeaves } from "../security/useAppLeaves";
 import { saveNewWallet, type SaveOrigin } from "../wallet/walletActions";
-import { mobileOnboardingCopy } from "./copy";
 
 type SetPasswordScreenProps = {
   draft: WalletDraft;

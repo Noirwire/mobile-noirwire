@@ -6,19 +6,25 @@ import { errorHaptic, successHaptic } from "@/ui/haptics";
 import { layout } from "@/ui/theme";
 import { NewPasswordFields } from "../password/NewPasswordFields";
 import { useNewPassword } from "../password/newPassword";
+import { useServices } from "../services";
+import { mobileUnlockCopy } from "../unlock/copy";
 import { updatePassword } from "../wallet/walletActions";
 import { mobileSettingsCopy } from "./copy";
 
 const copy = settingsCopy.password;
 
-type Outcome = { kind: "changed" } | { kind: "failed" } | null;
+/** What the screen says after an attempt: it went through, it did not, or it cannot be told which. */
+type Outcome = { tone: "info" | "warning" | "danger"; lines: string[] } | null;
 
 /**
  * Spec 2.30: a new password, after the current one is typed again even
  * while unlocked. The shared store re-encrypts the record as one write, so a
- * failure leaves the old password working.
+ * failure leaves the old password working. While biometric unlock is on,
+ * the device keystore takes the new key too, or the change is undone. A
+ * change whose result cannot be read back says so, and how to find out.
  */
 export function PasswordScreen() {
+  const { biometric } = useServices();
   const model = useNewPassword();
   const [current, setCurrent] = useState("");
   const [busy, setBusy] = useState(false);
@@ -30,20 +36,32 @@ export function PasswordScreen() {
     setBusy(true);
     setCurrentWrong(false);
     setOutcome(null);
-    const problem = await updatePassword(current, model.password);
+    const result = await updatePassword(
+      biometric,
+      current,
+      model.password,
+      mobileUnlockCopy.prompt,
+    );
     setBusy(false);
-    if (!problem) {
+    if (result.outcome === "changed") {
       successHaptic();
       setCurrent("");
       model.clear();
-      setOutcome({ kind: "changed" });
+      setOutcome({
+        tone: result.notice ? "warning" : "info",
+        lines: [mobileSettingsCopy.password.changed, ...(result.notice ? [result.notice] : [])],
+      });
       return;
     }
     errorHaptic();
-    if (problem === walletCopy.store.currentPasswordWrong) {
+    if (result.outcome === "indeterminate") {
+      setCurrent("");
+      model.clear();
+      setOutcome({ tone: "warning", lines: [result.reason] });
+    } else if (result.reason === walletCopy.store.currentPasswordWrong) {
       setCurrentWrong(true);
       setCurrent("");
-    } else setOutcome({ kind: "failed" });
+    } else setOutcome({ tone: "danger", lines: [result.reason] });
   }
 
   return (
@@ -60,8 +78,11 @@ export function PasswordScreen() {
       />
       <NewPasswordFields model={model} editable={!busy} onSubmit={() => void change()} />
       <View style={styles.actions}>
-        {outcome?.kind === "changed" && <Notice>{mobileSettingsCopy.password.changed}</Notice>}
-        {outcome?.kind === "failed" && <Notice tone="danger">{copy.failed}</Notice>}
+        {outcome?.lines.map((line) => (
+          <Notice key={line} tone={outcome.tone}>
+            {line}
+          </Notice>
+        ))}
         <Button
           label={copy.submit}
           loading={busy}

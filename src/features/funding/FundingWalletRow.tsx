@@ -1,6 +1,6 @@
+import { fundingWalletRow } from "@noirwire/shared/presentation";
 import { ListRow } from "@/ui";
 import { useWalletSnapshot } from "../network/useWalletSnapshot";
-import { fundingWalletRow } from "./fundingWalletView";
 
 /** Settings' "Funding wallet" row: its cash as last read, leading to its page. Never its address. */
 export function FundingWalletRow({ onPress }: { onPress: () => void }) {

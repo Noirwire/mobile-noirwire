@@ -1,16 +1,19 @@
+import { readPortfolioParam } from "@noirwire/shared/presentation";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { PieBuilderSheet } from "@/features/pie/PieBuilderSheet";
-import { oneParam, SheetRouteOptions } from "@/features/trade/sheetRoute";
-import { isAddressFreeParam } from "@/navigation/routeParams";
+import { SheetRoute } from "@/navigation/sheetRoute";
 
+/** Params: `portfolio`, the pie's local id. */
 export default function PieBuilder() {
   const router = useRouter();
   const { portfolio } = useLocalSearchParams<{ portfolio?: string }>();
-  const id = isAddressFreeParam(portfolio) ? oneParam(portfolio) : null;
   return (
     <>
-      <SheetRouteOptions />
-      <PieBuilderSheet portfolioId={id ?? ""} onClose={() => router.back()} />
+      <SheetRoute />
+      <PieBuilderSheet
+        portfolioId={readPortfolioParam(portfolio) ?? ""}
+        onClose={() => router.back()}
+      />
     </>
   );
 }

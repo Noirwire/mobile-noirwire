@@ -2,6 +2,7 @@ import { EyeIcon } from "phosphor-react-native/src/icons/Eye";
 import { EyeSlashIcon } from "phosphor-react-native/src/icons/EyeSlash";
 import { useState, type Ref } from "react";
 import { StyleSheet, TextInput, View, type TextInputProps } from "react-native";
+import { decimalText } from "./decimalText";
 import { IconButton } from "./IconButton";
 import { Text } from "./Text";
 import { colors, fonts, layout, radius, size } from "./theme";
@@ -54,6 +55,11 @@ export function Field({
           autoCapitalize={secure ? "none" : input.autoCapitalize}
           autoCorrect={secure ? false : input.autoCorrect}
           {...input}
+          onChangeText={
+            input.keyboardType === "decimal-pad" && input.onChangeText
+              ? (text) => input.onChangeText?.(decimalText(text))
+              : input.onChangeText
+          }
           secureTextEntry={secure && !revealed}
           style={styles.input}
         />

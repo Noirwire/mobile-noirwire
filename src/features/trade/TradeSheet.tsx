@@ -1,10 +1,19 @@
 import { costAgreed, tradeDraft, type Denomination } from "@noirwire/shared/application";
-import { commonCopy, marketsCopy, tradeCopy } from "@noirwire/shared/copy";
+import { commonCopy, marketsCopy, mobileTradeCopy, tradeCopy as copy } from "@noirwire/shared/copy";
 import { resolvePortfolioIcon, type NetworkCost, type Side } from "@noirwire/shared/domain";
-import { networkLabel } from "@noirwire/shared/infrastructure";
+import { networkLabel, type TradePlan } from "@noirwire/shared/infrastructure";
 import { getPlatform } from "@noirwire/shared/platform";
-import { tradeFormView } from "@noirwire/shared/presentation";
-import { asset, cashOf, isLivePrice, unitsPerHeld } from "@noirwire/shared/wallet";
+import {
+  amountFloor,
+  portfolioChoices,
+  tradeFormView,
+  tradeOutcome,
+  tradeProgressSteps,
+  tradeReviewView,
+  type TradePhase,
+  type TradeResultView,
+} from "@noirwire/shared/presentation";
+import { asset, cashOf, isLivePrice, screenReads, unitsPerHeld } from "@noirwire/shared/wallet";
 import { useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import {
@@ -23,20 +32,11 @@ import {
 import { errorHaptic, heavyHaptic, successHaptic, warningHaptic } from "@/ui/haptics";
 import { fonts, layout } from "@/ui/theme";
 import { useLivePrices, useWalletSnapshot } from "../markets/useMarketData";
+import { PendingNote } from "../network/PendingNote";
+import { usePendingBlock } from "../network/usePendingBlock";
 import { useServices } from "../services";
-import { mobileTradeCopy as copy } from "./copy";
 import { ActingHeader, AmountField, IdentityLine, RiskSections, TrackerChooser } from "./parts";
-import {
-  amountFloor,
-  outcomeOf,
-  portfolioChoices,
-  progressSteps,
-  reviewModel,
-  type Phase,
-  type ResultView,
-} from "./tradeFlow";
-import { useTradeService, type Order } from "./tradeService";
-import { usePending } from "./usePending";
+import { useTrading } from "./useTrading";
 
 type Step = "portfolio" | "tracker" | "amount" | "review" | "risks" | "progress" | "result";
 
@@ -65,11 +65,11 @@ export function TradeSheet({
   onClose,
   onAddMoney,
 }: TradeSheetProps) {
-  const service = useTradeService();
+  const service = useTrading();
   const online = useServices().useOnline();
   const wallet = useWalletSnapshot();
   const updatedAt = useLivePrices();
-  const choices = wallet ? portfolioChoices(wallet, side, initialSymbol) : [];
+  const choices = wallet ? portfolioChoices(screenReads, wallet, side, initialSymbol) : [];
   const preselected = initialPortfolio ?? (choices.length === 1 ? choices[0].id : null);
   const askPortfolio = preselected === null;
   const askTracker = initialSymbol === null;
@@ -83,22 +83,22 @@ export function TradeSheet({
   const [symbol, setSymbol] = useState<string | null>(initialSymbol);
   const [denom, setDenom] = useState<Denomination>(side === "buy" ? "cash" : "units");
   const [amountText, setAmountText] = useState("");
-  const [plan, setPlan] = useState<Order | null>(null);
+  const [plan, setPlan] = useState<TradePlan | null>(null);
   const [network, setNetwork] = useState<{ lamports: number; cost: NetworkCost } | null>(null);
   const [quoting, setQuoting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [notice, setNotice] = useState<{ tone: "danger" | "warning"; text: string } | null>(null);
   const [now, setNow] = useState(clock);
-  const [phase, setPhase] = useState<Phase>("starting");
+  const [phase, setPhase] = useState<TradePhase>("starting");
   const [stillWorking, setStillWorking] = useState(false);
-  const [result, setResult] = useState<ResultView | null>(null);
+  const [result, setResult] = useState<TradeResultView | null>(null);
   const [costPaid, setCostPaid] = useState(false);
   const [relayerDown, setRelayerDown] = useState(false);
   const [withoutRelayer, setWithoutRelayer] = useState(false);
   const [settling, setSettling] = useState(false);
   const [showCost, setShowCost] = useState(false);
 
-  const pending = usePending(portfolioId);
+  const pending = usePendingBlock(portfolioId);
   const reviewing = step === "review" || step === "risks";
   useEffect(() => {
     if (!reviewing) return;
@@ -119,7 +119,7 @@ export function TradeSheet({
   const portfolio = wallet?.portfolios.find((entry) => entry.id === portfolioId) ?? null;
   const entry = symbol ? asset(symbol) : undefined;
   const name = entry?.name ?? null;
-  const title = step === "tracker" ? copy.chooseTracker(side) : tradeCopy.title(side, name);
+  const title = step === "tracker" ? copy.chooseTracker(side) : copy.title(side, name);
   const icon = portfolio ? resolvePortfolioIcon(portfolio.icon) : null;
 
   if (!wallet || (!portfolio && step !== "portfolio")) {
@@ -156,7 +156,6 @@ export function TradeSheet({
     quoting,
   });
   const floor = amountFloor({
-    side,
     dollars: draft.value,
     valid: draft.valid,
     smallest: service.smallestOrderUsd(),
@@ -176,7 +175,7 @@ export function TradeSheet({
     }
     if (side === "buy" && quoted.plan.spend > cash) {
       setQuoting(false);
-      setFormError(tradeCopy.priceAboveCash);
+      setFormError(copy.priceAboveCash);
       return setStep("amount");
     }
     try {
@@ -187,7 +186,7 @@ export function TradeSheet({
       );
     } catch {
       setQuoting(false);
-      setFormError(tradeCopy.costCheckFailed);
+      setFormError(copy.costCheckFailed);
       return setStep("amount");
     }
     setQuoting(false);
@@ -208,12 +207,13 @@ export function TradeSheet({
       ...costAgreed(costPaid ? null : network.cost),
       onStep: (next) => setPhase(next === "covering" ? "covering" : "acting"),
     });
-    const outcome = outcomeOf(attempt, {
+    const outcome = tradeOutcome(attempt, {
       side,
       symbol,
       portfolioLabel: portfolio.label,
       reviewed,
       unitsPerHeld: units,
+      platform: "mobile",
     });
     if (outcome.kind === "result") {
       if (outcome.view.tone === "success") successHaptic();
@@ -280,7 +280,7 @@ export function TradeSheet({
             ? {
                 symbol,
                 name: commonCopy.tracker(entry.name),
-                caption: tradeCopy.issuerLine(symbol, entry.issuer),
+                caption: copy.issuerLine(symbol, entry.issuer),
               }
             : null
         }
@@ -344,7 +344,7 @@ export function TradeSheet({
         ) : (
           <>
             <Segmented
-              label={tradeCopy.amountIn}
+              label={copy.amountIn}
               options={form.denominations.map((option) => option.label)}
               value={form.denominations.find((option) => option.denom === denom)?.label ?? ""}
               onChange={(label) => {
@@ -383,7 +383,7 @@ export function TradeSheet({
             )}
             <Text variant="faint">{floor.below ?? floor.caption}</Text>
             {formError && <Notice tone="danger">{formError}</Notice>}
-            {!online && <Notice tone="warning">{copy.offline}</Notice>}
+            {!online && <Notice tone="warning">{mobileTradeCopy.offline}</Notice>}
           </>
         )}
       </>
@@ -396,12 +396,13 @@ export function TradeSheet({
           label={form.action.label}
           disabled={reviewDisabled}
           loading={quoting}
-          loadingLabel={tradeCopy.gettingPrice}
+          loadingLabel={copy.gettingPrice}
           onPress={() => void review()}
         />
       );
   } else if ((step === "review" || step === "risks") && plan && network && portfolio && symbol) {
-    const model = reviewModel({
+    const model = tradeReviewView({
+      platform: "mobile",
       order: plan,
       symbol,
       unitsPerHeld: units,
@@ -414,7 +415,6 @@ export function TradeSheet({
       pending,
       submitting: false,
       covering: false,
-      side,
       costPaid,
       online,
       settling,
@@ -455,7 +455,7 @@ export function TradeSheet({
               {showCost && <Text variant="note">{model.costDetails.body}</Text>}
             </>
           )}
-          <Text variant="faint">{model.minimum}</Text>
+          <Text variant="faint">{model.stopsBelowMinimum}</Text>
           {model.notFirm && <Text variant="faint">{model.notFirm}</Text>}
           {model.priceUnchecked && <Notice tone="warning">{model.priceUnchecked}</Notice>}
           {model.feeUnverified && <Notice tone="warning">{model.feeUnverified}</Notice>}
@@ -474,7 +474,7 @@ export function TradeSheet({
           <Text variant="note" tone="warning">
             {model.publicLine}
           </Text>
-          {pending.note && <Notice tone="warning">{pending.note}</Notice>}
+          <PendingNote pending={pending} />
         </>
       );
       footer =
@@ -482,7 +482,7 @@ export function TradeSheet({
           <Button
             label={model.action.label}
             loading={quoting}
-            loadingLabel={tradeCopy.gettingPrice}
+            loadingLabel={copy.gettingPrice}
             onPress={() => void review()}
           />
         ) : (
@@ -499,7 +499,7 @@ export function TradeSheet({
     body = (
       <>
         {header}
-        <StepList steps={progressSteps({ firstBuy, symbol, phase })} />
+        <StepList steps={tradeProgressSteps({ firstBuy, symbol, phase })} />
         {stillWorking && <Text variant="faint">{copy.progress.stillWorking}</Text>}
       </>
     );

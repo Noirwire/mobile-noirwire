@@ -1,22 +1,26 @@
+import {
+  isAddressFreeParam,
+  portfolioParams,
+  readPortfolioParam,
+  readSide,
+} from "@noirwire/shared/presentation";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { oneParam, SheetRouteOptions } from "@/features/trade/sheetRoute";
 import { TradeSheet } from "@/features/trade/TradeSheet";
-import { isAddressFreeParam } from "@/navigation/routeParams";
+import { SheetRoute } from "@/navigation/sheetRoute";
 
+/** Params: `side`, and optionally `symbol` and `portfolio`, the acting portfolio's local id. */
 export default function Trade() {
   const router = useRouter();
   const params = useLocalSearchParams<{ side?: string; symbol?: string; portfolio?: string }>();
-  const symbol = isAddressFreeParam(params.symbol) ? params.symbol : null;
-  const portfolio = isAddressFreeParam(params.portfolio) ? oneParam(params.portfolio) : null;
   return (
     <>
-      <SheetRouteOptions />
+      <SheetRoute />
       <TradeSheet
-        side={params.side === "sell" ? "sell" : "buy"}
-        symbol={symbol}
-        portfolioId={portfolio}
+        side={readSide(params.side)}
+        symbol={isAddressFreeParam(params.symbol) ? params.symbol : null}
+        portfolioId={readPortfolioParam(params.portfolio)}
         onClose={() => router.back()}
-        onAddMoney={(id) => router.replace({ pathname: "/fund", params: { id } })}
+        onAddMoney={(id) => router.replace({ pathname: "/fund", params: portfolioParams(id) })}
       />
     </>
   );

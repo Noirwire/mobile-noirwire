@@ -1,6 +1,12 @@
 import { expect, test as base, type Page } from "@playwright/test";
 import { FixtureRelay } from "./relay";
-import { FUNDING_USDC, PORTFOLIO_USDC, seededWallet, type SeededWallet } from "./wallet";
+import {
+  FUNDING_USDC,
+  PORTFOLIO_EARN_USDC,
+  PORTFOLIO_USDC,
+  seededWallet,
+  type SeededWallet,
+} from "./wallet";
 
 type Fixtures = {
   relay: FixtureRelay;
@@ -26,6 +32,7 @@ export const test = base.extend<Fixtures>({
     const wallet = await seededWallet();
     relay.holdUsdc(wallet.fundingAddress, FUNDING_USDC);
     relay.holdUsdc(wallet.portfolio.address, PORTFOLIO_USDC);
+    relay.holdEarn(wallet.portfolio.address, PORTFOLIO_EARN_USDC);
     // Seeds the first page load only, so a reset in the test stays a reset.
     await context.addInitScript((entries) => {
       if (sessionStorage.getItem("e2e.seeded")) return;

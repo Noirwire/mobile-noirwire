@@ -1,4 +1,12 @@
+import { commonCopy, mobileSendCopy, sendCopy } from "@noirwire/shared/copy";
 import { resolvePortfolioIcon, symbolAmount } from "@noirwire/shared/domain";
+import {
+  maxAmountText,
+  sendFormView,
+  sendProgressView,
+  sendResultView,
+  sendReviewView,
+} from "@noirwire/shared/presentation";
 import { QrCodeIcon } from "phosphor-react-native/src/icons/QrCode";
 import { useEffect } from "react";
 import { StyleSheet, View } from "react-native";
@@ -23,17 +31,11 @@ import { errorHaptic, lightHaptic, successHaptic, warningHaptic } from "@/ui/hap
 import { Terms } from "@/ui/Terms";
 import { colors, fonts, layout, size } from "@/ui/theme";
 import { useCaptureProtection } from "@/ui/useCaptureProtection";
-import { commonCopy } from "@noirwire/shared/copy";
 import { OfflineBanner } from "../network/OfflineBanner";
-import { mobileSendCopy as copy } from "./copy";
-import {
-  maxAmountText,
-  sendFormViewFor,
-  sendProgressView,
-  sendResultView,
-  sendReviewViewFor,
-} from "./sendView";
+import { PendingNote } from "../network/PendingNote";
 import { useSendFlow, type SendFlow } from "./useSendFlow";
+
+const copy = { ...sendCopy, ...mobileSendCopy };
 
 type SendScreenProps = {
   portfolioId: string;
@@ -48,7 +50,11 @@ export function SendScreen({ portfolioId, onClose, onMoveMoney }: SendScreenProp
   const { step, portfolio } = flow;
   const name = portfolio?.label ?? "";
 
-  const form = sendFormViewFor({
+  const form = sendFormView({
+    platform: "mobile",
+    offCurveMessage: sendCopy.unsendable.offCurve,
+    submitting: false,
+    network: "",
     draft: flow.draft,
     symbol: flow.symbol,
     heldRaw: flow.heldRaw,
@@ -67,7 +73,11 @@ export function SendScreen({ portfolioId, onClose, onMoveMoney }: SendScreenProp
   });
   const review =
     flow.review &&
-    sendReviewViewFor({
+    sendReviewView({
+      platform: "mobile",
+      submitting: false,
+      network: "",
+      solFee: 0,
       draft: flow.draft,
       canReview: flow.draft.validRecipient && flow.draft.validAmount,
       symbol: flow.symbol,
@@ -145,7 +155,7 @@ function DetailsStep({
   onClose,
 }: {
   flow: SendFlow;
-  form: ReturnType<typeof sendFormViewFor>;
+  form: ReturnType<typeof sendFormView>;
   onClose: () => void;
 }) {
   if (flow.assets.length === 0) {
@@ -208,7 +218,7 @@ function DetailsStep({
         />
         <View style={styles.inline}>
           <Button
-            label={copy.max}
+            label={commonCopy.max}
             variant="quiet"
             onPress={() => {
               flow.setAmountText(maxAmountText(flow.draft));
@@ -248,7 +258,7 @@ function ReviewStep({
   onMoveMoney,
 }: {
   flow: SendFlow;
-  view: NonNullable<ReturnType<typeof sendReviewViewFor>>;
+  view: NonNullable<ReturnType<typeof sendReviewView>>;
   onMoveMoney: () => void;
 }) {
   const setCheck = (patch: Partial<SendFlow["checks"]>) =>
@@ -256,10 +266,10 @@ function ReviewStep({
   return (
     <>
       <View style={styles.group}>
-        <Text variant="faint">{view.recipientLabel}</Text>
-        <Panel accessibilityLabel={view.address.aria} accessible>
+        <Text variant="faint">{view.recipient.label}</Text>
+        <Panel accessibilityLabel={view.recipient.aria} accessible>
           <Text style={styles.address}>
-            {view.address.segments.map((segment, index) => (
+            {view.segments.map((segment, index) => (
               <Text
                 key={index}
                 tone={segment.strong ? "ink-strong" : "dim"}
@@ -302,7 +312,7 @@ function ReviewStep({
       {view.lookalike && (
         <>
           <Notice tone="danger" title={view.lookalike.title}>
-            {`${view.lookalike.previous}\n${view.lookalike.check}`}
+            {`${view.lookalike.previous}${view.lookalike.address}\n${view.lookalike.check}`}
           </Notice>
           <Acknowledge
             label={view.lookalike.confirm}
@@ -323,7 +333,7 @@ function ReviewStep({
           autoCorrect={false}
         />
       )}
-      {view.pendingNote && <Notice tone="warning">{view.pendingNote}</Notice>}
+      <PendingNote pending={flow.pending} />
       <Text variant="note" tone="warning">
         {view.irreversible}
       </Text>
@@ -339,8 +349,8 @@ function Footer({
   onClose,
 }: {
   flow: SendFlow;
-  form: ReturnType<typeof sendFormViewFor>;
-  review: ReturnType<typeof sendReviewViewFor> | null;
+  form: ReturnType<typeof sendFormView>;
+  review: ReturnType<typeof sendReviewView> | null;
   onClose: () => void;
 }) {
   switch (flow.step) {

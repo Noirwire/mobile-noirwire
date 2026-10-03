@@ -3,13 +3,13 @@ import { onboardingCopy, walletCopy } from "@noirwire/shared/copy";
 import { getPlatform } from "@noirwire/shared/platform";
 import {
   catalog,
-  changePassword,
   getSnapshot,
   lock,
   resetWallet,
   storeNewWallet,
   unlock,
   verifyPassword,
+  type PasswordChange,
   type ResetResult,
   type WalletDraft,
 } from "@noirwire/shared/wallet";
@@ -62,10 +62,20 @@ export async function saveNewWallet(draft: WalletDraft, origin: SaveOrigin, pass
 /** The phrase, only for someone who types the password again now; biometrics are never enough. */
 export const revealPhrase = (password: string) => verifyPassword(password);
 
-export async function updatePassword(current: string, next: string): Promise<string | null> {
-  const problem = await changePassword(current, next);
-  if (!problem) analytics()("password_changed");
-  return problem;
+/**
+ * Changes the password through biometric unlock, which hands the new vault
+ * key to the device keystore while it is on. `prompt` is what the system
+ * biometric sheet says.
+ */
+export async function updatePassword(
+  biometric: BiometricUnlock,
+  current: string,
+  next: string,
+  prompt: string,
+): Promise<PasswordChange> {
+  const result = await biometric.changePassword(current, next, prompt);
+  if (result.outcome === "changed") analytics()("password_changed");
+  return result;
 }
 
 /**

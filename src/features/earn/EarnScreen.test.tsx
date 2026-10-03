@@ -9,7 +9,6 @@ import {
 } from "../network/testMoney";
 import { forgetWallet, installTestPlatform, testServices } from "../testServices";
 import { EarnScreen } from "./EarnScreen";
-import { earnScreenView } from "./earnView";
 
 afterEach(() => forgetWallet());
 
@@ -100,6 +99,7 @@ describe("EarnScreen", () => {
     expect(screen.getByText("From Investing, now in Earn.")).toBeOnTheScreen();
     expect(chain.calls).toEqual([{ kind: "deposit", amount: 100, to: undefined }]);
     expect(chain.earn.deposited.get(wallet.portfolios[0].address)).toBe(100);
+    expect(getSnapshot()!.activity[0]).toMatchObject({ kind: "earnDeposit", amount: 100 });
   });
 
   it("withdraws from a portfolio with no cash at all, paying the cost out of what returns", async () => {
@@ -228,41 +228,5 @@ describe("EarnScreen", () => {
       }),
     ).toBeDisabled();
     expect(getSnapshot()).not.toBeNull();
-  });
-});
-
-describe("earnScreenView", () => {
-  it("asks for a portfolio when there is none", () => {
-    const view = earnScreenView({
-      available: true,
-      online: true,
-      venue: "Jupiter Lend",
-      rate: { apy: 4, supplyApy: 3, rewardsApy: 1 },
-      portfolios: [],
-    });
-    expect(view.empty?.title).toBe("Create a portfolio to use Earn.");
-    expect(view.empty?.action).toBe("New portfolio");
-  });
-
-  it("marks an archived portfolio and never offers it", () => {
-    const view = earnScreenView({
-      available: true,
-      online: true,
-      venue: "Jupiter Lend",
-      rate: null,
-      portfolios: [
-        {
-          id: "a",
-          label: "Old",
-          archived: true,
-          cash: 5,
-          position: { deposited: 2, earnedSinceDeposit: 1.2 },
-        },
-      ],
-    });
-    expect(view.rows[0].archived).toBe("Archived");
-    expect(view.rows[0].restore).toBe("Restore this portfolio to move funds.");
-    expect(view.rows[0].opens).toBeNull();
-    expect(view.rows[0].earned).toBe("$1.20 earned since deposit");
   });
 });

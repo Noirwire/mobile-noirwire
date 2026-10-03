@@ -8,10 +8,10 @@ import {
 import { createWallet, getSnapshot, storeNewWallet, updateWallet } from "@noirwire/shared/wallet";
 import { act } from "@testing-library/react-native";
 import type { ReactElement } from "react";
-import { SafeAreaProvider } from "react-native-safe-area-context";
+import type { Money } from "../network/money";
+import { fakeChain, renderWithMoney, testMoney } from "../network/testMoney";
 import type { AppServices } from "../services";
-import { STRONG_PASSWORD, renderWith } from "../testServices";
-import type { BalanceReads } from "./balanceReads";
+import { STRONG_PASSWORD } from "../testServices";
 
 /** The live prices a test file reads from; a stock's multiplier is 1 on the test network. */
 export const TEST_PRICES: Record<string, LivePrice> = {
@@ -79,28 +79,37 @@ export async function unlockedWallet(shape: (wallet: Wallet) => Wallet = (wallet
   return getSnapshot()!;
 }
 
-/** Balance reads that answer at once, with `ok`, and count how often they were asked. */
-export function fakeBalances(ok = true): BalanceReads & { calls: string[] } {
+/**
+ * The money wiring with balance reads that answer at once, with `ok`, and
+ * count how often they were asked. Nothing else about it reaches a network.
+ */
+export function fakeBalances(ok = true): { money: Money; calls: string[] } {
   const calls: string[] = [];
+  const money = testMoney(fakeChain());
   return {
     calls,
-    everything: async () => {
-      calls.push("everything");
-      return ok;
-    },
-    portfolio: async (id) => {
-      calls.push(`portfolio:${id}`);
-      return ok;
+    money: {
+      ...money,
+      refresh: {
+        ...money.refresh,
+        everything: async () => {
+          calls.push("everything");
+          return ok;
+        },
+        portfolioBalances: async (id) => {
+          calls.push(`portfolio:${id}`);
+          return ok ? getSnapshot()?.portfolios.find((entry) => entry.id === id) : undefined;
+        },
+      },
     },
   };
 }
 
-const METRICS = {
-  frame: { x: 0, y: 0, width: 390, height: 844 },
-  insets: { top: 47, right: 0, bottom: 34, left: 0 },
-};
-
-/** Renders a screen as the app does: with its services and a phone's safe area. */
-export function renderScreen(services: AppServices, ui: ReactElement) {
-  return renderWith(services, <SafeAreaProvider initialMetrics={METRICS}>{ui}</SafeAreaProvider>);
+/** Renders a screen as the app does: with its services, the money wiring and a phone's safe area. */
+export function renderScreen(
+  services: AppServices,
+  ui: ReactElement,
+  balances: { money: Money } = fakeBalances(),
+) {
+  return renderWithMoney(services, balances.money, ui);
 }

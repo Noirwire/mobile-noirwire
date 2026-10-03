@@ -1,12 +1,13 @@
+import { activityCopy, mobileActivityCopy } from "@noirwire/shared/copy";
+import { activityDetailView } from "@noirwire/shared/presentation";
+import { screenReads } from "@noirwire/shared/wallet";
 import { Pressable, StyleSheet, View } from "react-native";
 import { IdentityMark, Row, Sheet, Text } from "@/ui";
 import { layout, opacity } from "@/ui/theme";
 import { AddressReveal } from "../receive/AddressReveal";
 import { useWalletSnapshot } from "../portfolio/useWalletSnapshot";
-import { activityDetailView } from "./activityView";
-import { mobileActivityCopy } from "./copy";
 
-const copy = mobileActivityCopy.detail;
+const copy = { ...activityCopy.detail, ...mobileActivityCopy.detail };
 
 type ActivityDetailSheetProps = {
   /** The entry to show; null keeps the sheet closed. */
@@ -28,7 +29,7 @@ export function ActivityDetailSheet({
   onOpenPortfolio,
 }: ActivityDetailSheetProps) {
   const wallet = useWalletSnapshot();
-  const view = wallet && entryId ? activityDetailView(wallet, entryId) : null;
+  const view = wallet && entryId ? activityDetailView(screenReads, wallet, entryId) : null;
 
   return (
     <Sheet open={view !== null} onClose={onClose} title={view?.title ?? ""}>

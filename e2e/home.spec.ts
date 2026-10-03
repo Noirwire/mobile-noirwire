@@ -10,6 +10,13 @@ test("Home shows a funded wallet's portfolio and the USDC waiting in the funding
 
   await expect(page.getByText("$457.33").first()).toBeVisible();
   await expect(page.getByText(/500\.00 USDC has arrived in your funding wallet/)).toBeVisible();
+  // What every portfolio has in Earn together, read from the lending venue, leading to Earn.
+  const earning = page.getByRole("button", { name: "Earning, $25.00" });
+  await expect(earning).toBeVisible();
+  await earning.click();
+  await expect(page.getByText("Current variable rate")).toBeVisible();
+  await expect(page.getByText("$25.00").first()).toBeVisible();
+  await page.getByRole("tab", { name: "Home" }).click();
   await expect(page.getByRole("button", { name: "Move money to Investing" })).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Investing, No investments yet, $457.33" }),

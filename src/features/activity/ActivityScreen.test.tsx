@@ -53,6 +53,26 @@ describe("ActivityScreen", () => {
     expect(screen.getByText("Nothing matches that filter.")).toBeOnTheScreen();
   });
 
+  it("lists what moved into and out of Earn, under its own filter", async () => {
+    await show((id) => [
+      { portfolioId: id, kind: "fund", at: NOW, usd: 100, amount: 100 },
+      { portfolioId: id, kind: "earnDeposit", at: NOW, usd: 40, amount: 40 },
+      { portfolioId: id, kind: "earnWithdraw", at: NOW, usd: 15, amount: 15 },
+    ]);
+    await fireEvent.press(screen.getByRole("button", { name: "Earn" }));
+    expect(screen.queryByText("Money arrived")).toBeNull();
+    expect(
+      screen.getByRole("button", {
+        name: /^Moved into Earn, Investing, 30 September, minus \$40\.00/,
+      }),
+    ).toBeOnTheScreen();
+    expect(
+      screen.getByRole("button", {
+        name: /^Returned from Earn, Investing, 30 September, plus \$15\.00/,
+      }),
+    ).toBeOnTheScreen();
+  });
+
   it("opens an entry's detail, with a send's address held back until Show", async () => {
     const { wallet, onOpenPortfolio } = await show((id) => [
       { portfolioId: id, kind: "send", at: NOW, usd: 5, amount: 5, counterparty: RECIPIENT },

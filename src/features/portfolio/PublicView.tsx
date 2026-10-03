@@ -1,13 +1,19 @@
+import { mobilePortfolioCopy, portfolioCopy } from "@noirwire/shared/copy";
 import type { Portfolio, Wallet } from "@noirwire/shared/domain";
+import { publicView } from "@noirwire/shared/presentation";
+import { screenReads } from "@noirwire/shared/wallet";
 import { StyleSheet, View } from "react-native";
 import { Button, Notice, Panel, Text } from "@/ui";
 import { colors, layout } from "@/ui/theme";
 import { AddressReveal } from "../receive/AddressReveal";
-import { mobilePortfolioCopy } from "./copy";
 import { noteAddressCopied } from "./portfolioActions";
-import { publicViewModel } from "./portfolioView";
 
-const copy = mobilePortfolioCopy.publicView;
+const copy = {
+  ...portfolioCopy.publicView,
+  ...mobilePortfolioCopy.publicView,
+  relayer: portfolioCopy.observer.relayer,
+  clue: portfolioCopy.observer.clue,
+};
 
 /**
  * What someone with this portfolio's address can see, as far as this phone
@@ -15,7 +21,7 @@ const copy = mobilePortfolioCopy.publicView;
  * draw it. The address stays hidden until "Show".
  */
 export function PublicView({ portfolio, wallet }: { portfolio: Portfolio; wallet: Wallet }) {
-  const model = publicViewModel(portfolio, wallet);
+  const model = publicView(screenReads, portfolio, wallet);
   return (
     <View style={styles.view}>
       <View style={styles.group}>

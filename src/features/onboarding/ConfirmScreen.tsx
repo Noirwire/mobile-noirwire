@@ -1,18 +1,22 @@
-import { onboardingCopy } from "@noirwire/shared/copy";
+import { onboardingCopy, mobileOnboardingCopy } from "@noirwire/shared/copy";
 import { useEffect } from "react";
 import { AccessibilityInfo, StyleSheet, View } from "react-native";
 import { Button, Notice, Screen, Text } from "@/ui";
 import { errorHaptic, lightHaptic, successHaptic } from "@/ui/haptics";
 import { layout } from "@/ui/theme";
 import { useCaptureProtection } from "@/ui/useCaptureProtection";
-import { mobileOnboardingCopy } from "./copy";
 import { QuizChoice } from "./QuizChoice";
-import { pick, QUESTIONS, resume, type Quiz } from "./phraseQuiz";
+import {
+  pickQuizWord,
+  QUIZ_QUESTIONS,
+  resumeQuiz,
+  type PhraseQuiz,
+} from "@noirwire/shared/application";
 
 type ConfirmScreenProps = {
   words: readonly string[];
-  quiz: Quiz;
-  onQuizChange: (quiz: Quiz) => void;
+  quiz: PhraseQuiz;
+  onQuizChange: (quiz: PhraseQuiz) => void;
   onPassed: () => void;
   onShowPhrase: () => void;
 };
@@ -37,7 +41,7 @@ export function ConfirmScreen({
   }, [question, quiz.restarted]);
 
   function choose(word: string) {
-    const { quiz: next, outcome } = pick(quiz, word, words);
+    const { quiz: next, outcome } = pickQuizWord(quiz, word, words);
     onQuizChange(next);
     if (outcome === "correct") lightHaptic();
     else if (outcome === "passed") {
@@ -61,12 +65,12 @@ export function ConfirmScreen({
           <Button
             label={mobile.tryAgain}
             variant="quiet"
-            onPress={() => onQuizChange(resume(quiz))}
+            onPress={() => onQuizChange(resumeQuiz(quiz))}
           />
         </View>
       ) : (
         <View style={styles.group}>
-          <Text variant="faint">{copy.question(quiz.step + 1, QUESTIONS)}</Text>
+          <Text variant="faint">{copy.question(quiz.step + 1, QUIZ_QUESTIONS)}</Text>
           <Text variant="h2" accessibilityRole="header">
             {question}
           </Text>

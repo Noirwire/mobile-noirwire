@@ -10,7 +10,7 @@ test("send to the wallet's own funding address warns that it links the two", asy
   page,
   funded,
 }) => {
-  await navigate(page, `/send?id=${funded.portfolio.id}`);
+  await navigate(page, `/send?portfolio=${funded.portfolio.id}`);
   const sheet = page.getByRole("dialog");
   await expect(sheet.getByRole("heading", { name: "Send from Investing" })).toBeVisible();
   await sheet.getByRole("textbox", { name: "Recipient address" }).fill(funded.fundingAddress);
@@ -33,7 +33,11 @@ test("fund privately reviews what leaves the funding wallet, fees included", asy
   const sheet = page.getByRole("dialog");
   await expect(sheet.getByRole("heading", { name: "Add money privately" })).toBeVisible();
   await expect(sheet).toContainText(/Available in funding wallet\s*500\.00 USDC/);
-  await sheet.getByRole("textbox", { name: "Amount in USDC" }).fill("100");
+  const amount = sheet.getByRole("textbox", { name: "Amount in USDC" });
+  // A comma typed as the decimal separator is read as one.
+  await amount.fill("0,5");
+  await expect(amount).toHaveValue("0.5");
+  await amount.fill("100");
   await sheet.getByRole("button", { name: "Review" }).click();
 
   await expect(sheet.getByRole("heading", { name: "Review" })).toBeVisible();

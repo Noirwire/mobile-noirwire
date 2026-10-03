@@ -1,3 +1,10 @@
+import { activityCopy as copy } from "@noirwire/shared/copy";
+import {
+  ACTIVITY_FILTERS,
+  activityListView,
+  type ActivityFilter,
+} from "@noirwire/shared/presentation";
+import { screenReads } from "@noirwire/shared/wallet";
 import { useState } from "react";
 import { ScrollView, SectionList, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -7,8 +14,6 @@ import { colors, layout } from "@/ui/theme";
 import { useWalletSnapshot } from "../portfolio/useWalletSnapshot";
 import { ActivityDetailSheet } from "./ActivityDetailSheet";
 import { ActivityRow } from "./ActivityRow";
-import { ACTIVITY_FILTERS, activityListView, type ActivityFilter } from "./activityView";
-import { mobileActivityCopy as copy } from "./copy";
 
 /** How many rows the list adds each time it reaches its end. */
 export const ACTIVITY_PAGE = 50;
@@ -27,7 +32,13 @@ export function ActivityScreen({ onOpenPortfolio, now = Date.now }: ActivityScre
   const [opened, setOpened] = useState<string | null>(null);
 
   if (!wallet) return <SafeAreaView style={styles.safe} />;
-  const view = activityListView(wallet, filter, limit, now());
+  const view = activityListView(screenReads, {
+    wallet,
+    filter,
+    limit,
+    now: now(),
+    platform: "mobile",
+  });
 
   function choose(next: ActivityFilter) {
     if (next === filter) return;

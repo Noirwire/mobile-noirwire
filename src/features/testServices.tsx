@@ -8,10 +8,10 @@ import {
 import { createWallet, lock, resetWallet, storeNewWallet } from "@noirwire/shared/wallet";
 import { render } from "@testing-library/react-native";
 import type { ReactElement } from "react";
-import type { BiometricKeystore } from "@/platform/biometricKeystore";
+import type { BiometricKeystore, KeyRead } from "@/platform/biometricKeystore";
 import { vaultPreferences } from "@/platform/preferences";
 import { biometricUnlock } from "./biometric/biometricUnlock";
-import type { VaultKeyAccess } from "./biometric/vaultKeyAccess";
+import { sharedVaultKeyAccess, type VaultKeyAccess } from "./biometric/vaultKeyAccess";
 import { ServicesProvider, type AppServices } from "./services";
 
 /** A password the shared strength check accepts. */
@@ -32,13 +32,44 @@ export const noBiometrics: BiometricKeystore = {
   remove: async () => true,
 };
 
+/**
+ * A device keystore in memory: it keeps a copy of the key it is handed, as
+ * the real one does, and releases it to every read. `refuseStore` stands for
+ * a cancelled prompt; `answer` replaces what a read says.
+ */
+export function memoryKeystore(name = "Face ID") {
+  const keystore: BiometricKeystore & {
+    stored: Uint8Array | null;
+    refuseStore: boolean;
+    answer: KeyRead | null;
+  } = {
+    stored: null,
+    refuseStore: false,
+    answer: null,
+    method: async () => ({ name }),
+    async store(bits) {
+      if (keystore.refuseStore) return false;
+      keystore.stored = bits.slice();
+      return true;
+    },
+    read: async () =>
+      keystore.answer ??
+      (keystore.stored ? { kind: "key", bits: keystore.stored.slice() } : { kind: "invalidated" }),
+    async remove() {
+      keystore.stored = null;
+      return true;
+    },
+  };
+  return keystore;
+}
+
 export async function testServices(
   overrides: Partial<AppServices> & {
     keystore?: BiometricKeystore;
-    access?: VaultKeyAccess | null;
+    access?: VaultKeyAccess;
   } = {},
 ): Promise<AppServices> {
-  const { keystore = noBiometrics, access = null, ...rest } = overrides;
+  const { keystore = noBiometrics, access = sharedVaultKeyAccess, ...rest } = overrides;
   const preferences = rest.preferences ?? vaultPreferences(memoryVault());
   await preferences.load();
   return {

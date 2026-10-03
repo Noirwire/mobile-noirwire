@@ -108,10 +108,10 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 type Enabling = { password: string; problem: string | null; busy: boolean };
 
 /**
- * Biometric unlock's switch, shown only where it can work: a device with
- * biometrics enrolled, and a build whose wallet store can hand the vault key
- * to the keystore. Turning it on asks for the password first; turning it off
- * needs neither and deletes the stored key.
+ * Biometric unlock's switch, shown only on a device with biometrics enrolled.
+ * Turning it on asks for the password first, and hands the vault key it
+ * derives to the device keystore; turning it off needs neither and deletes
+ * the stored key.
  */
 function BiometricRow() {
   const { biometric } = useServices();

@@ -1,8 +1,7 @@
-import { marketsCopy } from "@noirwire/shared/copy";
+import { commonCopy, marketsCopy } from "@noirwire/shared/copy";
 import { Stack, useRouter } from "expo-router";
 import { CaretLeftIcon } from "phosphor-react-native/src/icons/CaretLeft";
 import { MarketsScreen } from "@/features/markets/MarketsScreen";
-import { mobileMarketsCopy } from "@/features/markets/copy";
 import { IconButton } from "@/ui";
 import { colors, size } from "@/ui/theme";
 
@@ -14,7 +13,7 @@ export default function LookAround() {
       <Stack.Screen
         options={{
           headerLeft: () => (
-            <IconButton label={mobileMarketsCopy.backToWelcome} onPress={toWelcome}>
+            <IconButton label={commonCopy.back} onPress={toWelcome}>
               <CaretLeftIcon size={size.icon} color={colors.ink} />
             </IconButton>
           ),

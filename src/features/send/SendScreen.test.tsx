@@ -181,6 +181,8 @@ describe("SendScreen", () => {
       screen.getByText("To the address you entered. It has left Investing."),
     ).toBeOnTheScreen();
     expect(chain.calls).toEqual([{ kind: "send", amount: 457.31, to }]);
+    // The recipient is kept with the entry, so Activity can show it again on request.
+    expect(getSnapshot()!.activity[0]).toMatchObject({ kind: "send", counterparty: to });
   });
 
   it("says when the relayer cannot be used, and sends nothing", async () => {

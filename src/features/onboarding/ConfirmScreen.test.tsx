@@ -1,13 +1,13 @@
 import { fireEvent, render, screen } from "@testing-library/react-native";
 import { useState } from "react";
 import { ConfirmScreen } from "./ConfirmScreen";
-import type { Quiz } from "./phraseQuiz";
+import type { PhraseQuiz } from "@noirwire/shared/application";
 
 const WORDS =
   "abandon ability able about above absent absorb abstract absurd abuse access accident".split(" ");
 
 /** Positions 2, 7 and 11 (one-based), with the answer first among its choices. */
-const QUIZ: Quiz = {
+const QUIZ: PhraseQuiz = {
   positions: [1, 6, 10],
   step: 0,
   choices: ["ability", "absurd", "abuse", "accident"],

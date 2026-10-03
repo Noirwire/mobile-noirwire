@@ -4,6 +4,7 @@ import { marketsCopy } from "@noirwire/shared/copy";
 import { useState } from "react";
 import { Pressable, StyleSheet, TextInput, View } from "react-native";
 import { Field, IdentityMark, Text } from "@/ui";
+import { decimalText } from "@/ui/decimalText";
 import { colors, fonts, layout, opacity } from "@/ui/theme";
 import { TrackerMark } from "@/ui/TrackerMark";
 import { textStyles } from "@/ui/typography";
@@ -134,7 +135,7 @@ export function AmountField({
       <TextInput
         accessibilityLabel={label}
         value={value}
-        onChangeText={onChange}
+        onChangeText={(text) => onChange(decimalText(text))}
         editable={editable}
         placeholder={placeholder}
         placeholderTextColor={colors.faint}

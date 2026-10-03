@@ -1,5 +1,13 @@
-import { pieCopy } from "@noirwire/shared/copy";
-import { resolvePortfolioIcon } from "@noirwire/shared/domain";
+import { mobilePieCopy, pieCopy } from "@noirwire/shared/copy";
+import {
+  changeMix,
+  mixFrom,
+  resolvePortfolioIcon,
+  type Mix,
+  type MixChange,
+} from "@noirwire/shared/domain";
+import { pieMixView } from "@noirwire/shared/presentation";
+import { screenReads } from "@noirwire/shared/wallet";
 import { XIcon } from "phosphor-react-native/src/icons/X";
 import { useState } from "react";
 import { StyleSheet, useWindowDimensions, View } from "react-native";
@@ -9,8 +17,6 @@ import { colors, fonts, layout, size } from "@/ui/theme";
 import { TrackerMark } from "@/ui/TrackerMark";
 import { useWalletSnapshot } from "../markets/useMarketData";
 import { IdentityLine, TrackerChooser } from "../trade/parts";
-import { mobilePieCopy } from "./copy";
-import { changeMix, mixFrom, mixView, type Mix, type MixChange } from "./pieMix";
 import { savePieMix } from "./pieActions";
 
 const RING = 88;
@@ -22,7 +28,7 @@ const STACK_FONT_SCALE = 1.3;
  * chooser and the problem line. New pie embeds this as its body.
  */
 export function PieMixEditor({ mix, onChange }: { mix: Mix; onChange: (next: Mix) => void }) {
-  const view = mixView(mix);
+  const view = pieMixView(screenReads, mix);
   const { fontScale } = useWindowDimensions();
   const change = (next: MixChange) => onChange(changeMix(mix, next));
   return (
@@ -103,7 +109,7 @@ export function PieBuilderSheet({ portfolioId, onClose }: PieBuilderSheetProps) 
   const [saving, setSaving] = useState(false);
   const [failed, setFailed] = useState(false);
   const [dirty, setDirty] = useState(false);
-  const view = mixView(mix);
+  const view = pieMixView(screenReads, mix);
   const edit = pieCopy.edit;
   const tint = resolvePortfolioIcon(portfolio?.icon).tint;
 

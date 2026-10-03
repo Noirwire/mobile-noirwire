@@ -1,10 +1,9 @@
-import { walletCopy } from "@noirwire/shared/copy";
+import { walletCopy, mobileOnboardingCopy } from "@noirwire/shared/copy";
 import { useRef } from "react";
 import { StyleSheet, View, type TextInput } from "react-native";
 import { Button, Field, Text } from "@/ui";
 import { layout } from "@/ui/theme";
 import { useCaptureProtection } from "@/ui/useCaptureProtection";
-import { mobileOnboardingCopy } from "../onboarding/copy";
 import type { NewPassword } from "./newPassword";
 
 type NewPasswordFieldsProps = {

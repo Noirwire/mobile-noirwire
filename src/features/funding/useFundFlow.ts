@@ -11,17 +11,21 @@ import { useServices } from "../services";
 import { useMoney } from "../network/money";
 import { usePendingBlock } from "../network/usePendingBlock";
 import { useWalletSnapshot } from "../network/useWalletSnapshot";
-import type { FundOutcome } from "./fundingView";
 
 export type FundStep = "choose" | "amount" | "review" | "progress" | "result";
 
 /** The token the private route moves. */
-const CASH = "USDC";
+export const CASH = "USDC";
 const USDC_DECIMALS = 6;
 /** How long progress may run before it says that nothing more is needed (spec 3.2). */
 export const STILL_WORKING_MS = 20_000;
 
-type Result = { outcome: FundOutcome; amount: number; arrived: number; fee: number };
+type Result = {
+  outcome: "done" | "pending" | "unknown";
+  amount: number;
+  arrived: number;
+  fee: number;
+};
 
 /**
  * The fund sheet's lifecycle: choose, amount, review, one Confirm, progress
@@ -94,7 +98,12 @@ export function useFundFlow(initialPortfolioId: string | null) {
     setCompleted(0);
     setRun((count) => count + 1);
     setStep("progress");
-    const deps = { ...money.deps, privateToken: money.privateToken, refresh: money.refresh };
+    const deps = {
+      ...money.deps,
+      asset: money.asset,
+      privateToken: money.privateToken,
+      refresh: money.refresh,
+    };
     const sent = await fundPrivately(deps, { portfolioId: id, amount, symbol: CASH });
     if (!live.current) return;
     if (sent.kind === "unknown") {
@@ -103,7 +112,7 @@ export function useFundFlow(initialPortfolioId: string | null) {
       return;
     }
     if (sent.kind !== "submitted") {
-      setFailure(describeFailure(sent).error);
+      setFailure(describeFailure(sent, "mobile").error);
       setStep("amount");
       return;
     }

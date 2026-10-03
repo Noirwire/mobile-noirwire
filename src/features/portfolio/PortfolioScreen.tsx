@@ -1,4 +1,13 @@
-import { commonCopy, portfolioCopy } from "@noirwire/shared/copy";
+import { commonCopy, mobilePortfolioCopy, portfolioCopy } from "@noirwire/shared/copy";
+import {
+  portfolioView,
+  type ActionButton,
+  type HoldingRowView,
+  type MixView,
+  type PortfolioAction,
+  type PortfolioDetailView,
+} from "@noirwire/shared/presentation";
+import { screenReads } from "@noirwire/shared/wallet";
 import { CaretLeftIcon } from "phosphor-react-native/src/icons/CaretLeft";
 import { DotsThreeIcon } from "phosphor-react-native/src/icons/DotsThree";
 import { useCallback, useState } from "react";
@@ -21,31 +30,24 @@ import { colors, fonts, layout, opacity, radius, size } from "@/ui/theme";
 import { ActivityDetailSheet } from "../activity/ActivityDetailSheet";
 import { ActivityRow } from "../activity/ActivityRow";
 import { useServices } from "../services";
-import type { BalanceReads } from "./balanceReads";
-import { mobilePortfolioCopy } from "./copy";
+import { useMoney } from "../network/money";
 import { FadeLayer } from "./FadeLayer";
 import { IdentityLine } from "./IdentityLine";
 import { mediumHaptic } from "./mediumHaptic";
 import { setArchived } from "./portfolioActions";
 import { PortfolioSettingsSheet } from "./PortfolioSettingsSheet";
-import {
-  portfolioView,
-  type ActionButton,
-  type HoldingRowView,
-  type MixView,
-  type PortfolioAction,
-  type PortfolioDetailView,
-} from "./portfolioView";
 import { PublicView, PublicViewExit } from "./PublicView";
 import { TrackerMark } from "@/ui/TrackerMark";
 import { useBalanceRefresh } from "./useBalanceRefresh";
 import { useIsUnlocked, useLivePrices, useWalletSnapshot } from "./useWalletSnapshot";
 
-const copy = mobilePortfolioCopy;
+const copy = {
+  detail: { ...portfolioCopy.detail, ...mobilePortfolioCopy.detail },
+  publicView: { ...portfolioCopy.publicView, ...mobilePortfolioCopy.publicView },
+};
 
 type PortfolioScreenProps = {
   id: string;
-  balances: BalanceReads;
   onAction: (action: PortfolioAction) => void;
   onBack: () => void;
   onOpenPortfolio: (id: string) => void;
@@ -68,8 +70,12 @@ export function PortfolioScreen(props: PortfolioScreenProps) {
   const updatedAt = props.pricesUpdatedAt === undefined ? live : props.pricesUpdatedAt;
   const { useOnline } = useServices();
   const online = useOnline();
-  const { balances, id } = props;
-  const read = useCallback(() => balances.portfolio(id), [balances, id]);
+  const { id } = props;
+  const { refresh: balances } = useMoney();
+  const read = useCallback(
+    async () => (await balances.portfolioBalances(id)) !== undefined,
+    [balances, id],
+  );
   const refresh = useBalanceRefresh(read, online);
   const [publicMode, setPublicMode] = useState<PublicMode>(props.initialPublic ? "button" : "off");
   const [settings, setSettings] = useState(false);
@@ -84,7 +90,7 @@ export function PortfolioScreen(props: PortfolioScreenProps) {
   }, []);
 
   if (!wallet) return null;
-  const view = portfolioView(wallet, id, updatedAt);
+  const view = portfolioView(screenReads, wallet, id, updatedAt);
 
   if (view.kind === "missing") {
     return (

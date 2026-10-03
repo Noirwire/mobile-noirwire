@@ -1,4 +1,11 @@
-import { appCopy, commonCopy, portfolioCopy } from "@noirwire/shared/copy";
+import { appCopy, commonCopy, mobilePortfolioCopy, portfolioCopy } from "@noirwire/shared/copy";
+import {
+  homeView,
+  type HomeAction,
+  type HomeTarget,
+  type HomeView,
+} from "@noirwire/shared/presentation";
+import { screenReads } from "@noirwire/shared/wallet";
 import { LockIcon } from "phosphor-react-native/src/icons/Lock";
 import { useEffect, useRef, useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
@@ -8,27 +15,29 @@ import { RefreshScreen } from "@/ui/RefreshScreen";
 import { colors, layout, opacity, size } from "@/ui/theme";
 import { ActivityDetailSheet } from "../activity/ActivityDetailSheet";
 import { ActivityRow } from "../activity/ActivityRow";
-import type { BalanceReads } from "../portfolio/balanceReads";
+import { useEarnTotal } from "../earn/useEarnScreen";
+import { useMoney } from "../network/money";
 import { setArchived } from "../portfolio/portfolioActions";
 import { PortfolioRow } from "../portfolio/PortfolioRow";
 import { TrackerMark } from "@/ui/TrackerMark";
 import { useBalanceRefresh } from "../portfolio/useBalanceRefresh";
 import { useLivePrices, useWalletSnapshot } from "../portfolio/useWalletSnapshot";
 import { useServices } from "../services";
-import { mobileHomeCopy as copy } from "./copy";
 import { TextToggle } from "./TextToggle";
-import { homeView, type HomeAction, type HomeTarget, type HomeView } from "./homeView";
+
+const copy = { ...portfolioCopy.home, ...mobilePortfolioCopy.home };
 
 /** How long "Restored." stays under a restored portfolio. */
 export const RESTORED_MS = 2_000;
 
 type HomeScreenProps = {
-  balances: BalanceReads;
   onNavigate: (target: HomeTarget) => void;
   onOpenPortfolio: (id: string) => void;
   onOpenTracker: (symbol: string) => void;
   onNewPortfolio: () => void;
   onSeeAllActivity: () => void;
+  /** Opens the Earn tab, from the row that says what is in Earn. */
+  onOpenEarn: () => void;
   onLock: () => void;
   /** When prices were last read; the live feed by default, a fixed value in tests. */
   pricesUpdatedAt?: number | null;
@@ -41,11 +50,12 @@ export function HomeScreen(props: HomeScreenProps) {
   const updatedAt = props.pricesUpdatedAt === undefined ? live : props.pricesUpdatedAt;
   const { useOnline } = useServices();
   const online = useOnline();
-  const refresh = useBalanceRefresh(props.balances.everything, online);
+  const refresh = useBalanceRefresh(useMoney().refresh.everything, online);
+  const earnTotal = useEarnTotal();
   const [opened, setOpened] = useState<string | null>(null);
 
   if (!wallet) return null;
-  const view = homeView(wallet, updatedAt);
+  const view = homeView(screenReads, wallet, updatedAt, earnTotal);
   const storedNothing =
     view.empty && wallet.activity.length === 0 && view.archived.rows.length === 0;
   const loading = refresh.reading && !refresh.settled && storedNothing;
@@ -62,7 +72,11 @@ export function HomeScreen(props: HomeScreenProps) {
         </IconButton>
       </View>
 
-      {loading ? <BalanceSkeleton /> : <Balance view={view} failed={refresh.failed} />}
+      {loading ? (
+        <BalanceSkeleton />
+      ) : (
+        <Balance view={view} failed={refresh.failed} onOpenEarn={props.onOpenEarn} />
+      )}
 
       {view.waiting && (
         <ActionNotice
@@ -99,9 +113,9 @@ export function HomeScreen(props: HomeScreenProps) {
       )}
 
       {!view.empty && (
-        <Section title={portfolioCopy.home.yourInvestments}>
+        <Section title={copy.yourInvestments}>
           {view.investments.length === 0 ? (
-            <Text variant="faint">{copy.noInvestments}</Text>
+            <Text variant="faint">{copy.noInvestmentsYet}</Text>
           ) : (
             view.investments.map((row) => (
               <Pressable
@@ -127,7 +141,7 @@ export function HomeScreen(props: HomeScreenProps) {
 
       {view.recent.length > 0 && (
         <Section
-          title={portfolioCopy.home.recentActivity}
+          title={copy.recentActivity}
           trailing={
             <Button
               variant="quiet"
@@ -152,7 +166,15 @@ export function HomeScreen(props: HomeScreenProps) {
   );
 }
 
-function Balance({ view, failed }: { view: HomeView; failed: boolean }) {
+function Balance({
+  view,
+  failed,
+  onOpenEarn,
+}: {
+  view: HomeView;
+  failed: boolean;
+  onOpenEarn: () => void;
+}) {
   const [explained, setExplained] = useState(false);
   return (
     <View style={styles.balance}>
@@ -176,7 +198,17 @@ function Balance({ view, failed }: { view: HomeView; failed: boolean }) {
           {copy.refreshFailed}
         </Text>
       )}
-      <Row label={view.cash.label} value={view.cash.value} last />
+      <Row label={view.cash.label} value={view.cash.value} last={view.earning === null} />
+      {view.earning && (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`${view.earning.label}, ${view.earning.value}`}
+          onPress={onOpenEarn}
+          style={({ pressed }) => pressed && styles.pressed}
+        >
+          <Row label={view.earning.label} value={view.earning.value} last />
+        </Pressable>
+      )}
     </View>
   );
 }
@@ -281,12 +313,12 @@ function Portfolios({
 
   return (
     <Section
-      title={portfolioCopy.home.portfolios}
+      title={copy.portfolios}
       trailing={
         <Button
           variant="quiet"
-          label={portfolioCopy.home.new}
-          accessibilityLabel={copy.newPortfolioLabel}
+          label={copy.new}
+          accessibilityLabel={copy.newPortfolio}
           onPress={onNew}
           style={styles.compact}
         />
@@ -296,8 +328,8 @@ function Portfolios({
         [0, 1, 2].map((index) => <Skeleton key={index} height={64} />)
       ) : view.portfolios.length === 0 ? (
         <View style={styles.noPortfolios}>
-          <Text tone="dim">{portfolioCopy.home.createToStart}</Text>
-          <Button variant="quiet" label={copy.newPortfolioLabel} onPress={onNew} />
+          <Text tone="dim">{copy.createToStart}</Text>
+          <Button variant="quiet" label={copy.newPortfolio} onPress={onNew} />
         </View>
       ) : (
         view.portfolios.map((row) => (
@@ -332,7 +364,7 @@ function Portfolios({
               <Button
                 variant="quiet"
                 label={commonCopy.restore}
-                accessibilityLabel={copy.restoreLabel(row.name)}
+                accessibilityLabel={copy.restore(row.name)}
                 onPress={() => restore(row.id)}
                 style={styles.compact}
               />

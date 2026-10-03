@@ -1,4 +1,16 @@
+import { mobileFundingCopy as copy } from "@noirwire/shared/copy";
 import { resolvePortfolioIcon } from "@noirwire/shared/domain";
+import {
+  FUND_PRESETS,
+  choosePortfolioView,
+  fundingAmountView,
+  fundingOutcomeView,
+  fundingProgressView,
+  fundingReviewView,
+  type FundingAmountView,
+  type FundingReviewView,
+  type StageStatus,
+} from "@noirwire/shared/presentation";
 import { useEffect } from "react";
 import { StyleSheet, View } from "react-native";
 import {
@@ -12,6 +24,7 @@ import {
   Skeleton,
   StepList,
   Text,
+  type StepStatus,
 } from "@/ui";
 import { ActingFor } from "@/ui/ActingFor";
 import { confirmHaptic } from "@/ui/confirmHaptic";
@@ -21,15 +34,33 @@ import { PresetChip } from "@/ui/PresetChip";
 import { Terms } from "@/ui/Terms";
 import { layout } from "@/ui/theme";
 import { OfflineBanner } from "../network/OfflineBanner";
-import { mobileFundingCopy as copy } from "./copy";
-import {
-  choosePortfolioView,
-  fundAmountView,
-  fundOutcomeView,
-  fundProgressView,
-  fundReviewView,
-} from "./fundingView";
-import { useFundFlow, type FundFlow } from "./useFundFlow";
+import { PendingNote } from "../network/PendingNote";
+import { CASH, useFundFlow, type FundFlow } from "./useFundFlow";
+
+const STEP_STATUS: Record<StageStatus, StepStatus> = {
+  pending: "waiting",
+  running: "current",
+  done: "done",
+};
+
+const progressOf = (flow: FundFlow, label: string) =>
+  fundingProgressView({
+    asset: CASH,
+    amount: flow.draft.customAmount,
+    portfolioLabel: label,
+    completed: flow.completed,
+    platform: "mobile",
+    slow: flow.slow,
+  });
+
+const outcomeOf = (result: NonNullable<FundFlow["result"]>, label: string) =>
+  fundingOutcomeView({
+    ...result,
+    asset: CASH,
+    privateRoute: true,
+    portfolioLabel: label,
+    platform: "mobile",
+  });
 
 type FundScreenProps = {
   /** The portfolio to fund, or null to choose one inside the sheet. */
@@ -58,32 +89,33 @@ export function FundScreen({
     else if (outcome) warningHaptic();
   }, [outcome]);
 
-  const amount = fundAmountView({
+  const amount = fundingAmountView({
     draft: flow.draft,
-    portfolioLabel: label,
+    asset: CASH,
+    privateRoute: true,
     fundingBalance: flow.fundingBalance,
     amountText: flow.amountText,
-    online: flow.online,
+    presets: FUND_PRESETS,
     pending: flow.pending,
-  });
-  const review = fundReviewView({
-    draft: flow.draft,
-    amount: flow.draft.customAmount,
+    platform: "mobile",
     portfolioLabel: label,
     online: flow.online,
+  });
+  const review = fundingReviewView({
+    draft: flow.draft,
+    asset: CASH,
+    amount: flow.draft.customAmount,
+    portfolioLabel: label,
     pending: flow.pending,
+    platform: "mobile",
+    online: flow.online,
   });
 
   const title = {
     choose: copy.chooseTitle,
     amount: copy.title,
     review: review.title,
-    progress: fundProgressView({
-      amount: flow.draft.customAmount,
-      portfolioLabel: label,
-      completed: flow.completed,
-      slow: flow.slow,
-    }).title,
+    progress: progressOf(flow, label).title,
     result: copy.title,
   }[step];
 
@@ -117,10 +149,10 @@ export function FundScreen({
           <Text tone="dim">{review.lead}</Text>
           <Terms
             terms={review.terms}
-            total={{ ...review.total, announcement: review.totalAnnouncement }}
+            total={{ ...review.total, announcement: review.totalSpoken }}
           />
-          <Text variant="faint">{review.notSignedAbove}</Text>
-          {flow.pending.note && <Notice tone="warning">{flow.pending.note}</Notice>}
+          <Text variant="faint">{review.note}</Text>
+          <PendingNote pending={flow.pending} />
         </>
       )}
       {step === "progress" && <ProgressStep flow={flow} label={label} />}
@@ -159,7 +191,7 @@ function AmountStep({
   onShowFundingAddress,
 }: {
   flow: FundFlow;
-  view: ReturnType<typeof fundAmountView>;
+  view: FundingAmountView;
   onShowFundingAddress: () => void;
 }) {
   return (
@@ -176,11 +208,11 @@ function AmountStep({
         }
         last
       />
-      {view.empty ? (
+      {view.emptyNotice ? (
         <EmptyState
-          title={view.empty.title}
-          detail={view.empty.detail}
-          action={<Button label={view.empty.action} onPress={onShowFundingAddress} />}
+          title={view.emptyNotice.title}
+          detail={view.emptyNotice.detail}
+          action={<Button label={view.emptyNotice.action} onPress={onShowFundingAddress} />}
         />
       ) : (
         <>
@@ -203,7 +235,7 @@ function AmountStep({
             ))}
           </View>
           <Terms terms={view.terms} total={view.total} />
-          {flow.pending.note && <Notice tone="warning">{flow.pending.note}</Notice>}
+          <PendingNote pending={flow.pending} />
           {flow.failure && <Notice tone="danger">{flow.failure}</Notice>}
           <Text variant="faint">{view.costs}</Text>
           <Divider />
@@ -215,15 +247,17 @@ function AmountStep({
 }
 
 function ProgressStep({ flow, label }: { flow: FundFlow; label: string }) {
-  const view = fundProgressView({
-    amount: flow.draft.customAmount,
-    portfolioLabel: label,
-    completed: flow.completed,
-    slow: flow.slow,
-  });
+  const view = progressOf(flow, label);
   return (
     <>
-      <StepList steps={view.steps} />
+      <StepList
+        steps={view.stages.map((stage, index) => ({
+          key: String(index),
+          title: stage.title,
+          caption: stage.detail,
+          status: STEP_STATUS[stage.status],
+        }))}
+      />
       {view.stillWorking && <Text variant="faint">{view.stillWorking}</Text>}
     </>
   );
@@ -239,13 +273,13 @@ function ResultStep({
   onSeePublicView: () => void;
 }) {
   if (!flow.result) return null;
-  const view = fundOutcomeView({ ...flow.result, portfolioLabel: label });
+  const view = outcomeOf(flow.result, label);
   return (
     <View style={styles.result} accessibilityLiveRegion="polite">
       <Text variant="display">{view.title}</Text>
       <Text tone="dim">{view.body}</Text>
-      {view.publicView && (
-        <Button label={view.publicView} variant="quiet" onPress={onSeePublicView} />
+      {view.observerLink && (
+        <Button label={view.observerLink} variant="quiet" onPress={onSeePublicView} />
       )}
     </View>
   );
@@ -258,8 +292,8 @@ function Footer({
   onClose,
 }: {
   flow: FundFlow;
-  amountView: ReturnType<typeof fundAmountView>;
-  reviewView: ReturnType<typeof fundReviewView>;
+  amountView: FundingAmountView;
+  reviewView: FundingReviewView;
   onClose: () => void;
 }) {
   switch (flow.step) {
@@ -274,10 +308,10 @@ function Footer({
       );
     }
     case "amount":
-      return amountView.empty ? null : (
+      return amountView.emptyNotice ? null : (
         <Button
-          label={amountView.review.label}
-          disabled={amountView.review.disabled}
+          label={amountView.next.label}
+          disabled={amountView.next.disabled}
           onPress={() => flow.goTo("review")}
         />
       );
@@ -296,10 +330,7 @@ function Footer({
       return null;
     case "result":
       return flow.result ? (
-        <Button
-          label={fundOutcomeView({ ...flow.result, portfolioLabel: "" }).close}
-          onPress={onClose}
-        />
+        <Button label={outcomeOf(flow.result, "").close} onPress={onClose} />
       ) : null;
   }
 }

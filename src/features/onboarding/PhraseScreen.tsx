@@ -1,11 +1,10 @@
-import { commonCopy, onboardingCopy } from "@noirwire/shared/copy";
+import { commonCopy, onboardingCopy, mobileOnboardingCopy } from "@noirwire/shared/copy";
 import { useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { Acknowledge, Button, Notice, PhraseGrid, Screen, Text } from "@/ui";
 import { layout } from "@/ui/theme";
 import { useAppLeaves } from "../security/useAppLeaves";
 import { SCREENSHOT_WARNING, useScreenshotWarning } from "../security/useScreenshotWarning";
-import { mobileOnboardingCopy } from "./copy";
 
 type PhraseScreenProps = { words: readonly string[]; onContinue: () => void };
 

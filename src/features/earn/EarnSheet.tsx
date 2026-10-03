@@ -1,5 +1,14 @@
 import { resolvePortfolioIcon, type PortfolioIcon } from "@noirwire/shared/domain";
 import type { EarnPosition } from "@noirwire/shared/infrastructure";
+import {
+  earnAmountView,
+  earnChoiceView,
+  earnMaxText,
+  earnProgressView,
+  earnResultView,
+  earnReviewView,
+  type EarnPortfolio,
+} from "@noirwire/shared/presentation";
 import { useEffect } from "react";
 import { StyleSheet, View } from "react-native";
 import { Button, Field, Notice, Row, Sheet, StepList, Text } from "@/ui";
@@ -10,16 +19,8 @@ import { PortfolioChoice } from "@/ui/PortfolioChoice";
 import { Terms } from "@/ui/Terms";
 import { layout } from "@/ui/theme";
 import { OfflineBanner } from "../network/OfflineBanner";
+import { PendingNote } from "../network/PendingNote";
 import { mobileSettingsCopy } from "../settings/copy";
-import {
-  earnAmountView,
-  earnChoiceView,
-  earnMaxText,
-  earnProgressView,
-  earnResultView,
-  earnReviewView,
-  type EarnPortfolio,
-} from "./earnView";
 import { useEarnFlow, type EarnFlow, type EarnOpening } from "./useEarnFlow";
 
 type EarnSheetProps = {
@@ -181,7 +182,7 @@ export function EarnSheet(props: EarnSheetProps) {
               </View>
             </View>
           )}
-          {review.pendingNote && <Notice tone="warning">{review.pendingNote}</Notice>}
+          <PendingNote pending={flow.pending} />
         </>
       )}
       {step === "risks" &&

@@ -2,8 +2,8 @@ import type { ImportResolution } from "@noirwire/shared/infrastructure";
 import { createWallet, createWalletFromMnemonic, type WalletDraft } from "@noirwire/shared/wallet";
 import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
 import type { SaveOrigin } from "../wallet/walletActions";
-import { schemeFor, type SourceChoice } from "./importFindings";
-import { newAttempt, type Quiz } from "./phraseQuiz";
+import { importSchemeFor, type ImportSourceChoice } from "@noirwire/shared/presentation";
+import { newQuizAttempt, type PhraseQuiz } from "@noirwire/shared/application";
 
 /**
  * Everything onboarding holds before a password exists, in memory only: the
@@ -14,10 +14,10 @@ import { newAttempt, type Quiz } from "./phraseQuiz";
 type FlowState = {
   origin: SaveOrigin | null;
   draft: WalletDraft | null;
-  quiz: Quiz | null;
+  quiz: PhraseQuiz | null;
   importWords: string[] | null;
   resolution: ImportResolution | null;
-  choice: SourceChoice | null;
+  choice: ImportSourceChoice | null;
   /** The password just set, kept only for the biometric offer that follows and dropped with the stack. */
   savedPassword: string | null;
 };
@@ -34,10 +34,10 @@ const EMPTY: FlowState = {
 
 export type OnboardingFlow = FlowState & {
   startCreate(): void;
-  setQuiz(quiz: Quiz): void;
+  setQuiz(quiz: PhraseQuiz): void;
   startImport(words: string[], resolution: ImportResolution): void;
   /** Opens one set of the imported phrase's addresses as the draft wallet. */
-  choose(choice: SourceChoice): void;
+  choose(choice: ImportSourceChoice): void;
   /** After the wallet is stored: the phrase and draft are dropped, the password kept for the biometric offer. */
   saved(password: string): void;
 };
@@ -58,7 +58,7 @@ export function OnboardingFlowProvider({
       ...state,
       startCreate() {
         const draft = createWallet();
-        setState({ ...EMPTY, origin: "create", draft, quiz: newAttempt(draft.phrase) });
+        setState({ ...EMPTY, origin: "create", draft, quiz: newQuizAttempt(draft.phrase) });
       },
       setQuiz: (quiz) => setState((current) => ({ ...current, quiz })),
       startImport: (importWords, resolution) =>
@@ -66,7 +66,7 @@ export function OnboardingFlowProvider({
       choose(choice) {
         setState((current) => {
           if (!current.importWords || !current.resolution) return current;
-          const scheme = schemeFor(choice, current.resolution);
+          const scheme = importSchemeFor(choice, current.resolution);
           const found = current.resolution[scheme];
           const draft = createWalletFromMnemonic(
             current.importWords,

@@ -1,3 +1,4 @@
+import { fundingWalletView } from "@noirwire/shared/presentation";
 import { useEffect, useState } from "react";
 import { RefreshControl, ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -6,7 +7,6 @@ import { colors, layout } from "@/ui/theme";
 import { useServices } from "../services";
 import { useMoney } from "../network/money";
 import { useWalletSnapshot } from "../network/useWalletSnapshot";
-import { fundingWalletView } from "./fundingWalletView";
 
 type FundingWalletScreenProps = {
   onMove: () => void;
@@ -49,7 +49,6 @@ export function FundingWalletScreen({ onMove, onShowAddress }: FundingWalletScre
   const view = fundingWalletView({
     balance: read && wallet ? (wallet.funding.tokens[CASH] ?? 0) : null,
     readFailed,
-    online,
   });
 
   return (

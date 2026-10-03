@@ -1,9 +1,9 @@
+import { addressLines, spokenAddress } from "@noirwire/shared/presentation";
 import { useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { Button, Row, Text } from "@/ui";
 import { layout } from "@/ui/theme";
 import { useCaptureProtection } from "@/ui/useCaptureProtection";
-import { addressLines, spokenAddress } from "./addressGroups";
 import { useCopied } from "./useCopied";
 
 export type AddressRevealCopy = {

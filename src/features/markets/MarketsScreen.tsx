@@ -1,5 +1,7 @@
-import type { MarketCategory } from "@noirwire/shared/application";
+import { MARKET_PAGE_SIZE as PAGE, type MarketCategory } from "@noirwire/shared/application";
 import { livePricesVersion } from "@noirwire/shared/infrastructure";
+import { marketsView } from "@noirwire/shared/presentation";
+import { screenReads } from "@noirwire/shared/wallet";
 import { MagnifyingGlassIcon } from "phosphor-react-native/src/icons/MagnifyingGlass";
 import { XCircleIcon } from "phosphor-react-native/src/icons/XCircle";
 import { useState, type ReactNode } from "react";
@@ -9,7 +11,6 @@ import { Button, Chip, EmptyState, IconButton, Skeleton, Text } from "@/ui";
 import { selectionHaptic } from "@/ui/haptics";
 import { colors, fonts, layout, radius, size } from "@/ui/theme";
 import { controlText, maxFontScale } from "@/ui/typography";
-import { marketsView, PAGE } from "./marketsView";
 import { TrackerCard, TrackerRow } from "./TrackerRow";
 import { useLivePrices, useWalletSnapshot } from "./useMarketData";
 import { toggleWatch } from "./watchlist";
@@ -30,12 +31,13 @@ export function MarketsScreen({ onOpen, visitor }: MarketsScreenProps) {
   const [category, setCategory] = useState<MarketCategory>("all");
   const [shown, setShown] = useState(PAGE);
   const firstLoad = updatedAt === null && livePricesVersion() === 0;
-  const view = marketsView({
+  const view = marketsView(screenReads, {
     query,
     category,
     shown,
     watchlist: visitor ? null : (wallet?.watchlist ?? []),
     updatedAt,
+    platform: "mobile",
   });
 
   function choose(next: MarketCategory) {

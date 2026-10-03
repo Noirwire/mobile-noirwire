@@ -2,7 +2,8 @@ import { getSnapshot } from "@noirwire/shared/wallet";
 import { fireEvent, screen, waitFor } from "@testing-library/react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { forgetWallet, installTestPlatform, renderWith, testServices } from "../testServices";
-import { PHONE_METRICS, installFakeRelay, walletWith } from "../trade/testDoubles";
+import { PHONE_METRICS, portfoliosWith as walletWith } from "../network/testMoney";
+import { installFakeRelay } from "../trade/testDoubles";
 import { PieBuilderSheet } from "./PieBuilderSheet";
 
 afterEach(async () => {

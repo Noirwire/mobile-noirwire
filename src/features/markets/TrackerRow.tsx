@@ -1,10 +1,10 @@
+import type { TrackerRowView } from "@noirwire/shared/presentation";
 import { StarIcon } from "phosphor-react-native/src/icons/Star";
 import { Pressable, StyleSheet, useWindowDimensions, View } from "react-native";
 import { Chart, IconButton, Text } from "@/ui";
 import { selectionHaptic } from "@/ui/haptics";
 import { colors, layout, opacity, radius, size } from "@/ui/theme";
 import { TrackerMark } from "@/ui/TrackerMark";
-import type { TrackerRowView } from "./marketsView";
 import { usePriceHistory } from "./useMarketData";
 
 /** Sparklines give way first: below this width, and at large text sizes. */

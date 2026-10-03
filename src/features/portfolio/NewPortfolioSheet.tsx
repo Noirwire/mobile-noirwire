@@ -1,20 +1,27 @@
+import { mobilePortfolioCopy, portfolioCopy } from "@noirwire/shared/copy";
 import {
   DEFAULT_PORTFOLIO_GLYPH,
   DEFAULT_PORTFOLIO_TINT,
+  mixFrom,
+  type Mix,
   type PortfolioIcon,
 } from "@noirwire/shared/domain";
+import {
+  NAME_MAX,
+  NEW_KINDS,
+  newPortfolioView,
+  pieMixView,
+  type NewKind,
+} from "@noirwire/shared/presentation";
+import { screenReads } from "@noirwire/shared/wallet";
 import { useEffect, useState } from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
 import { Button, Chip, Field, Notice, PieRing, Segmented, Sheet, Text } from "@/ui";
 import { selectionHaptic, successHaptic } from "@/ui/haptics";
 import { layout } from "@/ui/theme";
 import { PieMixEditor } from "../pie/PieBuilderSheet";
-import { mixFrom, mixView, type Mix } from "../pie/pieMix";
-import { mobilePortfolioCopy } from "./copy";
 import { IconPicker } from "./IconPicker";
-import { NEW_KINDS, newPortfolioView, type NewKind } from "./newPortfolioView";
 import { addPortfolio, noteSheetOpened } from "./portfolioActions";
-import { NAME_MAX } from "./settingsView";
 
 type NewPortfolioSheetProps = {
   onClose: () => void;
@@ -43,8 +50,8 @@ export function NewPortfolioSheet({ onClose, onCreated }: NewPortfolioSheetProps
   useEffect(() => noteSheetOpened("new_account"), []);
 
   const pie = kind === "pie";
-  const problem = mixView(mix).problem;
-  const view = newPortfolioView(kind, name, problem);
+  const mixProblem = pieMixView(screenReads, mix).problem;
+  const view = newPortfolioView({ kind, name, mixProblem, platform: "mobile" });
   const labelToKind = new Map(NEW_KINDS.map((option) => [view.kindLabels[option], option]));
 
   async function create() {
@@ -139,7 +146,7 @@ export function NewPortfolioSheet({ onClose, onCreated }: NewPortfolioSheetProps
         }
         reset={
           pie && iconChosen
-            ? { label: mobilePortfolioCopy.icon.usePieRing, onPress: () => setIconChosen(false) }
+            ? { label: portfolioCopy.icon.usePieRing, onPress: () => setIconChosen(false) }
             : undefined
         }
       />

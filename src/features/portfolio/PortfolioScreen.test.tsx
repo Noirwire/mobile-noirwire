@@ -46,11 +46,11 @@ async function show(id: string, overrides: { online?: boolean; initialPublic?: b
     <PortfolioScreen
       {...on}
       id={id}
-      balances={balances}
       backLabel="Home"
       pricesUpdatedAt={updatedAt}
       initialPublic={overrides.initialPublic}
     />,
+    balances,
   );
   return { on, balances };
 }

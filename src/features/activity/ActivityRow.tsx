@@ -1,18 +1,20 @@
+import type { ActivityIcon, ActivityRowView } from "@noirwire/shared/presentation";
 import type { Icon } from "phosphor-react-native";
 import { ArrowDownIcon } from "phosphor-react-native/src/icons/ArrowDown";
 import { ArrowUpIcon } from "phosphor-react-native/src/icons/ArrowUp";
+import { PercentIcon } from "phosphor-react-native/src/icons/Percent";
 import { TrendDownIcon } from "phosphor-react-native/src/icons/TrendDown";
 import { TrendUpIcon } from "phosphor-react-native/src/icons/TrendUp";
 import { Pressable, StyleSheet, View } from "react-native";
 import { Text } from "@/ui";
 import { colors, layout, opacity, size } from "@/ui/theme";
-import type { ActivityIcon, ActivityRowView } from "./activityView";
 
 const ICONS: Record<ActivityIcon, Icon> = {
   in: ArrowDownIcon,
   out: ArrowUpIcon,
   bought: TrendUpIcon,
   sold: TrendDownIcon,
+  earn: PercentIcon,
 };
 
 /** One recorded money move or trade: one element to a screen reader, pressed to open its detail. */

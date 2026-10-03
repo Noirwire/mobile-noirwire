@@ -1,4 +1,12 @@
-import { gateRedirect, HOME, placeOf, UNLOCK, WELCOME } from "./gateRules";
+import {
+  gateRedirect,
+  HOME,
+  placeOf,
+  resumesAfterUnlock,
+  SHEET_ROUTES,
+  UNLOCK,
+  WELCOME,
+} from "./gateRules";
 
 const none = { exists: false, unlocked: false };
 const locked = { exists: true, unlocked: false };
@@ -14,6 +22,25 @@ describe("placeOf", () => {
     expect(placeOf(["reset"])).toBe("reset");
     expect(placeOf(["(tabs)", "settings", "reset"])).toBe("app");
     expect(placeOf(["(tabs)"])).toBe("app");
+  });
+});
+
+describe("resumesAfterUnlock", () => {
+  it("comes back to a tab or a stack screen", () => {
+    expect(resumesAfterUnlock(["(tabs)"])).toBe(true);
+    expect(resumesAfterUnlock(["(tabs)", "settings", "about"])).toBe(true);
+    expect(resumesAfterUnlock(["portfolio", "[id]"])).toBe(true);
+    expect(resumesAfterUnlock(["markets", "[symbol]"])).toBe(true);
+  });
+
+  it("never reopens a sheet: Receive, New portfolio and every money sheet stay closed", () => {
+    for (const sheet of SHEET_ROUTES) expect(resumesAfterUnlock([sheet])).toBe(false);
+    expect(SHEET_ROUTES).toEqual(expect.arrayContaining(["receive", "new-portfolio"]));
+  });
+
+  it("never comes back to a screen outside the unlocked app", () => {
+    expect(resumesAfterUnlock(["unlock"])).toBe(false);
+    expect(resumesAfterUnlock(["(onboarding)", "welcome"])).toBe(false);
   });
 });
 

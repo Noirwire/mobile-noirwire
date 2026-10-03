@@ -1,31 +1,23 @@
-import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { mobileSendCopy } from "@/features/send/copy";
+import { sendCopy } from "@noirwire/shared/copy";
+import { portfolioParams, readPortfolioParam } from "@noirwire/shared/presentation";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { SendScreen } from "@/features/send/SendScreen";
 import { Placeholder } from "@/navigation/Placeholder";
-import { isAddressFreeParam } from "@/navigation/routeParams";
+import { SheetRoute } from "@/navigation/sheetRoute";
 
-const SHEET_ROUTE = {
-  headerShown: false,
-  presentation: "transparentModal",
-  animation: "none",
-} as const;
-
-/** Params: `id`, the sending portfolio's local id. */
+/** Params: `portfolio`, the sending portfolio's local id. */
 export default function Send() {
   const router = useRouter();
-  const { id } = useLocalSearchParams<{ id?: string }>();
-  if (!isAddressFreeParam(id)) {
-    return <Placeholder title="Send" detail={mobileSendCopy.notAPortfolio} />;
-  }
+  const { portfolio } = useLocalSearchParams<{ portfolio?: string }>();
+  const id = readPortfolioParam(portfolio);
+  if (!id) return <Placeholder title="Send" detail={sendCopy.notAPortfolio} />;
   return (
     <>
-      <Stack.Screen options={SHEET_ROUTE} />
+      <SheetRoute />
       <SendScreen
         portfolioId={id}
         onClose={() => router.back()}
-        onMoveMoney={(portfolio) =>
-          router.replace({ pathname: "/fund", params: { id: portfolio } })
-        }
+        onMoveMoney={(to) => router.replace({ pathname: "/fund", params: portfolioParams(to) })}
       />
     </>
   );

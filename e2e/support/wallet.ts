@@ -10,6 +10,8 @@ export const SEED_PASSWORD = "harbor-velvet-orbit-canyon-meadow";
 export const PORTFOLIO_NAME = "Investing";
 export const FUNDING_USDC = 500;
 export const PORTFOLIO_USDC = 457.33;
+/** What the portfolio has lent through Earn. */
+export const PORTFOLIO_EARN_USDC = 25;
 
 export type SeededWallet = {
   password: string;

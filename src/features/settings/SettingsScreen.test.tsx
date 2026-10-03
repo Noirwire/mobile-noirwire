@@ -1,10 +1,10 @@
 import { createWallet, isUnlocked, storeNewWallet, updateWallet } from "@noirwire/shared/wallet";
 import { act, fireEvent, screen, waitFor } from "@testing-library/react-native";
-import type { BiometricKeystore } from "@/platform/biometricKeystore";
 import {
   STRONG_PASSWORD,
   forgetWallet,
   installTestPlatform,
+  memoryKeystore,
   renderWith,
   testServices,
 } from "../testServices";
@@ -17,12 +17,7 @@ async function unlockedWallet() {
   await storeNewWallet(draft.wallet, draft.phrase, STRONG_PASSWORD);
 }
 
-const touchId: BiometricKeystore = {
-  method: async () => ({ name: "Touch ID" }),
-  store: async () => true,
-  read: async () => ({ kind: "cancelled" }),
-  remove: async () => true,
-};
+const touchId = () => memoryKeystore("Touch ID");
 
 describe("SettingsScreen", () => {
   it("lists security, privacy, about and the danger zone, and opens each page", async () => {
@@ -67,27 +62,19 @@ describe("SettingsScreen", () => {
     expect(toggle()).not.toBeChecked();
   });
 
-  it("hides biometric unlock where it cannot work", async () => {
+  it("hides biometric unlock on a device with no biometric method", async () => {
     installTestPlatform();
     await unlockedWallet();
-    await renderWith(
-      await testServices({ keystore: touchId }),
-      <SettingsScreen onOpen={jest.fn()} appVersion="1" />,
-    );
+    await renderWith(await testServices(), <SettingsScreen onOpen={jest.fn()} appVersion="1" />);
     await act(async () => undefined);
-    expect(screen.queryByRole("switch", { name: "Unlock with Touch ID" })).toBeNull();
+    expect(screen.queryByRole("switch", { name: /^Unlock with/ })).toBeNull();
   });
 
   it("turns biometric unlock on only after the password, and off without it", async () => {
     installTestPlatform();
     await unlockedWallet();
-    const services = await testServices({
-      keystore: touchId,
-      access: {
-        keyBitsFor: async (password) => (password === STRONG_PASSWORD ? new Uint8Array(32) : null),
-        unlockWithKeyBits: async () => null,
-      },
-    });
+    const keystore = touchId();
+    const services = await testServices({ keystore });
     await renderWith(services, <SettingsScreen onOpen={jest.fn()} appVersion="1" />);
     const toggle = await screen.findByRole("switch", { name: "Unlock with Touch ID" });
     await fireEvent.press(toggle);
@@ -100,17 +87,16 @@ describe("SettingsScreen", () => {
     );
     await fireEvent.press(screen.getByRole("button", { name: "Turn on" }));
     await waitFor(() => expect(services.preferences.biometric()).toBe("on"));
+    expect(keystore.stored).toHaveLength(32);
     await fireEvent.press(screen.getByRole("switch", { name: "Unlock with Touch ID" }));
     await waitFor(() => expect(services.preferences.biometric()).toBe("off"));
+    expect(keystore.stored).toBeNull();
   });
 
   it("says when biometrics changed on the device", async () => {
     installTestPlatform();
     await unlockedWallet();
-    const services = await testServices({
-      keystore: touchId,
-      access: { keyBitsFor: async () => null, unlockWithKeyBits: async () => null },
-    });
+    const services = await testServices({ keystore: touchId() });
     await services.preferences.setBiometric("changed");
     await renderWith(services, <SettingsScreen onOpen={jest.fn()} appVersion="1" />);
     expect(

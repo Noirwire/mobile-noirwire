@@ -1,4 +1,12 @@
 import type { Portfolio } from "@noirwire/shared/domain";
+import {
+  NAME_MAX,
+  draftChanged,
+  portfolioSettingsView,
+  settingsDraft,
+  type SettingsDraft,
+} from "@noirwire/shared/presentation";
+import { screenReads } from "@noirwire/shared/wallet";
 import { useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { Button, Divider, Field, Notice, Sheet, Text } from "@/ui";
@@ -7,13 +15,6 @@ import { fonts, layout } from "@/ui/theme";
 import { IconPicker } from "./IconPicker";
 import { IdentityLine } from "./IdentityLine";
 import { savePortfolioSettings, setArchived } from "./portfolioActions";
-import {
-  NAME_MAX,
-  draftChanged,
-  portfolioSettingsView,
-  settingsDraft,
-  type SettingsDraft,
-} from "./settingsView";
 import { useWalletSnapshot } from "./useWalletSnapshot";
 
 type PortfolioSettingsSheetProps = {
@@ -41,7 +42,7 @@ function OpenSettings({
   pricesUpdatedAt,
 }: PortfolioSettingsSheetProps & { portfolio: Portfolio }) {
   const [draft, setDraft] = useState<SettingsDraft>(() => settingsDraft(portfolio));
-  const view = portfolioSettingsView(portfolio, draft, pricesUpdatedAt);
+  const view = portfolioSettingsView(screenReads, portfolio, draft, pricesUpdatedAt);
 
   function save() {
     lightHaptic();

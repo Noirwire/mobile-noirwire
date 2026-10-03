@@ -1,3 +1,4 @@
+import { portfolioParams } from "@noirwire/shared/presentation";
 import { useRouter } from "expo-router";
 import { EarnScreen } from "@/features/earn/EarnScreen";
 
@@ -7,7 +8,7 @@ export default function Earn() {
     <EarnScreen
       onReadRisks={() => router.push("/settings/risks")}
       onNewPortfolio={() => router.push("/new-portfolio")}
-      onMoveMoney={(id) => router.push({ pathname: "/fund", params: { id } })}
+      onMoveMoney={(id) => router.push({ pathname: "/fund", params: portfolioParams(id) })}
     />
   );
 }

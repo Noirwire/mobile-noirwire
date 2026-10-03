@@ -3,21 +3,23 @@ import { useMemo, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { Button, ChoicePanel, Screen, Text } from "@/ui";
 import { layout } from "@/ui/theme";
-import { mobileOnboardingCopy } from "./copy";
-import { sourceView, type SourceChoice } from "./importFindings";
+import { mobileOnboardingCopy } from "@noirwire/shared/copy";
+import { importSourceView, type ImportSourceChoice } from "@noirwire/shared/presentation";
 
 type SourceScreenProps = {
   resolution: ImportResolution;
-  initialChoice: SourceChoice | null;
-  onOpen: (choice: SourceChoice) => void;
+  initialChoice: ImportSourceChoice | null;
+  onOpen: (choice: ImportSourceChoice) => void;
 };
 
 const copy = mobileOnboardingCopy.source;
 
 /** Spec 2.6: which set of addresses to open, asked as where the phrase came from. Never an address. */
 export function SourceScreen({ resolution, initialChoice, onOpen }: SourceScreenProps) {
-  const view = useMemo(() => sourceView(resolution), [resolution]);
-  const [choice, setChoice] = useState<SourceChoice | null>(initialChoice ?? view.preselected);
+  const view = useMemo(() => importSourceView(resolution), [resolution]);
+  const [choice, setChoice] = useState<ImportSourceChoice | null>(
+    initialChoice ?? view.preselected,
+  );
 
   return (
     <Screen edges={["right", "bottom", "left"]}>

@@ -1,7 +1,17 @@
 import { costAgreed, reviewSend, send, sendDraft } from "@noirwire/shared/application";
-import { classifyRecipient, type NetworkCost } from "@noirwire/shared/domain";
-import { isOffCurveAddress, isRecipientAddress } from "@noirwire/shared/infrastructure";
-import { describeFailure } from "@noirwire/shared/presentation";
+import { sendCopy } from "@noirwire/shared/copy";
+import {
+  classifyRecipient,
+  hasForeignCharacters,
+  type NetworkCost,
+  type Unsendable,
+} from "@noirwire/shared/domain";
+import {
+  isOffCurveAddress,
+  isRecipientAddress,
+  recipientFromCode,
+} from "@noirwire/shared/infrastructure";
+import { describeFailure, sendAssets, type SendStage } from "@noirwire/shared/presentation";
 import { isLivePrice, isPosition, price, unitsPerHeld } from "@noirwire/shared/wallet";
 import { useEffect, useRef, useState } from "react";
 import { useServices } from "../services";
@@ -9,9 +19,6 @@ import { phoneCost } from "../network/cost";
 import { useMoney } from "../network/money";
 import { usePendingBlock } from "../network/usePendingBlock";
 import { useWalletSnapshot } from "../network/useWalletSnapshot";
-import { mobileSendCopy } from "./copy";
-import { hasForeignCharacters, recipientFromCode, type Unsendable } from "./recipientCheck";
-import { sendAssets, type SendStage } from "./sendView";
 
 export type SendStep = "details" | "scan" | "review" | "progress" | "result";
 
@@ -178,7 +185,7 @@ export function useSendFlow(portfolioId: string) {
     }
     if (changed) {
       setReview(changed);
-      setReviewNotice(mobileSendCopy.recipientChanged);
+      setReviewNotice(sendCopy.recipientChanged);
       setStep("review");
       return;
     }
@@ -200,7 +207,7 @@ export function useSendFlow(portfolioId: string) {
       setStep("result");
       return;
     }
-    const failed = describeFailure(result);
+    const failed = describeFailure(result, "mobile");
     if (failed.reviewAgain) setReview(await priced(failed.reviewAgain === "other"));
     setFailure(failed.error);
     setStep("review");

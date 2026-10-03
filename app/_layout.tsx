@@ -7,9 +7,11 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { RuntimeGate } from "@/boot/RuntimeGate";
+import { MoneyProvider } from "@/features/network/money";
 import { NetworkGate } from "@/features/network/NetworkGate";
 import { OfflineBanner } from "@/features/network/OfflineBanner";
 import { deviceServices, ServicesProvider } from "@/features/services";
+import { SHEET_ROUTES, type SheetRouteName } from "@/navigation/gateRules";
 import { stackScreenOptions } from "@/navigation/stackOptions";
 import { WalletGate } from "@/navigation/WalletGate";
 import { ActivityCapture } from "@/platform/ActivityCapture";
@@ -18,15 +20,15 @@ import { PrivacyCover } from "@/platform/PrivacyCover";
 import { colors } from "@/ui/theme";
 import { fontAssets } from "@/ui/typography";
 
-const MODALS = [
-  { name: "trade", title: "Trade" },
-  { name: "send", title: "Send" },
-  { name: "receive", title: "Receive" },
-  { name: "fund", title: "Fund" },
-  { name: "new-portfolio", title: "New portfolio" },
-  { name: "pie-builder", title: "Build a pie" },
-  { name: "pie-order", title: "Pie order" },
-] as const;
+const SHEET_TITLES: Record<SheetRouteName, string> = {
+  trade: "Trade",
+  send: "Send",
+  receive: "Receive",
+  fund: "Fund",
+  "new-portfolio": "New portfolio",
+  "pie-builder": "Build a pie",
+  "pie-order": "Pie order",
+};
 
 export default function RootLayout() {
   return (
@@ -55,27 +57,36 @@ function Routes() {
 
   return (
     <ServicesProvider services={services}>
-      <ActivityCapture onInput={installed.activity.noteInput}>
-        <NetworkGate>
-          <WalletGate>
-            <Stack screenOptions={stackScreenOptions}>
-              <Stack.Screen name="(onboarding)" options={{ headerShown: false }} />
-              <Stack.Screen name="(visitor)" options={{ headerShown: false }} />
-              <Stack.Screen name="unlock" options={{ headerShown: false, gestureEnabled: false }} />
-              <Stack.Screen name="reset" options={{ title: "", gestureEnabled: false }} />
-              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-              <Stack.Screen name="portfolio/[id]" options={{ title: "Portfolio" }} />
-              <Stack.Screen name="markets/[symbol]" options={{ title: "Tracker" }} />
-              {MODALS.map(({ name, title }) => (
-                <Stack.Screen key={name} name={name} options={{ title, presentation: "modal" }} />
-              ))}
-              <Stack.Screen name="dev/ui" options={{ title: "UI kit" }} />
-            </Stack>
-          </WalletGate>
-          <OfflineBanner pinned />
-        </NetworkGate>
-        <PrivacyCover />
-      </ActivityCapture>
+      <MoneyProvider money={installed.money}>
+        <ActivityCapture onInput={installed.activity.noteInput}>
+          <NetworkGate>
+            <WalletGate>
+              <Stack screenOptions={stackScreenOptions}>
+                <Stack.Screen name="(onboarding)" options={{ headerShown: false }} />
+                <Stack.Screen name="(visitor)" options={{ headerShown: false }} />
+                <Stack.Screen
+                  name="unlock"
+                  options={{ headerShown: false, gestureEnabled: false }}
+                />
+                <Stack.Screen name="reset" options={{ title: "", gestureEnabled: false }} />
+                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                <Stack.Screen name="portfolio/[id]" options={{ title: "Portfolio" }} />
+                <Stack.Screen name="markets/[symbol]" options={{ title: "Tracker" }} />
+                {SHEET_ROUTES.map((name) => (
+                  <Stack.Screen
+                    key={name}
+                    name={name}
+                    options={{ title: SHEET_TITLES[name], presentation: "modal" }}
+                  />
+                ))}
+                <Stack.Screen name="dev/ui" options={{ title: "UI kit" }} />
+              </Stack>
+            </WalletGate>
+            <OfflineBanner pinned />
+          </NetworkGate>
+          <PrivacyCover />
+        </ActivityCapture>
+      </MoneyProvider>
     </ServicesProvider>
   );
 }

@@ -3,7 +3,7 @@ import { useEffect, useRef, type ReactNode } from "react";
 import { StyleSheet, View } from "react-native";
 import { useUnlocked, useWalletExists } from "@/features/wallet/useWallet";
 import { colors } from "@/ui/theme";
-import { gateRedirect, placeOf } from "./gateRules";
+import { gateRedirect, placeOf, resumesAfterUnlock } from "./gateRules";
 
 /**
  * Keeps every route to the screens its wallet state allows. While the vault
@@ -19,11 +19,12 @@ export function WalletGate({ children }: { children: ReactNode }) {
   const ready = useRootNavigationState()?.key !== undefined;
   const place = placeOf(segments);
   const resume = useRef<string | null>(null);
+  const resumable = resumesAfterUnlock(segments);
 
   useEffect(() => {
-    if (unlocked && place === "app") resume.current = pathname;
+    if (unlocked && resumable) resume.current = pathname;
     if (exists === false) resume.current = null;
-  }, [unlocked, place, pathname, exists]);
+  }, [unlocked, resumable, pathname, exists]);
 
   // Whether to leave this screen does not depend on where an unlock resumes; only where to goes.
   const leaving = gateRedirect({ exists, unlocked }, place, null) !== null;

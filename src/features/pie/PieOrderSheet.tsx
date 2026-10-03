@@ -1,21 +1,29 @@
 import { runLegs, type LegOutcome } from "@noirwire/shared/application";
-import { commonCopy, pieCopy } from "@noirwire/shared/copy";
+import { commonCopy, mobilePieCopy, pieCopy } from "@noirwire/shared/copy";
 import {
+  investFloor,
   planInvest,
+  rebalanceSells,
   resolvePortfolioIcon,
   typedAmount,
   type Leg,
   type NetworkCost,
   type Side,
 } from "@noirwire/shared/domain";
+import type { TradePlan } from "@noirwire/shared/infrastructure";
 import {
   chainErrorMessage,
   describeFailure,
+  investFloorView,
   pieApprovalView,
   pieInvestView,
+  pieLegSteps,
   pieProgressHeadline,
   pieRebalanceView,
+  pieResultHeadline,
   pieReviewView,
+  pieRunStopped,
+  rebalanceNote,
   type PieOrder,
 } from "@noirwire/shared/presentation";
 import {
@@ -32,19 +40,11 @@ import { Button, EmptyState, Notice, Panel, Row, Sheet, StepList, Text } from "@
 import { errorHaptic, heavyHaptic, lightHaptic, successHaptic, warningHaptic } from "@/ui/haptics";
 import { colors, fonts, layout } from "@/ui/theme";
 import { useLivePrices, useWalletSnapshot } from "../markets/useMarketData";
+import { PendingNote } from "../network/PendingNote";
+import { usePendingBlock } from "../network/usePendingBlock";
 import { useServices } from "../services";
 import { AmountField, IdentityLine, RiskSections } from "../trade/parts";
-import { useTradeService, type Order } from "../trade/tradeService";
-import { usePending } from "../trade/usePending";
-import { mobilePieCopy } from "./copy";
-import {
-  floorLines,
-  investFloor,
-  legSteps,
-  rebalanceSells,
-  resultHeadline,
-  runStopped,
-} from "./pieOrderModel";
+import { useTrading } from "../trade/useTrading";
 
 export type PieOrderMode = "invest" | "rebalance";
 
@@ -60,7 +60,7 @@ type Step = "input" | "pricing" | "review" | "risks" | "progress" | "result";
 type Priced = {
   side: Side;
   legs: Leg[];
-  orders: Order[];
+  orders: TradePlan[];
   cost: NetworkCost;
   leftover: number;
 };
@@ -71,17 +71,16 @@ type Approval = {
 };
 
 const copy = pieCopy.order;
-const mobile = mobilePieCopy.order;
 const nameOf = (symbol: string) => asset(symbol)?.name ?? symbol;
-const symbolOf = (order: Order): PieOrder => ({ ...order, symbol: order.stock.symbol });
+const symbolOf = (order: TradePlan): PieOrder => ({ ...order, symbol: order.stock.symbol });
 
 /** Spec 2.21: invest in a pie's mix, or bring a drifted pie back to it, as a reviewed set of orders. */
 export function PieOrderSheet({ portfolioId, mode, onClose, onAddMoney }: PieOrderSheetProps) {
-  const service = useTradeService();
+  const service = useTrading();
   const online = useServices().useOnline();
   const wallet = useWalletSnapshot();
   const updatedAt = useLivePrices();
-  const pending = usePending(portfolioId);
+  const pending = usePendingBlock(portfolioId);
   const portfolio = wallet?.portfolios.find((entry) => entry.id === portfolioId) ?? null;
 
   const [step, setStep] = useState<Step>("input");
@@ -103,7 +102,7 @@ export function PieOrderSheet({ portfolioId, mode, onClose, onAddMoney }: PieOrd
   if (!portfolio || !portfolio.pie) {
     return (
       <Sheet open title={title} onClose={onClose}>
-        <EmptyState title={pieCopy.edit.title} detail={mobilePieCopy.problems.empty} />
+        <EmptyState title={pieCopy.edit.title} detail={pieCopy.problems.empty} />
       </Sheet>
     );
   }
@@ -116,15 +115,16 @@ export function PieOrderSheet({ portfolioId, mode, onClose, onAddMoney }: PieOrd
   const amount = typedAmount(amountText);
   const preview = planInvest(amount, slices);
   const invest = pieInvestView({ amount, cash, preview, priced: isPriced, nameOf });
-  const floor = floorLines(isPriced ? investFloor(amount, slices, smallest) : null);
+  const floor = investFloorView(isPriced ? investFloor(amount, slices, smallest) : null);
   const rebalancing = rebalanceSells(slices, smallest);
+  const leftAlone = rebalanceNote(rebalancing.leftAlone);
   const rebalance = pieRebalanceView({ sells: rebalancing.sells, priced: isPriced, nameOf });
   const tradable = service.available();
 
   async function price(side: Side, legs: Leg[], offered: number) {
     setNotice(null);
     setStep("pricing");
-    const orders: Order[] = [];
+    const orders: TradePlan[] = [];
     for (const leg of legs) {
       const quoted = await service.quote(portfolioId, side, leg.symbol, leg.amount);
       if ("error" in quoted) {
@@ -151,7 +151,7 @@ export function PieOrderSheet({ portfolioId, mode, onClose, onAddMoney }: PieOrd
   }
 
   async function submit(
-    plan: Order,
+    plan: TradePlan,
   ): Promise<{ ok: true; unconfirmed?: boolean } | { error: string }> {
     const result = await service.place(portfolioId, plan, {});
     if (result.kind === "confirmed") {
@@ -161,13 +161,13 @@ export function PieOrderSheet({ portfolioId, mode, onClose, onAddMoney }: PieOrd
         : { ok: true };
     }
     if (result.kind === "unknown") return { error: chainErrorMessage("outcomeUnknown") };
-    return { error: describeFailure(result).error };
+    return { error: describeFailure(result, "mobile").error };
   }
 
   function finish(final: LegOutcome[], closingLine: string | null) {
     setOutcomes(final);
     setClosing(closingLine);
-    if (runStopped(final)) warningHaptic();
+    if (pieRunStopped(final)) warningHaptic();
     else successHaptic();
     setStep("result");
   }
@@ -194,7 +194,9 @@ export function PieOrderSheet({ portfolioId, mode, onClose, onAddMoney }: PieOrd
         }));
         setOutcomes(notPlaced);
         setClosing(
-          paid ? mobile.holdingsOpenFailed : copy.noOrderPlaced(describeFailure(result).error),
+          paid
+            ? copy.holdingsOpenFailed
+            : copy.noOrderPlaced(describeFailure(result, "mobile").error),
         );
         return setStep("result");
       }
@@ -227,9 +229,9 @@ export function PieOrderSheet({ portfolioId, mode, onClose, onAddMoney }: PieOrd
         onChange: setOutcomes,
       },
     );
-    const stopped = runStopped(final);
+    const stopped = pieRunStopped(final);
     if (stopped || mode === "invest" || side === "buy") {
-      return finish(final, stopped ? copy.stopped : opening ? mobile.holdingsOpen : null);
+      return finish(final, stopped ? copy.stopped : opening ? copy.holdingsOpen : null);
     }
     // The sells landed: the buys are planned from the cash they really returned, read from the chain.
     const cashBefore = cash;
@@ -257,8 +259,8 @@ export function PieOrderSheet({ portfolioId, mode, onClose, onAddMoney }: PieOrd
 
   if (step === "input" && mode === "invest") {
     if (cash <= 0) {
-      body = <EmptyState title={mobile.noCash} detail={mobile.noCashDetail} />;
-      footer = <Button label={mobile.addMoney} onPress={() => onAddMoney(portfolioId)} />;
+      body = <EmptyState title={copy.noCash} detail={copy.noCashDetail} />;
+      footer = <Button label={copy.addMoney} onPress={() => onAddMoney(portfolioId)} />;
     } else {
       body = (
         <>
@@ -308,7 +310,7 @@ export function PieOrderSheet({ portfolioId, mode, onClose, onAddMoney }: PieOrd
           )}
           {invest.waiting && <Text variant="faint">{invest.waiting}</Text>}
           {notice && <Notice tone="danger">{notice}</Notice>}
-          {!online && <Notice tone="warning">{mobile.offline}</Notice>}
+          {!online && <Notice tone="warning">{mobilePieCopy.order.offline}</Notice>}
         </>
       );
       footer = (
@@ -327,9 +329,9 @@ export function PieOrderSheet({ portfolioId, mode, onClose, onAddMoney }: PieOrd
           <Row key={sell.symbol} label={sell.label} value={sell.amount} />
         ))}
         {rebalance.nothingToSell && <Text tone="dim">{rebalance.nothingToSell}</Text>}
-        {rebalancing.leftAlone && <Text variant="faint">{rebalancing.leftAlone}</Text>}
+        {leftAlone && <Text variant="faint">{leftAlone}</Text>}
         {notice && <Notice tone="danger">{notice}</Notice>}
-        {!online && <Notice tone="warning">{mobile.offline}</Notice>}
+        {!online && <Notice tone="warning">{mobilePieCopy.order.offline}</Notice>}
       </>
     );
     footer = (
@@ -391,20 +393,20 @@ export function PieOrderSheet({ portfolioId, mode, onClose, onAddMoney }: PieOrd
         {review.feeUnverified && <Notice tone="warning">{review.feeUnverified}</Notice>}
         {review.trackers && (
           <View>
-            <Text variant="note">{mobile.trackersLine}</Text>
+            <Text variant="note">{copy.trackersLine}</Text>
             <Button
               variant="quiet"
-              label={mobile.readRisks}
+              label={copy.readRisks}
               onPress={() => setStep("risks")}
               style={styles.link}
             />
           </View>
         )}
         <Text variant="note" tone="warning">
-          {mobile.publicLine}
+          {copy.publicLine}
         </Text>
-        {pending.note && <Notice tone="warning">{pending.note}</Notice>}
-        {!online && <Notice tone="warning">{mobile.offline}</Notice>}
+        <PendingNote pending={pending} />
+        {!online && <Notice tone="warning">{mobilePieCopy.order.offline}</Notice>}
       </>
     );
     footer = (
@@ -426,13 +428,13 @@ export function PieOrderSheet({ portfolioId, mode, onClose, onAddMoney }: PieOrd
   } else if (step === "progress" || step === "result") {
     const headline =
       step === "result"
-        ? resultHeadline(outcomes)
+        ? pieResultHeadline(outcomes)
         : covering
-          ? mobile.openingHoldings
+          ? copy.openingHoldings
           : pieProgressHeadline({ kind: "running", side: runningSide }, outcomes);
     body = (
       <>
-        {opened && <Text variant="note">{mobile.holdingsOpen}</Text>}
+        {opened && <Text variant="note">{copy.holdingsOpen}</Text>}
         <Text variant={step === "result" ? "display" : "h2"} accessibilityRole="header">
           {headline}
         </Text>
@@ -450,7 +452,7 @@ export function PieOrderSheet({ portfolioId, mode, onClose, onAddMoney }: PieOrd
             />
           </Panel>
         )}
-        <StepList steps={legSteps(outcomes, nameOf)} />
+        <StepList steps={pieLegSteps(outcomes, nameOf)} />
         {step === "result" && closing && <Text variant="faint">{closing}</Text>}
       </>
     );
@@ -460,7 +462,7 @@ export function PieOrderSheet({ portfolioId, mode, onClose, onAddMoney }: PieOrd
   return (
     <Sheet
       open
-      title={step === "risks" ? mobile.risksTitle : title}
+      title={step === "risks" ? copy.risksTitle : title}
       onClose={onClose}
       onBack={back}
       dirty={dirty}

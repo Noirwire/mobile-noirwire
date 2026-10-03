@@ -1,6 +1,6 @@
 import { useRouter } from "expo-router";
 import { NewPortfolioSheet } from "@/features/portfolio/NewPortfolioSheet";
-import { SheetRoute } from "@/features/portfolio/routeOptions";
+import { SheetRoute } from "@/navigation/sheetRoute";
 
 export default function NewPortfolio() {
   const router = useRouter();

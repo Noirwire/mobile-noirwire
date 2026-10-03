@@ -1,8 +1,7 @@
-import { onboardingCopy } from "@noirwire/shared/copy";
+import { onboardingCopy, mobileOnboardingCopy } from "@noirwire/shared/copy";
 import { StyleSheet, View } from "react-native";
 import { Button, Mark, Screen, Text } from "@/ui";
 import { layout } from "@/ui/theme";
-import { mobileOnboardingCopy } from "./copy";
 
 type WelcomeScreenProps = {
   onCreate: () => void;

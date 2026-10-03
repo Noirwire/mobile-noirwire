@@ -7,6 +7,7 @@ import {
   type Visibility,
 } from "@noirwire/shared/infrastructure";
 import type { PriceRange, Wallet } from "@noirwire/shared/domain";
+import type { PriceHistory } from "@noirwire/shared/presentation";
 import { getSnapshot, subscribe } from "@noirwire/shared/wallet";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { AppState } from "react-native";
@@ -41,13 +42,10 @@ export function useWalletSnapshot(): Wallet | null {
   return useSyncExternalStore(subscribe, getSnapshot) ?? null;
 }
 
-export type History =
-  { status: "loading" } | { status: "ready"; points: number[] } | { status: "none" };
-
 /** A tracker's real price history for one range. Nothing is drawn from anything else. */
-export function usePriceHistory(symbol: string, range: PriceRange, enabled = true): History {
+export function usePriceHistory(symbol: string, range: PriceRange, enabled = true): PriceHistory {
   const key = `${symbol}:${range}`;
-  const [answer, setAnswer] = useState<{ key: string; history: History } | null>(null);
+  const [answer, setAnswer] = useState<{ key: string; history: PriceHistory } | null>(null);
   useEffect(() => {
     if (!enabled) return;
     let current = true;

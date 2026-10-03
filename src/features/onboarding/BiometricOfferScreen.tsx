@@ -7,7 +7,7 @@ import { successHaptic } from "@/ui/haptics";
 import { colors, layout } from "@/ui/theme";
 import { useServices } from "../services";
 import { mobileUnlockCopy } from "../unlock/copy";
-import { mobileOnboardingCopy } from "./copy";
+import { mobileOnboardingCopy } from "@noirwire/shared/copy";
 
 type BiometricOfferScreenProps = {
   method: string;

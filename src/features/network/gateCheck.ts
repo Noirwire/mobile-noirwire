@@ -1,5 +1,4 @@
-import { appCopy } from "@noirwire/shared/copy";
-import { mobileNetworkCopy } from "./copy";
+import { appCopy, mobileAppCopy } from "@noirwire/shared/copy";
 
 export type NetworkCheck = "ok" | "wrongNetwork" | "unreachable";
 
@@ -41,7 +40,7 @@ export function networkGateView(
 ): GateView {
   switch (state) {
     case "checking":
-      return { message: null, caption: slow ? mobileNetworkCopy.checking : null, retry: null };
+      return { message: null, caption: slow ? mobileAppCopy.network.checking : null, retry: null };
     case "wrongNetwork":
       return { message: appCopy.networkGate.wrongNetwork(network), caption: null, retry: null };
     case "unreachable":

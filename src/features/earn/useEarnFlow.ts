@@ -8,13 +8,12 @@ import {
 } from "@noirwire/shared/application";
 import type { NetworkCost } from "@noirwire/shared/domain";
 import type { EarnPosition } from "@noirwire/shared/infrastructure";
-import { describeFailure } from "@noirwire/shared/presentation";
+import { describeFailure, type EarnPortfolio } from "@noirwire/shared/presentation";
 import { useEffect, useRef, useState } from "react";
 import { useServices } from "../services";
 import { phoneCost } from "../network/cost";
 import { useMoney } from "../network/money";
 import { usePendingBlock } from "../network/usePendingBlock";
-import type { EarnPortfolio } from "./earnView";
 
 export type EarnStep = "choose" | "amount" | "review" | "risks" | "progress" | "result";
 
@@ -45,7 +44,7 @@ export function useEarnFlow(
     amount: number;
     fee: number;
   } | null>(null);
-  const pending = usePendingBlock(chosen ?? "");
+  const pending = usePendingBlock(chosen);
   const live = useRef(true);
   useEffect(
     () => () => {
@@ -106,7 +105,7 @@ export function useEarnFlow(
       setStep("result");
       return;
     }
-    const failed = describeFailure(answer);
+    const failed = describeFailure(answer, "mobile");
     if (failed.reviewAgain) {
       setPriced({ for: chosen, cost: await priceCost(failed.reviewAgain === "other") });
     }

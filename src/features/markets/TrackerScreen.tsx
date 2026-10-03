@@ -1,4 +1,6 @@
 import { PRICE_RANGES, type PriceRange } from "@noirwire/shared/domain";
+import { trackerView, type TrackerAction } from "@noirwire/shared/presentation";
+import { screenReads } from "@noirwire/shared/wallet";
 import { StarIcon } from "phosphor-react-native/src/icons/Star";
 import { useState } from "react";
 import { ScrollView, StyleSheet, useWindowDimensions, View } from "react-native";
@@ -20,7 +22,6 @@ import { colors, fonts, layout, size } from "@/ui/theme";
 import { TrackerMark } from "@/ui/TrackerMark";
 import { useServices } from "../services";
 import { mobileSettingsCopy } from "../settings/copy";
-import { trackerView, type TrackerAction } from "./trackerView";
 import { useLivePrices, usePriceHistory, useWalletSnapshot } from "./useMarketData";
 import { toggleWatch } from "./watchlist";
 
@@ -54,13 +55,14 @@ export function TrackerScreen({ symbol, visitor = false, onIntent }: TrackerScre
   const [risksOpen, setRisksOpen] = useState(false);
   const history = usePriceHistory(symbol, range);
   const { fontScale } = useWindowDimensions();
-  const view = trackerView({
+  const view = trackerView(screenReads, {
     symbol,
     wallet: visitor ? null : wallet,
     updatedAt,
     online,
     range,
     history,
+    platform: "mobile",
   });
 
   if (view.kind === "notFound") {

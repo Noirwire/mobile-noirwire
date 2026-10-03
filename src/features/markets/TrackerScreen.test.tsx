@@ -1,6 +1,7 @@
 import { fireEvent, screen, waitFor } from "@testing-library/react-native";
 import { forgetWallet, installTestPlatform, renderWith, testServices } from "../testServices";
-import { installFakeRelay, walletWith } from "../trade/testDoubles";
+import { portfoliosWith as walletWith } from "../network/testMoney";
+import { installFakeRelay } from "../trade/testDoubles";
 import { TrackerScreen } from "./TrackerScreen";
 
 afterEach(async () => {

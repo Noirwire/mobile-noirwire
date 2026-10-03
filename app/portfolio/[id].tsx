@@ -1,11 +1,16 @@
 import { appCopy } from "@noirwire/shared/copy";
+import {
+  isAddressFreeParam,
+  pieOrderParams,
+  portfolioParams,
+  readPublicView,
+  tradeParams,
+  type PortfolioAction,
+} from "@noirwire/shared/presentation";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
-import { deviceBalanceReads } from "@/features/portfolio/deviceBalanceReads";
 import { PortfolioScreen } from "@/features/portfolio/PortfolioScreen";
-import type { PortfolioAction } from "@/features/portfolio/portfolioView";
-import { OwnTopBar } from "@/features/portfolio/routeOptions";
-import { isAddressFreeParam } from "@/navigation/routeParams";
+import { OwnTopBar } from "@/navigation/sheetRoute";
 
 /** Params: `id`, the portfolio's local id; `view=public` opens it in public view. */
 export default function Portfolio() {
@@ -20,23 +25,26 @@ export default function Portfolio() {
   function act(action: PortfolioAction) {
     switch (action.to) {
       case "fund":
-        return router.push({ pathname: "/fund", params: { id } });
+        return router.push({ pathname: "/fund", params: portfolioParams(id) });
       case "invest":
       case "rebalance":
-        return router.push({ pathname: "/pie-order", params: { portfolio: id, mode: action.to } });
+        return router.push({ pathname: "/pie-order", params: pieOrderParams(id, action.to) });
       case "buy":
-        return router.push({ pathname: "/trade", params: { side: "buy", portfolio: id } });
+        return router.push({
+          pathname: "/trade",
+          params: tradeParams({ side: "buy", portfolioId: id }),
+        });
       case "sell":
         return router.push({
           pathname: "/trade",
-          params: { side: "sell", symbol: action.symbol, portfolio: id },
+          params: tradeParams({ side: "sell", symbol: action.symbol, portfolioId: id }),
         });
       case "receive":
-        return router.push({ pathname: "/receive", params: { id } });
+        return router.push({ pathname: "/receive", params: portfolioParams(id) });
       case "send":
-        return router.push({ pathname: "/send", params: { portfolio: id } });
+        return router.push({ pathname: "/send", params: portfolioParams(id) });
       case "editMix":
-        return router.push({ pathname: "/pie-builder", params: { portfolio: id } });
+        return router.push({ pathname: "/pie-builder", params: portfolioParams(id) });
       case "tracker":
         return router.push({ pathname: "/markets/[symbol]", params: { symbol: action.symbol } });
     }
@@ -48,8 +56,7 @@ export default function Portfolio() {
       <PortfolioScreen
         key={visit}
         id={id}
-        initialPublic={visit === 0 && params.view === "public"}
-        balances={deviceBalanceReads()}
+        initialPublic={visit === 0 && readPublicView(params.view)}
         backLabel={appCopy.nav.home}
         onBack={() => (router.canGoBack() ? router.back() : router.replace("/"))}
         onAction={act}

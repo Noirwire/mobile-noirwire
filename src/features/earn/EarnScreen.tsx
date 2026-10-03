@@ -7,7 +7,7 @@ import { readAsOne } from "@/ui/accessibility";
 import { selectionHaptic } from "@/ui/haptics";
 import { colors, layout, opacity } from "@/ui/theme";
 import type { EarnAction } from "@noirwire/shared/application";
-import { earnScreenView, type EarnRowView } from "./earnView";
+import { earnScreenView, type EarnRowView } from "@noirwire/shared/presentation";
 import { EarnSheet } from "./EarnSheet";
 import type { EarnOpening } from "./useEarnFlow";
 import { useEarnScreen } from "./useEarnScreen";
@@ -23,7 +23,7 @@ type EarnScreenProps = {
 export function EarnScreen({ onReadRisks, onNewPortfolio, onMoveMoney }: EarnScreenProps) {
   const state = useEarnScreen();
   const [opening, setOpening] = useState<EarnOpening | null>(null);
-  const view = earnScreenView(state);
+  const view = earnScreenView({ ...state, platform: "mobile" });
 
   function open(action: EarnAction, portfolioId: string | null) {
     setOpening({ action, portfolioId });

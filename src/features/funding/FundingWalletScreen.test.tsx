@@ -3,7 +3,6 @@ import { fakeChain, renderWithMoney, testMoney, walletWith } from "../network/te
 import { SettingsScreen } from "../settings/SettingsScreen";
 import { forgetWallet, installTestPlatform, testServices } from "../testServices";
 import { FundingWalletScreen } from "./FundingWalletScreen";
-import { fundOutcomeView, fundProgressView } from "./fundingView";
 
 afterEach(() => forgetWallet());
 
@@ -60,41 +59,5 @@ describe("FundingWalletScreen", () => {
     expect(screen.getByText("Wallet")).toBeOnTheScreen();
     await fireEvent.press(screen.getByRole("button", { name: "Funding wallet, 250.00 USDC" }));
     expect(onOpen).toHaveBeenCalledWith("funding-wallet");
-  });
-});
-
-describe("fund view models", () => {
-  it("names each stage in plain words, done by evidence only", () => {
-    const view = fundProgressView({
-      amount: 100,
-      portfolioLabel: "Investing",
-      completed: 1,
-      slow: true,
-    });
-    expect(view.title).toBe("Moving 100.00 USDC into Investing");
-    expect(view.steps.map((step) => [step.title, step.status])).toEqual([
-      ["Sent to the private route", "done"],
-      ["Waiting in the queue", "current"],
-      ["Arrived in Investing", "waiting"],
-    ]);
-    expect(view.steps[1].caption).toBe(
-      "Delivered after 2 to 15 seconds, split across several entries.",
-    );
-    expect(view.stillWorking).toBe(
-      "Still working. You can leave this open; nothing more is needed from you.",
-    );
-  });
-
-  it("calls a slow arrival still settling, not a failure", () => {
-    const view = fundOutcomeView({
-      outcome: "pending",
-      amount: 100,
-      arrived: 0,
-      fee: 0.3,
-      portfolioLabel: "Investing",
-    });
-    expect(view.title).toBe("Still settling");
-    expect(view.close).toBe("Close");
-    expect(view.publicView).toBeNull();
   });
 });

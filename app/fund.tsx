@@ -1,28 +1,27 @@
-import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import {
+  fundingReceiveParams,
+  publicViewParams,
+  readPortfolioParam,
+} from "@noirwire/shared/presentation";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { FundScreen } from "@/features/funding/FundScreen";
-import { isAddressFreeParam } from "@/navigation/routeParams";
+import { SheetRoute } from "@/navigation/sheetRoute";
 
-const SHEET_ROUTE = {
-  headerShown: false,
-  presentation: "transparentModal",
-  animation: "none",
-} as const;
-
-/** Params: `id`, the receiving portfolio's local id, or none to choose one in the sheet. */
+/** Params: `portfolio`, the receiving portfolio's local id, or none to choose one in the sheet. */
 export default function Fund() {
   const router = useRouter();
-  const { id } = useLocalSearchParams<{ id?: string }>();
+  const { portfolio } = useLocalSearchParams<{ portfolio?: string }>();
   return (
     <>
-      <Stack.Screen options={SHEET_ROUTE} />
+      <SheetRoute />
       <FundScreen
-        portfolioId={isAddressFreeParam(id) ? id : null}
+        portfolioId={readPortfolioParam(portfolio)}
         onClose={() => router.back()}
         onShowFundingAddress={() =>
-          router.replace({ pathname: "/receive", params: { id: "funding" } })
+          router.replace({ pathname: "/receive", params: fundingReceiveParams(false) })
         }
-        onSeePublicView={(portfolio) =>
-          router.replace({ pathname: "/portfolio/[id]", params: { id: portfolio, view: "public" } })
+        onSeePublicView={(id) =>
+          router.replace({ pathname: "/portfolio/[id]", params: { id, ...publicViewParams() } })
         }
       />
     </>

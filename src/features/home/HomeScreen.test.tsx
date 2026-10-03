@@ -30,6 +30,7 @@ function handlers() {
     onOpenTracker: jest.fn(),
     onNewPortfolio: jest.fn(),
     onSeeAllActivity: jest.fn(),
+    onOpenEarn: jest.fn(),
     onLock: jest.fn(),
   };
 }
@@ -58,7 +59,8 @@ describe("HomeScreen", () => {
     const balances = fakeBalances();
     await renderScreen(
       await testServices(),
-      <HomeScreen {...on} balances={balances} pricesUpdatedAt={updatedAt} />,
+      <HomeScreen {...on} pricesUpdatedAt={updatedAt} />,
+      balances,
     );
     expect(
       screen.getByLabelText("Total value, $968.08, +$10.22 (2.0%) held trackers · 24h indicative"),
@@ -83,13 +85,68 @@ describe("HomeScreen", () => {
     expect(screen.queryByText(/[A-HJ-NP-Za-km-z1-9]{32,44}/)).toBeNull();
   });
 
+  it("shows what every portfolio has in Earn together, leading to the Earn tab", async () => {
+    await populated();
+    const on = handlers();
+    const balances = fakeBalances();
+    balances.money.earnVenue.position = async () => ({
+      deposited: 120.5,
+      earnedSinceDeposit: null,
+      hasReceiptAccount: true,
+      lamports: 0,
+    });
+    await renderScreen(
+      await testServices(),
+      <HomeScreen {...on} pricesUpdatedAt={updatedAt} />,
+      balances,
+    );
+    await fireEvent.press(await screen.findByRole("button", { name: "Earning, $120.50" }));
+    expect(on.onOpenEarn).toHaveBeenCalled();
+  });
+
+  it("says Earn could not be read rather than showing nothing in it", async () => {
+    await populated();
+    const balances = fakeBalances();
+    balances.money.earnVenue.position = async () => {
+      throw new Error("unreadable");
+    };
+    await renderScreen(
+      await testServices(),
+      <HomeScreen {...handlers()} pricesUpdatedAt={updatedAt} />,
+      balances,
+    );
+    expect(await screen.findByRole("button", { name: "Earning, Unavailable" })).toBeOnTheScreen();
+  });
+
+  it("leaves Earn out while nothing is in it, and where it is not offered", async () => {
+    await populated();
+    const balances = fakeBalances();
+    const { unmount } = await renderScreen(
+      await testServices(),
+      <HomeScreen {...handlers()} pricesUpdatedAt={updatedAt} />,
+      balances,
+    );
+    await act(async () => undefined);
+    expect(screen.queryByText("Earning")).toBeNull();
+    await unmount();
+
+    balances.money.earnChain.available = () => false;
+    balances.money.earnVenue.position = async () => {
+      throw new Error("Earn is not offered here.");
+    };
+    await renderScreen(
+      await testServices(),
+      <HomeScreen {...handlers()} pricesUpdatedAt={updatedAt} />,
+      balances,
+    );
+    await act(async () => undefined);
+    expect(screen.queryByText("Earning")).toBeNull();
+  });
+
   it("leads an empty wallet with Add USDC and the funding address, and How to add money", async () => {
     await unlockedWallet();
     const on = handlers();
-    await renderScreen(
-      await testServices(),
-      <HomeScreen {...on} balances={fakeBalances()} pricesUpdatedAt={updatedAt} />,
-    );
+    await renderScreen(await testServices(), <HomeScreen {...on} pricesUpdatedAt={updatedAt} />);
     expect(screen.getByLabelText("Total value, $0.00")).toBeOnTheScreen();
     await fireEvent.press(screen.getByRole("button", { name: "Add USDC" }));
     expect(on.onNavigate).toHaveBeenLastCalledWith({ to: "receive", reveal: false });
@@ -109,7 +166,7 @@ describe("HomeScreen", () => {
     await unlockedWallet();
     await renderScreen(
       await testServices(),
-      <HomeScreen {...handlers()} balances={fakeBalances()} pricesUpdatedAt={updatedAt} />,
+      <HomeScreen {...handlers()} pricesUpdatedAt={updatedAt} />,
     );
     await fireEvent.press(screen.getByRole("button", { name: "Shown together only here" }));
     expect(screen.getByText(/This total is added up on this phone/)).toBeOnTheScreen();
@@ -117,10 +174,7 @@ describe("HomeScreen", () => {
 
   it("shows no number while prices are missing", async () => {
     await populated();
-    await renderScreen(
-      await testServices(),
-      <HomeScreen {...handlers()} balances={fakeBalances()} pricesUpdatedAt={null} />,
-    );
+    await renderScreen(await testServices(), <HomeScreen {...handlers()} pricesUpdatedAt={null} />);
     expect(
       screen.getByLabelText(
         "Total value, Value unavailable, Waiting for current balances or market prices",
@@ -134,7 +188,8 @@ describe("HomeScreen", () => {
     await populated();
     await renderScreen(
       await testServices(),
-      <HomeScreen {...handlers()} balances={fakeBalances(false)} pricesUpdatedAt={updatedAt} />,
+      <HomeScreen {...handlers()} pricesUpdatedAt={updatedAt} />,
+      fakeBalances(false),
     );
     expect(await screen.findByText("Could not refresh. Pull down to try again.")).toBeOnTheScreen();
     expect(screen.getByText("$457.33")).toBeOnTheScreen();
@@ -145,7 +200,8 @@ describe("HomeScreen", () => {
     const balances = fakeBalances();
     await renderScreen(
       await testServices({ useOnline: () => false }),
-      <HomeScreen {...handlers()} balances={balances} pricesUpdatedAt={updatedAt} />,
+      <HomeScreen {...handlers()} pricesUpdatedAt={updatedAt} />,
+      balances,
     );
     await act(async () => undefined);
     expect(balances.calls).toEqual([]);
@@ -158,10 +214,7 @@ describe("HomeScreen", () => {
       funding: { ...w.funding, tokens: { ...w.funding.tokens, USDC: 250 } },
     }));
     const on = handlers();
-    await renderScreen(
-      await testServices(),
-      <HomeScreen {...on} balances={fakeBalances()} pricesUpdatedAt={updatedAt} />,
-    );
+    await renderScreen(await testServices(), <HomeScreen {...on} pricesUpdatedAt={updatedAt} />);
     expect(screen.getByText(/250\.00 USDC has arrived in your funding wallet/)).toBeOnTheScreen();
     await fireEvent.press(screen.getByRole("button", { name: "Move money to Investing" }));
     expect(on.onNavigate).toHaveBeenCalledWith({
@@ -179,7 +232,7 @@ describe("HomeScreen", () => {
     }));
     await renderScreen(
       await testServices(),
-      <HomeScreen {...handlers()} balances={fakeBalances()} pricesUpdatedAt={updatedAt} />,
+      <HomeScreen {...handlers()} pricesUpdatedAt={updatedAt} />,
     );
     expect(screen.getByText("Create a portfolio to start investing.")).toBeOnTheScreen();
     await fireEvent.press(screen.getByRole("button", { name: "Archived portfolios (1)" }));
@@ -196,10 +249,7 @@ describe("HomeScreen", () => {
   it("opens New portfolio, and locks from the top bar", async () => {
     await unlockedWallet();
     const on = handlers();
-    await renderScreen(
-      await testServices(),
-      <HomeScreen {...on} balances={fakeBalances()} pricesUpdatedAt={updatedAt} />,
-    );
+    await renderScreen(await testServices(), <HomeScreen {...on} pricesUpdatedAt={updatedAt} />);
     await fireEvent.press(screen.getByRole("button", { name: "New portfolio" }));
     expect(on.onNewPortfolio).toHaveBeenCalled();
     await fireEvent.press(screen.getByRole("button", { name: "Lock wallet" }));
@@ -210,7 +260,7 @@ describe("HomeScreen", () => {
     await populated();
     await renderScreen(
       await testServices(),
-      <HomeScreen {...handlers()} balances={fakeBalances()} pricesUpdatedAt={updatedAt} />,
+      <HomeScreen {...handlers()} pricesUpdatedAt={updatedAt} />,
     );
     await fireEvent.press(screen.getByRole("button", { name: /^Bought NVIDIA tracker/ }));
     const detail = await screen.findByText("Value at the time");

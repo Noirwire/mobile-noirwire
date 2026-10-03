@@ -1,4 +1,4 @@
-import { commonCopy, onboardingCopy } from "@noirwire/shared/copy";
+import { commonCopy, onboardingCopy, mobileOnboardingCopy } from "@noirwire/shared/copy";
 import { parseRecoveryPhrase, type ImportResolution } from "@noirwire/shared/infrastructure";
 import { useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
@@ -8,7 +8,6 @@ import { layout } from "@/ui/theme";
 import { useCaptureProtection } from "@/ui/useCaptureProtection";
 import { useServices } from "../services";
 import { useAppLeaves } from "../security/useAppLeaves";
-import { mobileOnboardingCopy } from "./copy";
 
 type ImportScreenProps = {
   onFound: (words: string[], resolution: ImportResolution) => void;

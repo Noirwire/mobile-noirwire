@@ -1,4 +1,10 @@
 import { getPlatform } from "@noirwire/shared/platform";
+import {
+  addressLines,
+  receiveView,
+  spokenAddress,
+  type ReceiveTarget,
+} from "@noirwire/shared/presentation";
 import { useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { Button, Notice, Panel, QRCode, Sheet, Text } from "@/ui";
@@ -6,8 +12,6 @@ import { layout } from "@/ui/theme";
 import { useCaptureProtection } from "@/ui/useCaptureProtection";
 import { noteAddressCopied, noteSheetOpened } from "../portfolio/portfolioActions";
 import { useWalletSnapshot } from "../portfolio/useWalletSnapshot";
-import { addressLines, spokenAddress } from "./addressGroups";
-import { receiveView, type ReceiveTarget } from "./receiveView";
 import { useCopied } from "./useCopied";
 
 type ReceiveSheetProps = {
@@ -24,7 +28,9 @@ type ReceiveSheetProps = {
 export function ReceiveSheet({ target, onClose }: ReceiveSheetProps) {
   const wallet = useWalletSnapshot();
   const [revealed, setRevealed] = useState(false);
-  const view = wallet ? receiveView(wallet, target, getPlatform().env.network) : null;
+  const view = wallet
+    ? receiveView({ wallet, target, network: getPlatform().env.network, platform: "mobile" })
+    : null;
   const shown = view?.kind === "address" && (view.masked === null || revealed);
   const clipboard = useCopied(() => {
     if (view?.kind === "address") noteAddressCopied(view.what);

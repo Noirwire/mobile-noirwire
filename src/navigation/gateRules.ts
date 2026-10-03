@@ -16,6 +16,24 @@ export type Place =
   | "dev"
   | "app";
 
+/**
+ * The routes that are sheets over a screen. A lock dismisses a sheet and
+ * discards what was typed in it, and no sheet reopens after an unlock.
+ */
+export const SHEET_ROUTES = [
+  "trade",
+  "send",
+  "receive",
+  "fund",
+  "new-portfolio",
+  "pie-builder",
+  "pie-order",
+] as const;
+
+export type SheetRouteName = (typeof SHEET_ROUTES)[number];
+
+const SHEETS: ReadonlySet<string> = new Set(SHEET_ROUTES);
+
 export const WELCOME = "/welcome";
 export const UNLOCK = "/unlock";
 export const HOME = "/";
@@ -30,6 +48,14 @@ export function placeOf(segments: readonly string[]): Place {
   if (first === "reset") return "reset";
   if (first === "dev") return "dev";
   return "app";
+}
+
+/**
+ * Whether an unlock may come back to this screen: a tab or a stack screen of
+ * the unlocked app, never a sheet.
+ */
+export function resumesAfterUnlock(segments: readonly string[]): boolean {
+  return placeOf(segments) === "app" && !SHEETS.has(segments[0] ?? "");
 }
 
 /** Where to go instead, or null to stay. `resume` is the screen an unlocked wallet was on before it locked. */
