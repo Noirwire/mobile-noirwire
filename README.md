@@ -69,14 +69,45 @@ How it relates to the other NoirWire repositories:
 
 ## Quick start
 
-Requirements: Node 24 or later (`.nvmrc`), npm, and for native builds Xcode and the Android SDK (platform 36, JDK 17). There is no cloud build path: every build, including store and dApp Store builds, runs on this machine (see [Building locally](#building-locally)).
+There is no cloud build path: every build, including store and dApp Store builds, runs on this machine (see [Building locally](#building-locally)). Full step-by-step detail, including every troubleshooting case below, lives in [`docs/running-on-a-device.md`](docs/running-on-a-device.md).
+
+**1. Requirements**: Node 24 or later (`.nvmrc`), npm, and for native builds Xcode and the Android SDK (platform 36, JDK 17).
+
+**2. Clone and install**
 
 ```sh
 git clone https://github.com/Noirwire/mobile-noirwire.git
 cd mobile-noirwire
 npm ci
+```
+
+`npm ci` prints peer-dependency, deprecation and vulnerability warnings. That is expected; see "What the install warnings mean" below.
+
+**3. Create `.env`**
+
+```sh
 cp .env.example .env
 ```
+
+Fill in the two values (both are explained inline in `.env.example`):
+
+- `EXPO_PUBLIC_RELAY_URL`: the relay the app talks to. Either a deployed relay over https (such as `https://app.noirwire.com`), or the web app running locally - see the comments in `.env.example` for the local setup.
+- `EXPO_PUBLIC_SOLANA_NETWORK`: `mainnet` or `devnet`, matching whichever relay you pointed at.
+
+**4. Build and install a dev build**
+
+```sh
+npm run ios:sim        # iOS Simulator
+npm run android:debug  # a connected Android device or emulator
+```
+
+**5. Start Metro and open the app**
+
+```sh
+npm start
+```
+
+Scan the printed QR code from inside the dev build (Simulator and emulator connect on their own). If it cannot reach Metro, see "Dev build on a phone can't reach Metro" below.
 
 ### The shared package
 
@@ -93,15 +124,14 @@ npm install --no-save ../shared-pack/noirwire-shared-<version>.tgz
 
 Repeat both after every change to the shared package. `--no-save` keeps the release URL in `package.json`; never commit a local tarball or a `file:` path there.
 
-### Run it
+### Other ways to run it
 
 ```sh
 npm test               # the Jest suite
 npm run web            # the app in a browser, for a quick look
-npm start              # the bundler, for a development build on a phone
 ```
 
-To put a development build on a phone or simulator, see [Building locally](#building-locally): `npm run ios:sim`, `npm run android:debug`. Both generate `ios/` and `android/` first; those folders are build output, ignored by git and recreated by `npx expo prebuild --clean`. Change native configuration in `app.config.ts`.
+`npm run ios:sim` and `npm run android:debug` generate `ios/` and `android/` first; those folders are build output, ignored by git and recreated by `npx expo prebuild --clean`. Change native configuration in `app.config.ts`. See [Building locally](#building-locally) for every build target.
 
 ### Environment
 
@@ -110,7 +140,21 @@ To put a development build on a phone or simulator, see [Building locally](#buil
 | `EXPO_PUBLIC_RELAY_URL`      | Origin of the NoirWire relay, such as `https://app.noirwire.com`. |
 | `EXPO_PUBLIC_SOLANA_NETWORK` | `mainnet` or `devnet`.                                            |
 
-Every `EXPO_PUBLIC_` value is compiled into the app and readable by anyone who has it, so nothing secret belongs in them. Both are checked at start (`src/platform/env.ts`): the relay must be an https origin with no path (plain http only to `localhost`, `127.0.0.1` or the Android emulator's `10.0.2.2`). A bad value stops the app on the runtime failure screen.
+Every `EXPO_PUBLIC_` value is compiled into the app and readable by anyone who has it, so nothing secret belongs in them. Both are checked at start (`src/platform/env.ts`): the relay must be an https origin with no path (plain http only to `localhost`, `127.0.0.1` or the Android emulator's `10.0.2.2`). A bad value, or a missing `.env`, stops the app on the runtime failure screen - in a development build, that screen also names the underlying error.
+
+### Troubleshooting
+
+**`npm ci` prints a wall of warnings.** Peer-dependency, deprecation and "NN vulnerabilities" warnings are expected on a fresh install; see "What the install warnings mean" below. Nothing here needs fixing before you continue.
+
+**`npm run android:debug` fails with "cannot write to emulator" or similar.** With no device attached, it cold-starts an emulator and tries to install the app before the emulator has finished booting. Run the command again once the emulator is up. With a phone and an emulator both attached, pick one explicitly: `npm run android:debug -- --device`.
+
+**Dev build on a phone can't reach Metro** ("Failed to connect to /192.168.x.x:8081"). macOS's firewall blocks the phone's incoming connection to Metro on the Mac. With the phone on USB: `adb reverse tcp:8081 tcp:8081`, then open the dev build against `http://localhost:8081` instead of the LAN address Metro printed.
+
+**The app shows "NoirWire cannot run safely on this device: App configuration" with no further detail.** This means `.env` is missing (the `cp .env.example .env` step above is easy to miss) or carries a value the app rejects, such as the placeholder `https://relay.example.com` left unedited. Create or fix `.env` as described in step 3 above, then restart Metro with `npm start -- --clear` - changes to `.env` are not picked up by a running Metro. A development build also prints the specific error under "App configuration" on that screen and to the console, so a missing or wrong setting names itself.
+
+**What the install warnings mean:** `npm ci`'s peer-dependency warning is a test tool's `react-reconciler` wanting React 19.3 while Expo SDK 57 pins React 19.2.3 - harmless, Expo's version is the one that ships. The vulnerability count is Expo's own build tooling (the `xcode`/`node-forge` chain behind prebuild) plus two transitive Solana library advisories (`stream-json`, `uuid`, pulled in via `@solana/web3.js`) with no patched release yet. Never run `npm audit fix --force`: it rewrites these to major versions Expo and the Solana libraries do not support.
+
+Full setup detail, including running against the web app locally instead of a deployed relay, is in [`docs/running-on-a-device.md`](docs/running-on-a-device.md).
 
 ## Development
 

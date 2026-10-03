@@ -19,6 +19,7 @@ export const PREPARE_FAILURE = "App configuration";
 
 export function RuntimeGate({ children, prepare }: RuntimeGateProps) {
   const [failures, setFailures] = useState<string[] | null>(null);
+  const [prepareError, setPrepareError] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     let current = true;
@@ -27,7 +28,17 @@ export function RuntimeGate({ children, prepare }: RuntimeGateProps) {
         if (failed.length === 0 && prepare) await prepare();
         return failed;
       })
-      .catch(() => [PREPARE_FAILURE])
+      .catch((error: unknown) => {
+        // Only a development build names the cause on screen: a wrong or
+        // missing setting (such as a missing .env) should say so instead of
+        // just "App configuration", without leaking detail in production.
+        if (__DEV__) {
+          const message = error instanceof Error ? error.message : String(error);
+          console.error("RuntimeGate: prepare failed", error);
+          if (current) setPrepareError(message);
+        }
+        return [PREPARE_FAILURE];
+      })
       .then((failed) => {
         if (current) setFailures(failed);
       });
@@ -37,12 +48,12 @@ export function RuntimeGate({ children, prepare }: RuntimeGateProps) {
   }, [prepare]);
 
   if (failures === null) return <View style={styles.blank} />;
-  if (failures.length > 0) return <RuntimeFailure failures={failures} />;
+  if (failures.length > 0) return <RuntimeFailure failures={failures} detail={prepareError} />;
   return children;
 }
 
 /** Set in system type on purpose: this screen must not depend on anything that loads. */
-export function RuntimeFailure({ failures }: { failures: string[] }) {
+export function RuntimeFailure({ failures, detail }: { failures: string[]; detail?: string }) {
   return (
     <ScrollView style={styles.blank} contentContainerStyle={styles.failure}>
       <Text accessibilityRole="header" style={styles.title}>
@@ -53,9 +64,10 @@ export function RuntimeFailure({ failures }: { failures: string[] }) {
         so nothing was opened and no keys were read:
       </Text>
       {failures.map((name) => (
-        <Text key={name} style={styles.failed}>
-          {name}
-        </Text>
+        <View key={name}>
+          <Text style={styles.failed}>{name}</Text>
+          {name === PREPARE_FAILURE && detail ? <Text style={styles.detail}>{detail}</Text> : null}
+        </View>
       ))}
       <Text style={styles.detail}>
         Update the app and try again. Your wallet is not affected: it can always be restored with
