@@ -9,6 +9,7 @@ export default function SettingsLayout() {
       <Stack.Screen name="index" options={{ headerShown: false }} />
       <Stack.Screen name="recovery-phrase" options={{ title: settingsCopy.recovery.title }} />
       <Stack.Screen name="password" options={{ title: settingsCopy.password.title }} />
+      <Stack.Screen name="funding-wallet" options={{ title: settingsCopy.funding.title }} />
       <Stack.Screen name="privacy" options={{ title: mobileSettingsCopy.privacy.title }} />
       <Stack.Screen name="risks" options={{ title: mobileSettingsCopy.risks.title }} />
       <Stack.Screen name="about" options={{ title: mobileSettingsCopy.about.title }} />

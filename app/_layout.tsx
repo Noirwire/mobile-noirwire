@@ -7,6 +7,8 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { RuntimeGate } from "@/boot/RuntimeGate";
+import { NetworkGate } from "@/features/network/NetworkGate";
+import { OfflineBanner } from "@/features/network/OfflineBanner";
 import { deviceServices, ServicesProvider } from "@/features/services";
 import { stackScreenOptions } from "@/navigation/stackOptions";
 import { WalletGate } from "@/navigation/WalletGate";
@@ -54,21 +56,24 @@ function Routes() {
   return (
     <ServicesProvider services={services}>
       <ActivityCapture onInput={installed.activity.noteInput}>
-        <WalletGate>
-          <Stack screenOptions={stackScreenOptions}>
-            <Stack.Screen name="(onboarding)" options={{ headerShown: false }} />
-            <Stack.Screen name="(visitor)" options={{ headerShown: false }} />
-            <Stack.Screen name="unlock" options={{ headerShown: false, gestureEnabled: false }} />
-            <Stack.Screen name="reset" options={{ title: "", gestureEnabled: false }} />
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen name="portfolio/[id]" options={{ title: "Portfolio" }} />
-            <Stack.Screen name="markets/[symbol]" options={{ title: "Tracker" }} />
-            {MODALS.map(({ name, title }) => (
-              <Stack.Screen key={name} name={name} options={{ title, presentation: "modal" }} />
-            ))}
-            <Stack.Screen name="dev/ui" options={{ title: "UI kit" }} />
-          </Stack>
-        </WalletGate>
+        <NetworkGate>
+          <WalletGate>
+            <Stack screenOptions={stackScreenOptions}>
+              <Stack.Screen name="(onboarding)" options={{ headerShown: false }} />
+              <Stack.Screen name="(visitor)" options={{ headerShown: false }} />
+              <Stack.Screen name="unlock" options={{ headerShown: false, gestureEnabled: false }} />
+              <Stack.Screen name="reset" options={{ title: "", gestureEnabled: false }} />
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack.Screen name="portfolio/[id]" options={{ title: "Portfolio" }} />
+              <Stack.Screen name="markets/[symbol]" options={{ title: "Tracker" }} />
+              {MODALS.map(({ name, title }) => (
+                <Stack.Screen key={name} name={name} options={{ title, presentation: "modal" }} />
+              ))}
+              <Stack.Screen name="dev/ui" options={{ title: "UI kit" }} />
+            </Stack>
+          </WalletGate>
+          <OfflineBanner pinned />
+        </NetworkGate>
         <PrivacyCover />
       </ActivityCapture>
     </ServicesProvider>

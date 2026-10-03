@@ -5,13 +5,15 @@ import type { BiometricMethod } from "@/platform/biometricKeystore";
 import { Button, Field, ListRow, Notice, Panel, Screen, Switch, Text } from "@/ui";
 import { successHaptic } from "@/ui/haptics";
 import { layout } from "@/ui/theme";
+import { FUNDING_WALLET_SECTION, FundingWalletRow } from "../funding/FundingWalletRow";
 import { useServices } from "../services";
 import { mobileUnlockCopy } from "../unlock/copy";
 import { useStorageHealth } from "../wallet/useWallet";
 import { lockNow } from "../wallet/walletActions";
 import { mobileSettingsCopy } from "./copy";
 
-export type SettingsPage = "recovery-phrase" | "password" | "privacy" | "risks" | "about" | "reset";
+export type SettingsPage =
+  "recovery-phrase" | "password" | "funding-wallet" | "privacy" | "risks" | "about" | "reset";
 
 type SettingsScreenProps = {
   onOpen: (page: SettingsPage) => void;
@@ -51,6 +53,10 @@ export function SettingsScreen({ onOpen, appVersion }: SettingsScreenProps) {
         />
         <BiometricRow />
         <ListRow label={mobile.lockNow} chevron={false} onPress={lockNow} />
+      </Section>
+
+      <Section title={FUNDING_WALLET_SECTION}>
+        <FundingWalletRow onPress={() => onOpen("funding-wallet")} />
       </Section>
 
       <Section title={sections.privacy.title}>
