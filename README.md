@@ -69,7 +69,7 @@ How it relates to the other NoirWire repositories:
 
 ## Quick start
 
-Requirements: Node 22 or later (`.nvmrc`), npm, and for native builds Xcode and the Android SDK (platform 36, JDK 17). There is no cloud build path: every build, including store and dApp Store builds, runs on this machine (see [Building locally](#building-locally)).
+Requirements: Node 24 or later (`.nvmrc`), npm, and for native builds Xcode and the Android SDK (platform 36, JDK 17). There is no cloud build path: every build, including store and dApp Store builds, runs on this machine (see [Building locally](#building-locally)).
 
 ```sh
 git clone https://github.com/Noirwire/mobile-noirwire.git
