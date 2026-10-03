@@ -1,24 +1,37 @@
 version: 2
 updates:
+  # Minor and patch updates only, in one weekly pull request. A major version
+  # is a decision, not a routine bump, so those are raised by hand.
   - package-ecosystem: npm
-    directory: "/"
+    directory: /
     schedule:
       interval: weekly
-    open-pull-requests-limit: 5
     groups:
-      expo:
-        patterns: ["expo", "expo-*", "@expo/*", "jest-expo", "eslint-config-expo"]
-      react-native:
-        patterns: ["react-native", "react-native-*", "@react-native/*", "@react-native-community/*"]
-      solana:
-        patterns: ["@solana/*", "@scure/*", "ed25519-hd-key"]
-      tooling:
-        dependency-type: development
+      npm-dependencies:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - version-update:semver-major
+      # Versions the Expo SDK chooses; `npx expo install --fix` moves them.
+      - dependency-name: "expo"
+      - dependency-name: "expo-*"
+      - dependency-name: "react"
+      - dependency-name: "react-dom"
+      - dependency-name: "react-native"
+      - dependency-name: "react-native-*"
+      - dependency-name: "@react-native/*"
+      - dependency-name: "@noirwire/shared"
 
   - package-ecosystem: github-actions
-    directory: "/"
+    directory: /
     schedule:
       interval: weekly
     groups:
-      actions:
-        patterns: ["*"]
+      github-actions:
+        patterns:
+          - "*"

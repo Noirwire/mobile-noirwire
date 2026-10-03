@@ -29,12 +29,12 @@
 
 ## Platforms
 
-| Platform               | Distribution                                                 |
-| ---------------------- | ------------------------------------------------------------ |
-| iOS 16.4 or later      | App Store (production profile), internal builds for testers  |
-| Android 7.0 (API 24)+  | Google Play (production profile), APK for testers            |
-| Solana Seeker and Saga | Solana dApp Store, as a signed APK (`dapp-store` profile)    |
-| Web (browser export)   | Test target only. It runs the UI suite and is not a product. |
+| Platform               | Distribution                                                        |
+| ---------------------- | ------------------------------------------------------------------- |
+| iOS 16.4 or later      | App Store, archived and uploaded locally (`npm run ios:archive`)    |
+| Android 7.0 (API 24)+  | Google Play, an App Bundle built locally (`npm run android:bundle`) |
+| Solana Seeker and Saga | Solana dApp Store, as a signed APK (`npm run android:apk`)          |
+| Web (browser export)   | Test target only. It runs the UI suite and is not a product.        |
 
 The app uses native modules (`react-native-quick-crypto` among them), so it does not run in Expo Go. It needs a development build. Native builds have not yet been verified on physical devices.
 
@@ -45,7 +45,7 @@ TypeScript, React 19.2 and React Native 0.86 on Expo SDK 57, with Expo Router fo
 | Layer              | What it holds                                                                                                                                                                                                          |
 | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `@noirwire/shared` | The wallet core, shared with the web app: domain rules, application use cases, presentation view models and copy, design tokens, and the Solana infrastructure. It talks to the phone only through ports (`platform`). |
-| `src/platform/`    | The phone's adapters behind those ports, wired once by `install.ts` after the runtime checks pass.                                                                                                                     |
+| `src/platform/`    | The phone's adapters behind those ports, wired once by `install.ts` after the runtime checks pass. It also wires money once (`installMoney`): one pending-action store and one signing guard for every money screen.   |
 | `src/features/`    | Thin native renderers: each screen draws what a shared view model decides, plus the few rules and strings only a phone needs.                                                                                          |
 | `src/ui/`          | The design system: the web app's tokens under the same names, type, and the component kit.                                                                                                                             |
 | `app/`             | Expo Router routes. Each is a thin wrapper that wires navigation to a feature screen.                                                                                                                                  |
@@ -69,7 +69,7 @@ How it relates to the other NoirWire repositories:
 
 ## Quick start
 
-Requirements: Node 22 or later (`.nvmrc`), npm, and for native builds Xcode 26 or the Android SDK (platform 36, JDK 17), or an Expo account for cloud builds.
+Requirements: Node 22 or later (`.nvmrc`), npm, and for native builds Xcode and the Android SDK (platform 36, JDK 17). There is no cloud build path: every build, including store and dApp Store builds, runs on this machine (see [Building locally](#building-locally)).
 
 ```sh
 git clone https://github.com/Noirwire/mobile-noirwire.git
@@ -78,19 +78,20 @@ npm ci
 cp .env.example .env
 ```
 
-### Installing the shared package before its tag is published
+### The shared package
 
-`package.json` declares the shared package as a git tag of `Noirwire/shared-noirwire`. Until that tag is published, `npm install` and `npm ci` on a fresh clone fail on that one dependency. Until then, pack the shared repository checked out next to this one and install the tarball over the declared dependency, without changing `package.json`:
+`package.json` pins `@noirwire/shared` to the built package attached to a release of [shared-noirwire](https://github.com/Noirwire/shared-noirwire), so `npm ci` needs nothing else. Moving to a newer release means changing the version in that URL and running `npm install`.
 
-```sh
+To work against an unreleased version of the shared package:
+
+```bash
 # in ../shared-noirwire
-npm pack --pack-destination ../shared-pack
-
+npm run build && npm pack --pack-destination ../shared-pack
 # here
 npm install --no-save ../shared-pack/noirwire-shared-<version>.tgz
 ```
 
-Repeat both after every change to the shared package. `--no-save` keeps the git URL in `package.json`; never commit a tarball or `file:` path there. A symlinked folder (`npm install ../shared-noirwire`) does not work: Metro does not follow it and it brings a second copy of every library the two share.
+Repeat both after every change to the shared package. `--no-save` keeps the release URL in `package.json`; never commit a local tarball or a `file:` path there.
 
 ### Run it
 
@@ -100,7 +101,7 @@ npm run web            # the app in a browser, for a quick look
 npm start              # the bundler, for a development build on a phone
 ```
 
-To put a development build on a phone, build one with EAS (see [Build and release](#build-and-release)) or locally with `npx expo run:ios` / `npx expo run:android`. Both generate `ios/` and `android/` first; those folders are build output, ignored by git and recreated by `npx expo prebuild --clean`. Change native configuration in `app.config.ts`.
+To put a development build on a phone or simulator, see [Building locally](#building-locally): `npm run ios:sim`, `npm run android:debug`. Both generate `ios/` and `android/` first; those folders are build output, ignored by git and recreated by `npx expo prebuild --clean`. Change native configuration in `app.config.ts`.
 
 ### Environment
 
@@ -121,7 +122,7 @@ Every `EXPO_PUBLIC_` value is compiled into the app and readable by anyone who h
 | Expo doctor                 | Dependency versions against the SDK and the project configuration.                                                                                                                                                    | `npm run doctor`                    | Yes                          |
 | Web export                  | The app bundles for the web target.                                                                                                                                                                                   | `npm run export:web`                | Yes                          |
 | UI (Playwright, web export) | The critical journeys in Chromium at 390 x 844 against a static export, listed below.                                                                                                                                 | `npm run test:e2e`                  | Yes                          |
-| UI (Maestro, native)        | The same journeys on a real iOS or Android build.                                                                                                                                                                     | `maestro test .maestro/`            | No, needs a device or EAS    |
+| UI (Maestro, native)        | The same journeys on a real iOS or Android build.                                                                                                                                                                     | `maestro test .maestro/`            | No, needs a device           |
 
 ### UI tests on the web export
 
@@ -132,10 +133,10 @@ Journeys covered:
 - Create a wallet with the three-word phrase check, landing on an empty Home; a wrong word is refused.
 - Import a wallet from a recovery phrase through the source choice.
 - Unlock, a wrong password refused, lock, unlock again.
-- Home with a funded portfolio and USDC waiting in the funding wallet, then the portfolio.
+- Home with a funded portfolio, what it has in Earn and USDC waiting in the funding wallet, then the portfolio.
 - Markets, search, a tracker, its chart range, and a buy order's review priced from the quote.
 - Send to the wallet's own funding address: the review warns that it links the two and gates Send on it.
-- Fund privately: the review shows both fees and the total leaving the funding wallet.
+- Fund privately: a comma is read as the decimal separator, and the review shows both fees and the total leaving the funding wallet.
 - Earn: a deposit from a chosen portfolio reaches its review.
 - Settings reset: Delete stays disabled until RESET is typed, and the vault is empty afterwards.
 
@@ -143,41 +144,42 @@ Journeys covered:
 
 ### UI tests on a native build (Maestro)
 
-The flows in `.maestro/` drive the same journeys on a development or preview build with [Maestro](https://maestro.dev), matching the screens' accessibility labels. Install Maestro, install a build on a simulator, emulator or phone, then:
+The flows in `.maestro/` drive the same journeys on a locally built debug app with [Maestro](https://maestro.dev), matching the screens' accessibility labels. See [`.maestro/README.md`](.maestro/README.md) for the full setup and run instructions. The Maestro flows were written against labels verified in the web export and have not yet been run on a device.
+
+## Building locally
+
+Every build runs on this machine: no Expo account, no EAS, no cloud build of any kind. Native folders (`ios/`, `android/`) are generated by `expo prebuild` and never committed; each script below regenerates what it needs.
+
+| Script                   | Produces                                                                                                                                                         |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run ios:sim`        | A debug build on the iOS Simulator. No signing, no Apple team needed.                                                                                            |
+| `npm run android:debug`  | A debug build on a connected Android device or emulator.                                                                                                         |
+| `npm run android:apk`    | A signed, installable release APK (`android/app/build/outputs/apk/release/`) - sideload it on a phone or a Solana Seeker, or submit it to the Solana dApp Store. |
+| `npm run android:bundle` | A signed release Android App Bundle (`android/app/build/outputs/bundle/release/`) for Google Play.                                                               |
+| `npm run ios:device`     | A debug build installed on a connected, registered iPhone.                                                                                                       |
+| `npm run ios:archive`    | A release-configuration build, for an App Store archive. Open the generated Xcode project to finish the archive and upload to App Store Connect.                 |
+
+### Signing
+
+**Android.** A release build (`android:apk`, `android:bundle`) reads the keystore path and passwords from environment variables, wired into the generated Gradle project by `plugins/withAndroidReleaseSigning.js` (a config plugin, since `android/` is regenerated on every prebuild and a manual Gradle edit would not survive it):
+
+| Variable                             | Value                            |
+| ------------------------------------ | -------------------------------- |
+| `NOIRWIRE_ANDROID_KEYSTORE_PATH`     | Path to the upload keystore file |
+| `NOIRWIRE_ANDROID_KEYSTORE_PASSWORD` | Its store password               |
+| `NOIRWIRE_ANDROID_KEY_ALIAS`         | The key alias inside it          |
+| `NOIRWIRE_ANDROID_KEY_PASSWORD`      | The key's own password           |
+
+Create the upload keystore once, keep it outside git (a git-ignored `credentials/` folder is a reasonable place for it), and never let it leave this machine:
 
 ```sh
-maestro test .maestro/
+keytool -genkeypair -v -keystore credentials/noirwire-upload.keystore \
+  -alias noirwire-upload -keyalg RSA -keysize 2048 -validity 10000
 ```
 
-That runs the flows that need no money: create with the phrase check, a refused wrong word, import, lock and unlock, Markets to a tracker's buy sheet, and Settings reset. The flows in `.maestro/funded/` reach the trade, send (own-address warning), fund privately and Earn reviews, and need a wallet that already holds USDC in its funding wallet and in a portfolio. They stop at each review and never confirm:
+Without all four variables set, `assembleRelease` and `bundleRelease` fail immediately with a clear error - they never fall back to the debug key.
 
-```sh
-maestro test --include-tags funded \
-  -e FUNDED_PHRASE="<test wallet phrase>" -e FUNDING_ADDRESS="<its funding address>" \
-  -e PORTFOLIO="<its portfolio name>" .maestro/funded/
-```
-
-On EAS, build with the `e2e-test` profile and run the same command against the build as a Maestro step of an EAS Workflow. The Maestro flows were written against labels verified in the web export and have not yet been run on a device.
-
-## Build and release
-
-Builds run on EAS with the profiles in `eas.json`:
-
-| Profile              | Use                                                                                                       |
-| -------------------- | --------------------------------------------------------------------------------------------------------- |
-| `development`        | Development client for a simulator and an Android APK.                                                    |
-| `development-device` | Development client for a registered iPhone and an Android APK.                                            |
-| `preview`            | Internal distribution: installable iOS build for registered devices, Android APK.                         |
-| `e2e-test`           | Unsigned simulator build and APK for automated UI tests.                                                  |
-| `production`         | Store builds: App Store, and an Android App Bundle for Google Play. Build numbers increase automatically. |
-| `dapp-store`         | The production build as a signed APK, for the Solana dApp Store.                                          |
-
-`.github/workflows/eas-build.yml` runs the full CI first, then:
-
-- on a version tag (`git tag v0.2.0 && git push origin v0.2.0`): `eas build --platform all --profile production --non-interactive`;
-- on a manual run (Actions, EAS build, Run workflow): a `preview` build for the chosen platform.
-
-Both need the `EXPO_TOKEN` repository secret, an Expo access token. Without it the build job is skipped with a notice. The first build also needs `eas init` once, which adds the project id to the Expo configuration; commit what it adds. Submitting to the stores and to the Solana dApp Store is done by hand from the finished builds.
+**iOS.** `NOIRWIRE_APPLE_TEAM_ID` (your Apple Developer team's 10-character ID) feeds `ios.appleTeamId` in `app.config.ts`. `ios:device` and `ios:archive` both refuse to run without it, so Xcode can never silently sign with whichever team happens to be logged in. The simulator build (`ios:sim`) needs no team and no signing.
 
 ## Security
 
@@ -186,7 +188,7 @@ Report a vulnerability privately to **ph1l1ph@proton.me**, as described in [SECU
 What the code guarantees, and every change has to keep true:
 
 - **Keys never leave the device.** Nothing that can sign is sent anywhere.
-- **Addresses are secrets.** An address is never put in a route, a log, an analytics event or an error report. Route parameters carry portfolio ids and tracker symbols only, and anything shaped like an address is refused (`src/navigation/routeParams.ts`).
+- **Addresses are secrets.** An address is never put in a route, a log, an analytics event or an error report. Route parameters carry portfolio ids and tracker symbols only, written and read with the shared package's route helpers, which refuse anything shaped like an address.
 - **Costs are shown in USDC** before any action is confirmed.
 - **A broken runtime does not run a wallet** (`src/boot/`).
 
