@@ -2,42 +2,65 @@ import { inProcessLocks } from "@noirwire/shared/platform";
 import { fileNameFor, fileVault } from "./fileVault";
 import type { VaultFiles } from "./vaultFiles.types";
 
-type Operation = "prepare" | "read" | "write" | "rename" | "remove";
+type Operation = "prepare" | "exists" | "read" | "write" | "rename" | "remove";
 
-/** Files in memory, with a switch to make one operation throw, as a full or broken disk would. */
-function memoryFiles() {
-  const files = new Map<string, string>();
+/**
+ * Files in memory, with switches to make one operation throw (as a full or
+ * broken disk would), to let a rename take effect and still throw, and to
+ * stop the process dead after a number of changes to the disk.
+ */
+function memoryFiles(files = new Map<string, string>()) {
   const failing = new Set<string>();
+  const torn = new Set<string>();
+  let changesLeft = Infinity;
   const fail = (operation: Operation, name = "*") => {
+    if (changesLeft < 0) throw new Error("the process is gone");
     if (failing.has(operation) || failing.has(`${operation}:${name}`))
       throw new Error(`${operation} failed`);
+  };
+  const change = () => {
+    if (changesLeft-- <= 0) throw new Error("the process is gone");
   };
   const api: VaultFiles & {
     files: Map<string, string>;
     failOn(operation: Operation, name?: string): void;
+    tearRename(from: string): void;
+    crashAfter(changes: number): void;
     heal(): void;
   } = {
     files,
     failOn: (operation, name) => void failing.add(name ? `${operation}:${name}` : operation),
-    heal: () => failing.clear(),
+    tearRename: (from) => void torn.add(from),
+    crashAfter: (changes) => void (changesLeft = changes),
+    heal: () => {
+      failing.clear();
+      torn.clear();
+    },
     prepare: () => fail("prepare"),
-    exists: (name) => files.has(name),
+    exists(name) {
+      fail("exists", name);
+      return files.has(name);
+    },
     read(name) {
       fail("read", name);
       return files.get(name) ?? null;
     },
     write(name, content) {
       fail("write", name);
+      change();
       files.set(name, content);
     },
     rename(from, to) {
       fail("rename", from);
+      change();
       if (!files.has(from) || files.has(to)) throw new Error("rename refused");
       files.set(to, files.get(from)!);
       files.delete(from);
+      if (torn.has(from)) throw new Error("rename reported failure after renaming");
     },
     remove(name) {
       fail("remove", name);
+      change();
       files.delete(name);
     },
   };
@@ -113,15 +136,124 @@ describe("fileVault", () => {
     expect(files.files.has(`${NAME}.next`)).toBe(false);
   });
 
-  it("finishes a write that crashed after the old file was removed, never reading nothing", async () => {
+  it("reports a write whose last rename failed after the old file was removed as the new value", async () => {
+    const files = memoryFiles();
+    const vault = fileVault(files, inProcessLocks());
+    const heard: string[] = [];
+    vault.subscribe((key) => heard.push(key));
+    await vault.update(KEY, write("old"));
+    files.failOn("rename", `${NAME}.ready`);
+    expect(await vault.update(KEY, write("new"))).toEqual({ persisted: true, value: "new" });
+    expect(files.files.has(NAME)).toBe(false);
+    expect(heard).toEqual([KEY, KEY]);
+    files.heal();
+    expect(await vault.read(KEY)).toEqual({ ok: true, value: "new" });
+    expect(await fileVault(memoryFiles(files.files), inProcessLocks()).read(KEY)).toEqual({
+      ok: true,
+      value: "new",
+    });
+  });
+
+  it("reports the new value when the old file cannot be removed after the commit point", async () => {
+    const files = memoryFiles();
+    const vault = fileVault(files, inProcessLocks());
+    await vault.update(KEY, write("old"));
+    files.failOn("remove", NAME);
+    expect(await vault.update(KEY, write("new"))).toEqual({ persisted: true, value: "new" });
+    expect(await vault.read(KEY)).toEqual({ ok: false });
+    files.heal();
+    expect(await vault.read(KEY)).toEqual({ ok: true, value: "new" });
+  });
+
+  it("reports a failed staging rename and leaves no staged file a later read could promote", async () => {
+    const files = memoryFiles();
+    const vault = fileVault(files, inProcessLocks());
+    await vault.update(KEY, write("old"));
+    files.failOn("rename", `${NAME}.next`);
+    expect(await vault.update(KEY, write("new"))).toEqual({ persisted: false, reason: "failed" });
+    expect([...files.files.keys()]).toEqual([NAME]);
+    files.heal();
+    expect(await vault.read(KEY)).toEqual({ ok: true, value: "old" });
+  });
+
+  it("rolls back a staging rename that took effect but reported failure", async () => {
+    const files = memoryFiles();
+    const vault = fileVault(files, inProcessLocks());
+    await vault.update(KEY, write("old"));
+    files.tearRename(`${NAME}.next`);
+    expect(await vault.update(KEY, write("new"))).toEqual({ persisted: false, reason: "failed" });
+    expect([...files.files.keys()]).toEqual([NAME]);
+    files.heal();
+    expect(await vault.read(KEY)).toEqual({ ok: true, value: "old" });
+  });
+
+  it("reports the new value when a torn staging rename cannot be rolled back", async () => {
+    const files = memoryFiles();
+    const vault = fileVault(files, inProcessLocks());
+    await vault.update(KEY, write("old"));
+    files.tearRename(`${NAME}.next`);
+    files.failOn("remove", `${NAME}.ready`);
+    expect(await vault.update(KEY, write("new"))).toEqual({ persisted: true, value: "new" });
+    files.heal();
+    expect(await vault.read(KEY)).toEqual({ ok: true, value: "new" });
+  });
+
+  it("reports a failed removal as failed and keeps the old value", async () => {
+    const files = memoryFiles();
+    const vault = fileVault(files, inProcessLocks());
+    await vault.update(KEY, write("old"));
+    files.failOn("remove", NAME);
+    expect(await vault.update(KEY, write(null))).toEqual({ persisted: false, reason: "failed" });
+    files.heal();
+    expect(await vault.read(KEY)).toEqual({ ok: true, value: "old" });
+  });
+
+  it("reports what a fresh vault reads, whichever step a crash stops the write at", async () => {
+    const steps = ["recover", "write next", "stage ready", "remove live", "promote ready", "done"];
+    const outcomes = await Promise.all(
+      steps.map(async (_, changes) => {
+        const files = memoryFiles();
+        await fileVault(files, inProcessLocks()).update(KEY, write("old"));
+        files.crashAfter(changes);
+        const reported = await fileVault(files, inProcessLocks()).update(KEY, write("new"));
+        const reread = await fileVault(memoryFiles(files.files), inProcessLocks()).read(KEY);
+        return { reported: reported.persisted, reread };
+      }),
+    );
+    expect(outcomes).toEqual([
+      { reported: false, reread: { ok: true, value: "old" } },
+      { reported: false, reread: { ok: true, value: "old" } },
+      { reported: false, reread: { ok: true, value: "old" } },
+      { reported: true, reread: { ok: true, value: "new" } },
+      { reported: true, reread: { ok: true, value: "new" } },
+      { reported: true, reread: { ok: true, value: "new" } },
+    ]);
+  });
+
+  it("ends a crash during recovery in the new value, never nothing", async () => {
+    const files = memoryFiles();
+    files.files.set(NAME, "old");
+    files.files.set(`${NAME}.ready`, "new");
+    files.crashAfter(1);
+    expect(await fileVault(files, inProcessLocks()).read(KEY)).toEqual({ ok: false });
+    expect([...files.files.keys()]).toEqual([`${NAME}.ready`]);
+    const fresh = memoryFiles(files.files);
+    expect(await fileVault(fresh, inProcessLocks()).read(KEY)).toEqual({ ok: true, value: "new" });
+    expect([...fresh.files.keys()]).toEqual([NAME]);
+  });
+
+  it("reads back the same value after recovery as the update reported", async () => {
     const files = memoryFiles();
     const vault = fileVault(files, inProcessLocks());
     await vault.update(KEY, write("old"));
     files.failOn("rename", `${NAME}.ready`);
-    expect(await vault.update(KEY, write("new"))).toEqual({ persisted: false, reason: "failed" });
-    expect(files.files.has(NAME)).toBe(false);
+    const reported = await vault.update(KEY, write("new"));
     files.heal();
-    expect(await vault.read(KEY)).toEqual({ ok: true, value: "new" });
+    const first = await vault.read(KEY);
+    const second = await fileVault(memoryFiles(files.files), inProcessLocks()).read(KEY);
+    expect(reported).toEqual({ persisted: true, value: "new" });
+    expect(first).toEqual({ ok: true, value: "new" });
+    expect(second).toEqual(first);
   });
 
   it("reports an unreadable store as a failed read rather than throwing", async () => {
