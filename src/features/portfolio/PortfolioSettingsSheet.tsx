@@ -1,0 +1,84 @@
+import type { Portfolio } from "@noirwire/shared/domain";
+import { useState } from "react";
+import { StyleSheet, View } from "react-native";
+import { Button, Divider, Field, Notice, Sheet, Text } from "@/ui";
+import { lightHaptic } from "@/ui/haptics";
+import { fonts, layout } from "@/ui/theme";
+import { IconPicker } from "./IconPicker";
+import { IdentityLine } from "./IdentityLine";
+import { savePortfolioSettings, setArchived } from "./portfolioActions";
+import {
+  NAME_MAX,
+  draftChanged,
+  portfolioSettingsView,
+  settingsDraft,
+  type SettingsDraft,
+} from "./settingsView";
+import { useWalletSnapshot } from "./useWalletSnapshot";
+
+type PortfolioSettingsSheetProps = {
+  portfolioId: string;
+  open: boolean;
+  onClose: () => void;
+  pricesUpdatedAt: number | null;
+};
+
+/**
+ * Spec 2.17: rename a portfolio, change its mark, or archive it. Nothing here
+ * touches the network. A draft lives only while the sheet is open; closing
+ * it, or a lock, discards it.
+ */
+export function PortfolioSettingsSheet(props: PortfolioSettingsSheetProps) {
+  const wallet = useWalletSnapshot();
+  const portfolio = wallet?.portfolios.find((entry) => entry.id === props.portfolioId);
+  if (!props.open || !portfolio) return null;
+  return <OpenSettings {...props} portfolio={portfolio} />;
+}
+
+function OpenSettings({
+  portfolio,
+  onClose,
+  pricesUpdatedAt,
+}: PortfolioSettingsSheetProps & { portfolio: Portfolio }) {
+  const [draft, setDraft] = useState<SettingsDraft>(() => settingsDraft(portfolio));
+  const view = portfolioSettingsView(portfolio, draft, pricesUpdatedAt);
+
+  function save() {
+    lightHaptic();
+    void savePortfolioSettings(portfolio.id, draft.name, draft.icon);
+    onClose();
+  }
+
+  function toggleArchived() {
+    lightHaptic();
+    void setArchived(portfolio.id, !view.archived);
+    onClose();
+  }
+
+  return (
+    <Sheet open onClose={onClose} title={view.title} dirty={draftChanged(portfolio, draft)}>
+      <IdentityLine tint={draft.icon.tint} />
+      <Field
+        label={view.nameLabel}
+        value={draft.name}
+        maxLength={NAME_MAX}
+        onChangeText={(name) => setDraft({ ...draft, name })}
+        autoCapitalize="sentences"
+      />
+      <IconPicker value={draft.icon} onChange={(icon) => setDraft({ ...draft, icon })} />
+      <Button label={view.save} disabled={!view.canSave} onPress={save} />
+      <Divider />
+      <View style={styles.archive}>
+        <Text style={styles.title}>{view.sectionTitle}</Text>
+        <Text variant="note">{view.sectionLead}</Text>
+      </View>
+      {view.stillHolds && <Notice>{view.stillHolds}</Notice>}
+      <Button variant="quiet" label={view.toggle} onPress={toggleArchived} />
+    </Sheet>
+  );
+}
+
+const styles = StyleSheet.create({
+  archive: { gap: layout.hairline },
+  title: { fontFamily: fonts.medium },
+});

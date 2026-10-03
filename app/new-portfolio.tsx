@@ -1,11 +1,16 @@
-import { Placeholder } from "@/navigation/Placeholder";
+import { useRouter } from "expo-router";
+import { NewPortfolioSheet } from "@/features/portfolio/NewPortfolioSheet";
+import { SheetRoute } from "@/features/portfolio/routeOptions";
 
 export default function NewPortfolio() {
+  const router = useRouter();
   return (
-    <Placeholder
-      title="New portfolio"
-      detail="A portfolio will be named and given its mark here."
-      underHeader
-    />
+    <>
+      <SheetRoute />
+      <NewPortfolioSheet
+        onClose={() => router.back()}
+        onCreated={(id) => router.push({ pathname: "/portfolio/[id]", params: { id } })}
+      />
+    </>
   );
 }
