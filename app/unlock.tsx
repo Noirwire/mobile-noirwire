@@ -1,7 +1,7 @@
-import { Placeholder } from "@/navigation/Placeholder";
+import { useRouter } from "expo-router";
+import { UnlockScreen } from "@/features/unlock/UnlockScreen";
 
 export default function Unlock() {
-  return (
-    <Placeholder title="Unlock" detail="The wallet will be unlocked with its password here." />
-  );
+  const router = useRouter();
+  return <UnlockScreen onReset={() => router.push("/reset")} />;
 }

@@ -17,6 +17,8 @@ type ButtonProps = Omit<PressableProps, "children" | "style"> & {
   label: string;
   variant?: ButtonVariant;
   loading?: boolean;
+  /** Shown beside the spinner while loading, such as "Encrypting...". The button keeps its width. */
+  loadingLabel?: string;
   style?: ViewStyle;
 };
 
@@ -36,6 +38,7 @@ export function Button({
   label,
   variant = "primary",
   loading = false,
+  loadingLabel,
   disabled,
   onPress,
   style,
@@ -53,7 +56,7 @@ export function Button({
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={label}
+      accessibilityLabel={loading && loadingLabel ? loadingLabel : label}
       accessibilityState={{ disabled: !!inert, busy: loading }}
       disabled={inert}
       onPress={press}
@@ -69,7 +72,14 @@ export function Button({
     >
       {({ pressed }) =>
         loading ? (
-          <ActivityIndicator color={colors[LABEL_TONE[variant]]} />
+          <>
+            <ActivityIndicator color={colors[LABEL_TONE[variant]]} />
+            {loadingLabel !== undefined && (
+              <Text tone={LABEL_TONE[variant]} style={styles.label} numberOfLines={1}>
+                {loadingLabel}
+              </Text>
+            )}
+          </>
         ) : (
           <Text
             tone={pressed ? PRESSED_LABEL_TONE[variant] : LABEL_TONE[variant]}

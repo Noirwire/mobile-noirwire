@@ -8,18 +8,33 @@ import { failedRuntimeChecks } from "./runtimeChecks";
  * runtime with broken randomness or encryption would lose money quietly, so a
  * failure stops everything and says what failed.
  */
-export function RuntimeGate({ children }: { children: ReactNode }) {
+type RuntimeGateProps = {
+  children: ReactNode;
+  /** Runs once the checks pass, before anything else renders. A throw stops the app like a failed check. */
+  prepare?: () => Promise<unknown>;
+};
+
+/** What a failed `prepare` is listed as on the failure screen. */
+export const PREPARE_FAILURE = "App configuration";
+
+export function RuntimeGate({ children, prepare }: RuntimeGateProps) {
   const [failures, setFailures] = useState<string[] | null>(null);
 
   useEffect(() => {
     let current = true;
-    failedRuntimeChecks().then((failed) => {
-      if (current) setFailures(failed);
-    });
+    failedRuntimeChecks()
+      .then(async (failed) => {
+        if (failed.length === 0 && prepare) await prepare();
+        return failed;
+      })
+      .catch(() => [PREPARE_FAILURE])
+      .then((failed) => {
+        if (current) setFailures(failed);
+      });
     return () => {
       current = false;
     };
-  }, []);
+  }, [prepare]);
 
   if (failures === null) return <View style={styles.blank} />;
   if (failures.length > 0) return <RuntimeFailure failures={failures} />;

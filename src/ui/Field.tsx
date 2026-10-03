@@ -1,6 +1,6 @@
 import { EyeIcon } from "phosphor-react-native/src/icons/Eye";
 import { EyeSlashIcon } from "phosphor-react-native/src/icons/EyeSlash";
-import { useState } from "react";
+import { useState, type Ref } from "react";
 import { StyleSheet, TextInput, View, type TextInputProps } from "react-native";
 import { IconButton } from "./IconButton";
 import { Text } from "./Text";
@@ -12,10 +12,30 @@ type FieldProps = Omit<TextInputProps, "style" | "secureTextEntry"> & {
   error?: string;
   /** Hides what is typed and adds a control to reveal it. */
   secure?: boolean;
+  /** Whether a secure field shows what is typed, for a screen that controls it. */
+  revealed?: boolean;
+  onRevealedChange?: (revealed: boolean) => void;
+  /** The reveal control's names; by default "Show" and "Hide" followed by the label. */
+  revealLabels?: { show: string; hide: string };
+  ref?: Ref<TextInput>;
 };
 
-export function Field({ label, error, secure = false, ...input }: FieldProps) {
-  const [revealed, setRevealed] = useState(false);
+export function Field({
+  label,
+  error,
+  secure = false,
+  revealed: controlledRevealed,
+  onRevealedChange,
+  revealLabels = { show: `Show ${label}`, hide: `Hide ${label}` },
+  ref,
+  ...input
+}: FieldProps) {
+  const [ownRevealed, setOwnRevealed] = useState(false);
+  const revealed = controlledRevealed ?? ownRevealed;
+  const setRevealed = (next: boolean) => {
+    setOwnRevealed(next);
+    onRevealedChange?.(next);
+  };
   const VisibilityIcon = revealed ? EyeSlashIcon : EyeIcon;
 
   return (
@@ -23,6 +43,7 @@ export function Field({ label, error, secure = false, ...input }: FieldProps) {
       <Text variant="label">{label}</Text>
       <View style={[styles.box, error !== undefined && styles.boxInvalid]}>
         <TextInput
+          ref={ref}
           accessibilityLabel={label}
           accessibilityHint={error}
           aria-invalid={error !== undefined}
@@ -38,8 +59,8 @@ export function Field({ label, error, secure = false, ...input }: FieldProps) {
         />
         {secure && (
           <IconButton
-            label={revealed ? `Hide ${label}` : `Show ${label}`}
-            onPress={() => setRevealed((shown) => !shown)}
+            label={revealed ? revealLabels.hide : revealLabels.show}
+            onPress={() => setRevealed(!revealed)}
           >
             <VisibilityIcon size={size.icon} color={colors.dim} />
           </IconButton>

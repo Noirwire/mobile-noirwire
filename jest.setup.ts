@@ -8,14 +8,17 @@ jest.mock("react-native-keyboard-controller", () =>
 );
 
 jest.mock("expo-haptics", () => ({
-  ImpactFeedbackStyle: { Light: "light" },
+  ImpactFeedbackStyle: { Light: "light", Heavy: "heavy" },
+  NotificationFeedbackType: { Success: "success", Warning: "warning", Error: "error" },
   impactAsync: jest.fn(() => Promise.resolve()),
+  notificationAsync: jest.fn(() => Promise.resolve()),
   selectionAsync: jest.fn(() => Promise.resolve()),
 }));
 
 jest.mock("expo-screen-capture", () => ({
   preventScreenCaptureAsync: jest.fn(() => Promise.resolve()),
   allowScreenCaptureAsync: jest.fn(() => Promise.resolve()),
+  addScreenshotListener: jest.fn(() => ({ remove: jest.fn() })),
 }));
 
 setUpTests();

@@ -1,12 +1,18 @@
 import { useFonts } from "expo-font";
-import { Stack } from "expo-router";
+import { Stack, usePathname } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import { useEffect, useMemo } from "react";
 import { StyleSheet, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { RuntimeGate } from "@/boot/RuntimeGate";
+import { deviceServices, ServicesProvider } from "@/features/services";
 import { stackScreenOptions } from "@/navigation/stackOptions";
+import { WalletGate } from "@/navigation/WalletGate";
+import { ActivityCapture } from "@/platform/ActivityCapture";
+import { installedPlatform, installMobilePlatform, noteScreen } from "@/platform/install";
+import { PrivacyCover } from "@/platform/PrivacyCover";
 import { colors } from "@/ui/theme";
 import { fontAssets } from "@/ui/typography";
 
@@ -24,7 +30,7 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={styles.root}>
       <StatusBar style="light" />
-      <RuntimeGate>
+      <RuntimeGate prepare={installMobilePlatform}>
         <SafeAreaProvider>
           <KeyboardProvider>
             <Routes />
@@ -38,21 +44,34 @@ export default function RootLayout() {
 function Routes() {
   // A font that fails to load falls back to the system face; the app still opens.
   const [fontsLoaded, fontError] = useFonts(fontAssets);
+  const installed = installedPlatform();
+  const services = useMemo(() => deviceServices(installed), [installed]);
+  const pathname = usePathname();
+  useEffect(() => noteScreen(pathname), [pathname]);
+
   if (!fontsLoaded && !fontError) return <View style={styles.root} />;
 
   return (
-    <Stack screenOptions={stackScreenOptions}>
-      <Stack.Screen name="index" options={{ headerShown: false }} />
-      <Stack.Screen name="(onboarding)" options={{ headerShown: false }} />
-      <Stack.Screen name="unlock" options={{ headerShown: false }} />
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      <Stack.Screen name="portfolio/[id]" options={{ title: "Portfolio" }} />
-      <Stack.Screen name="markets/[symbol]" options={{ title: "Tracker" }} />
-      {MODALS.map(({ name, title }) => (
-        <Stack.Screen key={name} name={name} options={{ title, presentation: "modal" }} />
-      ))}
-      <Stack.Screen name="dev/ui" options={{ title: "UI kit" }} />
-    </Stack>
+    <ServicesProvider services={services}>
+      <ActivityCapture onInput={installed.activity.noteInput}>
+        <WalletGate>
+          <Stack screenOptions={stackScreenOptions}>
+            <Stack.Screen name="(onboarding)" options={{ headerShown: false }} />
+            <Stack.Screen name="(visitor)" options={{ headerShown: false }} />
+            <Stack.Screen name="unlock" options={{ headerShown: false, gestureEnabled: false }} />
+            <Stack.Screen name="reset" options={{ title: "", gestureEnabled: false }} />
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="portfolio/[id]" options={{ title: "Portfolio" }} />
+            <Stack.Screen name="markets/[symbol]" options={{ title: "Tracker" }} />
+            {MODALS.map(({ name, title }) => (
+              <Stack.Screen key={name} name={name} options={{ title, presentation: "modal" }} />
+            ))}
+            <Stack.Screen name="dev/ui" options={{ title: "UI kit" }} />
+          </Stack>
+        </WalletGate>
+        <PrivacyCover />
+      </ActivityCapture>
+    </ServicesProvider>
   );
 }
 

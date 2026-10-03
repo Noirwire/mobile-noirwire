@@ -2,7 +2,7 @@
 
 NoirWire for iOS and Android. NoirWire is a non-custodial Solana wallet that organises money into purpose-based private portfolios of crypto and trackers (tokenized stocks). This repository is the React Native app, built with Expo. It shares its visual language with the NoirWire web app and will share its wallet logic through a common package.
 
-This is the foundation: the project, its runtime checks, the navigation skeleton and the UI kit. The screens themselves are placeholders. See [What is not built yet](#what-is-not-built-yet).
+The wallet logic comes from the shared package `@noirwire/shared`; this app supplies what only a phone can (storage, biometrics, capture protection, activity for the idle lock, analytics transport) and draws what the shared view models and copy decide. Onboarding, unlock and the security settings are built; the money screens are still placeholders. See [What is not built yet](#what-is-not-built-yet).
 
 ## Guarantees
 
@@ -34,6 +34,22 @@ Install dependencies and create your environment file:
 npm install
 cp .env.example .env
 ```
+
+### Working against an unreleased shared version
+
+`package.json` declares the shared package as `github:Noirwire/shared-noirwire#v0.2.0`. Until that repository and tag are published, `npm install` and `npm ci` on a fresh clone fail on that one dependency, and that is the only reason a fresh clone cannot install today. Until then, pack the shared repository checked out next to this one and install the tarball over the declared dependency, without changing `package.json`:
+
+```sh
+# in ../shared-noirwire
+npm pack --pack-destination ../shared-pack
+
+# here
+npm install --no-save ../shared-pack/noirwire-shared-0.2.0.tgz
+```
+
+Repeat both after every change to the shared package. `--no-save` keeps the git URL in `package.json`; never commit a tarball or `file:` path there. A symlinked folder (`npm install ../shared-noirwire`) does not work: Metro does not follow it and it brings a second copy of every library the two share.
+
+Once the tag is published, install normally and allow the package's build script once, as the shared README describes: `npm install-scripts approve @noirwire/shared`.
 
 ### On a device or simulator, with EAS
 
@@ -84,7 +100,7 @@ The web build exists for browser tests. It is not a product.
 | `EXPO_PUBLIC_RELAY_URL`      | Base URL of the NoirWire relay the app talks to. |
 | `EXPO_PUBLIC_SOLANA_NETWORK` | Solana network to use, for example `devnet`.     |
 
-Every `EXPO_PUBLIC_` value is compiled into the app and readable by anyone who has it. Nothing secret belongs in them. Nothing reads either variable yet.
+Every `EXPO_PUBLIC_` value is compiled into the app and readable by anyone who has it. Nothing secret belongs in them. Both are checked at start (`src/platform/env.ts`): the network must be `mainnet` or `devnet`, and the relay URL an https origin with no path (plain http only to `localhost`, `127.0.0.1` or the Android emulator's `10.0.2.2`). A bad value stops the app on the runtime failure screen rather than at a first request. Every request goes to a relay route under that origin and carries the header `X-NoirWire-Client: mobile/<app version>`.
 
 ## Scripts
 
@@ -107,24 +123,48 @@ Every `EXPO_PUBLIC_` value is compiled into the app and readable by anyone who h
 index.js              Entry: loads the polyfill, then the router
 polyfill.js           Native crypto and the one Buffer implementation
 polyfill.web.js       The same Buffer for the browser build
-app.config.ts         Expo configuration (name, identifiers, icons, permissions, native build settings)
+app.config.ts         Expo configuration (name, identifiers, icons, permissions, native build settings, Android backup off)
 eas.json              Build profiles
 assets/               App icon, Android adaptive icon, splash mark, favicon (from the raven mark)
-app/                  Routes (Expo Router, one file per screen)
-  (onboarding)/       welcome, create, import, set-password
-  (tabs)/             Home, Markets, Earn, Activity, Settings
+app/                  Routes (Expo Router), each a thin wrapper that wires navigation to a feature screen
+  (onboarding)/       welcome, create (the phrase), confirm, import, import-source, import-result,
+                      set-password, biometric
+  (visitor)/          look-around (read-only Markets before a wallet exists)
+  (tabs)/             Home, Markets, Earn, Activity, and the Settings stack
+  (tabs)/settings/    recovery-phrase, password, privacy, risks, about, reset
+  unlock, reset       The lock gate and the reset reachable from it
   portfolio/[id]      A portfolio
   markets/[symbol]    A tracker
   trade, send, ...    Modal routes
-  unlock              Unlock
   dev/ui              The UI kit gallery (development builds only)
+modules/
+  backup-exclusion/   A local Expo module (iOS) that sets the do-not-backup flag on the vault's directory
 src/
   boot/               Runtime checks and the screen shown when one fails
-  navigation/         Shared route pieces: placeholder, header options, parameter guard
+  platform/           The adapters behind the shared package's ports, and install.ts that wires them
+  features/           Screens and the mobile-only rules and strings they need, by feature
+  navigation/         Route pieces: the wallet gate, placeholder, header options, parameter guard
   ui/                 The design system: tokens, type, components
   dev/                The gallery behind /dev/ui
   types/              Type declarations for third-party modules
 ```
+
+### The platform adapters
+
+`src/platform/install.ts` runs once, in the root layout, right after the runtime checks pass. It calls the shared `assertRuntime()`, then `installPlatform()` and `configureHttp()` with:
+
+| Port        | Adapter                                                                                                                                                                                                                                                                                                                                        |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `vault`     | `fileVault.ts`: one file per key in `<documents>/vault/`. A write goes to `.next`, is renamed to `.ready`, then replaces the live file; the step before every read and write finishes or discards what a crash left, so a reader never sees half a record. Updates of a key run under the lock for it. Subscribers hear this process's writes. |
+| `locks`     | The shared `inProcessLocks()`: a phone has one process and no tabs.                                                                                                                                                                                                                                                                            |
+| `activity`  | `activity.ts`: a return to the foreground, and every touch through the root `ActivityCapture`. The shared store's idle lock counts from these.                                                                                                                                                                                                 |
+| `track`     | `track.ts`: the shared closed event list, posted to the relay's `/api/event` with the client header, only while Usage analytics is on; events that coincide with a transaction wait a random 1 to 10 minutes, as on the web.                                                                                                                   |
+| `env`       | `env.ts`: the build settings above, through the shared `envFrom`.                                                                                                                                                                                                                                                                              |
+| HTTP config | `httpConfig.ts`: `baseUrl` is the relay URL, every request carries `X-NoirWire-Client`.                                                                                                                                                                                                                                                        |
+| Biometrics  | `biometricKeystore.ts`: the vault key, and nothing else, in the Keychain or Keystore behind biometric access control, on this device only, destroyed by the system when the enrolment changes.                                                                                                                                                 |
+| Preferences | `preferences.ts`: the analytics choice and the biometric setting, each under its own vault key, outside the encrypted record.                                                                                                                                                                                                                  |
+
+The vault directory carries the iOS do-not-backup flag, set by the local module in `modules/backup-exclusion` and read back to confirm it held; if it cannot be set, the vault refuses to store anything. Android backups are off for the whole app (`allowBackup: false`). The browser build keeps the same files in local storage (`vaultFiles.web.ts`), for browser tests only.
 
 ### The design system
 
@@ -145,6 +185,8 @@ The kit:
 | Notice, Panel, Row, Divider              | Inline messages, review tables and separators.                                                                                                                                       |
 | Acknowledge                              | A labelled checkbox that gates a primary action.                                                                                                                                     |
 | Switch                                   | An on or off setting as one row, using the platform's switch.                                                                                                                        |
+| ListRow                                  | One settings row: label, caption, value and a chevron when it leads somewhere; one control to a screen reader.                                                                       |
+| ChoicePanel                              | One option of a single choice that needs a few lines to explain itself, read as one radio button.                                                                                    |
 | Stepper                                  | Minus, a numeric field and plus for a whole percent, with press-and-hold repeat; one adjustable control to a screen reader.                                                          |
 | PieRing                                  | A pie's ring by weight; against a current mix it marks where each target slice begins.                                                                                               |
 | StepList                                 | Progress through named steps: waiting, current, done, failed, not done.                                                                                                              |
@@ -168,19 +210,19 @@ Two things to know when adding to the kit:
 npm test
 ```
 
-Jest with `jest-expo` and React Native Testing Library. Tests sit beside the code they cover. The suite covers the chart path, pie ring and signature arc maths, money and change formatting (the web app's own cases), the runtime checks against stubbed runtimes, the route parameter guard, and every component with behaviour: roles and states, the Sheet's dismissal rules, the Stepper's bounds and repeat, Acknowledge gating, the phrase clipboard clearing after 30 seconds, and the Scanner with the camera module mocked, including a refused permission.
+Jest with `jest-expo` and React Native Testing Library. Tests sit beside the code they cover. Screen tests run the real shared wallet store over the shared in-memory vault (`@noirwire/shared/testing`), with real key derivation, so a password that encrypts in a test encrypts on a phone; `src/features/testServices.tsx` provides them. `src/platform/recordRoundTrip.test.ts` seals a wallet with the shared keystore under Node and opens it through the file vault on a real disk.
+
+The shared package and the Solana libraries ship ES modules, so `jest.config.js` lets the transformer read them, transforms their `.mjs` builds, turns the shared package's dynamic imports into requires (`jest/dynamicImportToRequire.js`), and maps `rpc-websockets`, whose exports map offers nothing the React Native test environment asks for. The suite covers the chart path, pie ring and signature arc maths, money and change formatting (the web app's own cases), the runtime checks against stubbed runtimes, the route parameter guard, and every component with behaviour: roles and states, the Sheet's dismissal rules, the Stepper's bounds and repeat, Acknowledge gating, the phrase clipboard clearing after 30 seconds, and the Scanner with the camera module mocked, including a refused permission.
 
 CI (`.github/workflows/ci.yml`) runs type check, lint, format check and tests on every pull request.
 
 ## What is not built yet
 
-- **Every screen is a placeholder.** Each route below exists, is reachable and shows an empty state that says what will go there. None of them does anything: welcome (which links to create and import), create, import, set-password, unlock, Home, Markets, Earn, Activity, Settings, portfolio, tracker, trade, send, receive, fund, new portfolio, pie builder and pie order.
-- **There is no wallet.** No key generation, no storage, no unlocking, no network access, no prices. The app always opens on the welcome screen.
-- **The native crypto module is linked but unused.** It is installed and checked at start; nothing else calls it yet.
-- **Native modules are installed for the first build, and only the kit uses them.** The camera (Scanner), clipboard (PhraseGrid's Copy and the Scanner's paste) and screen capture protection (PhraseGrid) are used by components that no screen shows yet. Biometric unlock (`expo-local-authentication`) and the keystore (`expo-secure-store`) are installed and configured, with their permission text, and nothing calls them.
-- **The Home signature exists only as a component.** `BalanceHeader` and its arc are in the gallery; Home itself is still a placeholder.
-- **No native build has been verified.** The native projects generate cleanly with every permission in place, and the app runs in a browser. It has not yet been compiled for or run on iOS or Android, so the runtime checks, haptics, the sheet's pull to dismiss and its keyboard avoidance, camera scanning and capture protection have not been seen working on a device.
-- **No end-to-end tests,** no analytics, no crash reporting.
+- **The money screens are placeholders.** Home (beyond its lock button), Markets, Earn, Activity, portfolio, tracker, trade, send, receive, fund, new portfolio, pie builder and pie order show an empty state. "Look around first" opens a read-only placeholder in place of the visitor's Markets.
+- **Biometric unlock is built and switched off.** The keystore adapter, the onboarding offer, the Settings switch and the Unlock prompt exist and are tested, but they stay hidden on every device until the shared wallet store can hand out the raw vault key and unlock with it (`src/features/biometric/vaultKeyAccess.ts` says what is missing).
+- **Not built from the spec yet:** the network gate (2.0), the offline banner (3.5), the Home offer to turn biometric unlock back on, Settings' funding wallet row and page (2.31), About's tracker list date, Terms, Privacy policy and open-source licences, the Android back-button rules for a busy import, settling pending actions after unlock (no money action exists yet), and holding a deep link across Unlock.
+- **No native build has been verified.** The iOS bundle compiles (`npx expo export --platform ios`) and the app runs in a browser. It has not yet been compiled for or run on iOS or Android, so the backup exclusion module, biometrics, the keystore, haptics, the sheet's pull to dismiss and its keyboard avoidance, camera scanning and capture protection have not been seen working on a device.
+- **No end-to-end test suite** in the repository, and no crash reporting.
 
 ## Release profiles
 
