@@ -1,8 +1,10 @@
 import Constants from "expo-constants";
 import * as LocalAuthentication from "expo-local-authentication";
 import * as SecureStore from "expo-secure-store";
+import { processLocks } from "@noirwire/shared/application";
 import { configureHttp } from "@noirwire/shared/infrastructure";
 import { assertRuntime, inProcessLocks, installPlatform } from "@noirwire/shared/platform";
+import { installMoney, type Money } from "@noirwire/shared/wallet";
 import { AppState, Platform } from "react-native";
 import { appActivity, type AppActivity } from "./activity";
 import { biometricKeystore, type BiometricKeystore } from "./biometricKeystore";
@@ -17,9 +19,12 @@ export type Installed = {
   activity: AppActivity;
   preferences: Preferences;
   biometrics: BiometricKeystore;
+  /** The one money wiring: every money screen reads it through the Money context. */
+  money: Money;
 };
 
 let installed: Installed | null = null;
+let installing: Promise<Installed> | null = null;
 let currentScreen = "/";
 
 /** Called by the root layout on every route change, so events are counted against the screen they came from. */
@@ -36,9 +41,22 @@ export function installedPlatform(): Installed {
  * Wires this app into the shared package, once, after the runtime checks
  * pass and before any screen reads the wallet. Throws on a runtime or build
  * setting the wallet must not run with.
+ *
+ * Concurrent and repeated callers (e.g. two boot paths racing) share a single
+ * in-flight installation instead of each running their own: a second
+ * `installMoney()` call throws because the wiring already exists. A failed
+ * attempt clears the cache so the next call retries from scratch.
  */
 export async function installMobilePlatform(): Promise<Installed> {
   if (installed) return installed;
+  if (installing) return installing;
+  installing = runInstall().finally(() => {
+    installing = null;
+  });
+  return installing;
+}
+
+async function runInstall(): Promise<Installed> {
   assertRuntime();
   const { env, relayUrl } = mobileEnv(buildSettings());
   const http = mobileHttpConfig(relayUrl, Constants.expoConfig?.version ?? "0.0.0");
@@ -62,9 +80,11 @@ export async function installMobilePlatform(): Promise<Installed> {
       random: Math.random,
     }),
   });
+  const money = installMoney(processLocks());
   await preferences.load();
 
   installed = {
+    money,
     activity,
     preferences,
     biometrics: biometricKeystore({
