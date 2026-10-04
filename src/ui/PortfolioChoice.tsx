@@ -7,8 +7,8 @@ import { colors, layout, opacity, radius, size } from "./theme";
 
 type PortfolioChoiceProps = {
   name: string;
-  /** What it holds that matters to this choice, such as "312.40 USDC cash". */
-  detail: string;
+  /** What it holds that matters to this choice, such as "312.40 USDC cash". Null draws nothing. */
+  detail: string | null;
   glyph?: IdentityGlyph;
   tint?: IdentityTint;
   selected: boolean;
@@ -30,7 +30,7 @@ export function PortfolioChoice({
   return (
     <Pressable
       accessibilityRole="radio"
-      accessibilityLabel={`${name}, ${detail}`}
+      accessibilityLabel={detail === null ? name : `${name}, ${detail}`}
       accessibilityState={{ selected, checked: selected }}
       onPress={() => {
         selectionHaptic();
@@ -42,9 +42,11 @@ export function PortfolioChoice({
       <View style={styles.copy}>
         <Text numberOfLines={1}>{name}</Text>
       </View>
-      <Text tone="dim" style={styles.detail}>
-        {detail}
-      </Text>
+      {detail !== null && (
+        <Text tone="dim" style={styles.detail}>
+          {detail}
+        </Text>
+      )}
     </Pressable>
   );
 }

@@ -50,6 +50,7 @@ import { errorHaptic, heavyHaptic, successHaptic, warningHaptic } from "@/ui/hap
 import { fonts, layout } from "@/ui/theme";
 import type { MoneyTarget } from "@/navigation/moneyRoutes";
 import { useLivePrices } from "../markets/useMarketData";
+import { useBalanceFreshness } from "../network/balanceFreshness";
 import { useWalletSnapshot } from "../network/useWalletSnapshot";
 import { ActionOverdue } from "../network/ActionOverdue";
 import { assetDecimals } from "../network/decimals";
@@ -88,7 +89,10 @@ export function TradeSheet({
   const online = useServices().useOnline();
   const wallet = useWalletSnapshot();
   const { updatedAt } = useLivePrices();
-  const choices = wallet ? portfolioChoices(screenReads, wallet, side, initialSymbol) : [];
+  const balances = useBalanceFreshness();
+  const choices = wallet
+    ? portfolioChoices(screenReads, wallet, side, initialSymbol, balances)
+    : [];
   const preselected = initialPortfolio ?? (choices.length === 1 ? choices[0].id : null);
   // A pie is steered toward its mix, so one whose mix leaves this tracker out
   // is never the choice made for the person: they can still pick it.
@@ -178,6 +182,7 @@ export function TradeSheet({
     cash,
     displayLive,
     quoting,
+    balances,
   });
   const floor = amountFloor({
     dollars: draft.value,
@@ -331,7 +336,12 @@ export function TradeSheet({
   const choosing = step === "portfolio" || step === "tracker" || step === "amount";
   const noMoney =
     side === "buy" && choosing
-      ? noMoneyView(screenReads, wallet, step === "portfolio" ? initialPortfolio : portfolioId)
+      ? noMoneyView(
+          screenReads,
+          wallet,
+          step === "portfolio" ? initialPortfolio : portfolioId,
+          balances,
+        )
       : null;
 
   let body: React.ReactNode = null;
@@ -351,7 +361,7 @@ export function TradeSheet({
           <ChoicePanel
             key={choice.id}
             title={choice.label}
-            captions={[{ text: choice.caption, tone: "dim" }]}
+            captions={choice.caption === null ? [] : [{ text: choice.caption, tone: "dim" }]}
             selected={choice.id === chosen?.id}
             onSelect={() => setPortfolioId(choice.id)}
           />
@@ -421,7 +431,7 @@ export function TradeSheet({
             />
           </View>
         )}
-        <Text tone="dim">{form.available}</Text>
+        {form.available !== null && <Text tone="dim">{form.available}</Text>}
         <Text tone="dim">{form.estimate}</Text>
         {form.tooPrecise && (
           <Text variant="note" tone="danger" accessibilityRole="alert">

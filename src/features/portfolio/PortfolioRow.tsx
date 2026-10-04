@@ -26,13 +26,15 @@ export function PortfolioRow({ row, onPress, dimmed = false, trailing }: Portfol
         <IdentityMark glyph={row.icon.glyph} tint={row.icon.tint} size="lg" />
         <View style={styles.copy}>
           <Text numberOfLines={1}>{row.name}</Text>
-          <Text variant="faint" numberOfLines={2}>
-            {row.line}
-          </Text>
+          {row.line !== null && (
+            <Text variant="faint" numberOfLines={2}>
+              {row.line}
+            </Text>
+          )}
         </View>
         {trailing === undefined && (
           <View style={styles.figures}>
-            <Text style={styles.figure}>{row.value}</Text>
+            {row.value !== null && <Text style={styles.figure}>{row.value}</Text>}
             {row.change && (
               <Text variant="faint" tone={row.change.tone} style={styles.figure}>
                 {row.change.text}

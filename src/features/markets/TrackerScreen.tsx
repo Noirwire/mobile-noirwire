@@ -1,6 +1,10 @@
-import { mobileMarketsCopy } from "@noirwire/shared/copy";
-import { PRICE_RANGES, type PriceRange } from "@noirwire/shared/domain";
-import { chartReadout, trackerView, type TrackerAction } from "@noirwire/shared/presentation";
+import { NEVER_READ, PRICE_RANGES, type PriceRange } from "@noirwire/shared/domain";
+import {
+  chartHint,
+  chartReadout,
+  trackerView,
+  type TrackerAction,
+} from "@noirwire/shared/presentation";
 import { screenReads } from "@noirwire/shared/wallet";
 import { StarIcon } from "phosphor-react-native/src/icons/Star";
 import { useCallback, useState } from "react";
@@ -22,10 +26,13 @@ import {
   WaitingPlaceholder,
 } from "@/ui";
 import { selectionHaptic } from "@/ui/haptics";
+import { RetryLine } from "@/ui/RetryLine";
 import { colors, fonts, layout, size } from "@/ui/theme";
 import { TrackerMark } from "@/ui/TrackerMark";
+import { useBalanceFreshness } from "../network/balanceFreshness";
 import { useMoney } from "../network/money";
 import { useInView, useScreenClock } from "../network/useInView";
+import { useBalanceRetry } from "../portfolio/useBalanceRefresh";
 import { useServices } from "../services";
 import { RiskSections } from "../trade/parts";
 import { useLivePrices, usePriceHistory } from "./useMarketData";
@@ -70,6 +77,8 @@ export function TrackerScreen({
   const { history, freshness: chart } = usePriceHistory(symbol, range, true, now);
   const { fontScale } = useWindowDimensions();
   const smallestOrderUsd = useMoney().tradeChain.gaslessFromUsd;
+  const balances = useBalanceFreshness();
+  const retryBalances = useBalanceRetry();
   const view = trackerView(screenReads, {
     symbol,
     wallet: visitor ? null : wallet,
@@ -78,7 +87,7 @@ export function TrackerScreen({
     range,
     history,
     smallestOrderUsd,
-    freshness: { now, prices: prices.freshness, chart },
+    freshness: { now, prices: prices.freshness, chart, balances: visitor ? NEVER_READ : balances },
     platform: "mobile",
   });
   const loading = view.kind === "tracker" && view.loading;
@@ -198,7 +207,7 @@ export function TrackerScreen({
                   {view.chart.source}
                 </Text>
               </View>
-              <Text variant="faint">{mobileMarketsCopy.detail.chartHint}</Text>
+              <Text variant="faint">{chartHint("touch")}</Text>
             </>
           ) : view.chart.kind === "loading" ? (
             <View style={styles.chartEmpty}>
@@ -233,6 +242,13 @@ export function TrackerScreen({
             ))}
             {view.holding.none && <Text variant="faint">{view.holding.none}</Text>}
           </View>
+        )}
+        {view.unavailable && (
+          <RetryLine
+            text={view.unavailable.text}
+            retry={view.unavailable.retry}
+            onRetry={online ? retryBalances : undefined}
+          />
         )}
 
         <View style={styles.section}>

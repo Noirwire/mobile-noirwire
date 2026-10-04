@@ -37,6 +37,7 @@ import { colors, fonts, layout, size } from "@/ui/theme";
 import { ActionOverdue } from "../network/ActionOverdue";
 import { OfflineBanner } from "../network/OfflineBanner";
 import { PendingNote } from "../network/PendingNote";
+import { useBalanceFreshness } from "../network/balanceFreshness";
 import { useSendFlow, type SendFlow } from "./useSendFlow";
 
 const copy = { ...sendCopy, ...mobileSendCopy };
@@ -51,6 +52,7 @@ type SendScreenProps = {
 /** Spec 2.24: send cash or a tracker from one portfolio to an address. */
 export function SendScreen({ portfolioId, onClose, onMoveMoney }: SendScreenProps) {
   const flow = useSendFlow(portfolioId);
+  const balances = useBalanceFreshness();
   const { step, portfolio } = flow;
   const name = portfolio?.label ?? "";
   const preparingWait = useWaiting(flow.preparing, "review");
@@ -77,6 +79,7 @@ export function SendScreen({ portfolioId, onClose, onMoveMoney }: SendScreenProp
     pastedForeign: flow.pastedForeign,
     unsendable: flow.unsendable,
     recipientUnreadable: flow.recipientUnreadable,
+    balances,
   });
   const review =
     flow.review &&

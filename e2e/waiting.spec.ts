@@ -121,7 +121,7 @@ test.describe("Home", () => {
     await expect(page.getByLabel("Loading")).toHaveCount(0);
   });
 
-  test("says what may be out of date on a failing API, and reads again on Try again", async ({
+  test("shows no balance on a failing API, and reads them on Try again", async ({
     page,
     api,
     funded,
@@ -131,13 +131,15 @@ test.describe("Home", () => {
     api.failing("/v1/rpc");
     await unlock(page, funded.password);
 
-    await expect(page.getByText(STALE)).toBeVisible({ timeout: 30_000 });
-    await expect(page.getByText("$457.33").first()).toBeVisible();
+    const retry = page.getByRole("button", { name: "Try again" });
+    await expect(retry).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByText(/\$457\.33|\$0\.00/)).toHaveCount(0);
     await expectNothingTechnical(page);
 
     api.healthy("/v1/rpc");
-    await page.getByRole("button", { name: "Try again" }).click();
-    await expect(page.getByText(STALE)).toBeHidden({ timeout: 30_000 });
+    await retry.click();
+    await expect(page.getByText("$457.33").first()).toBeVisible({ timeout: 30_000 });
+    await expect(retry).toBeHidden();
   });
 
   test("never waits for ever on an API that does not answer", async ({ page, api, funded }) => {
@@ -146,8 +148,7 @@ test.describe("Home", () => {
     api.silent("/v1/rpc");
     await unlock(page, funded.password);
 
-    await expect(page.getByText(STALE)).toBeVisible({ timeout: 40_000 });
-    await expect(page.getByRole("button", { name: "Try again" })).toBeEnabled();
+    await expect(page.getByRole("button", { name: "Try again" })).toBeEnabled({ timeout: 40_000 });
     await expectNothingTechnical(page);
   });
 });

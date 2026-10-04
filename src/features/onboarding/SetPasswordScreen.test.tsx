@@ -1,7 +1,13 @@
 import { onboardingCopy } from "@noirwire/shared/copy";
 import { STORAGE_KEY, createWallet, getSnapshot, isUnlocked } from "@noirwire/shared/wallet";
 import { fireEvent, screen, waitFor } from "@testing-library/react-native";
-import { forgetWallet, installTestPlatform, renderWith, testServices } from "../testServices";
+import {
+  forgetWallet,
+  installTestPlatform,
+  renderWith,
+  STRONG_PASSWORD,
+  testServices,
+} from "../testServices";
 import { SetPasswordScreen } from "./SetPasswordScreen";
 
 afterEach(() => forgetWallet());
@@ -34,6 +40,32 @@ describe("SetPasswordScreen", () => {
     await fireEvent.changeText(confirmField(), "harbor-velvet");
     expect(await screen.findByText("Strong password.")).toBeOnTheScreen();
     expect(screen.getByRole("button", { name: "Save and finish" })).toBeDisabled();
+  });
+
+  it("saves nothing while the confirmation holds other text, and a changed password voids it", async () => {
+    installTestPlatform();
+    const onSaved = jest.fn();
+    const finish = () => screen.getByRole("button", { name: "Save and finish" });
+    await renderWith(
+      await testServices(),
+      <SetPasswordScreen draft={createWallet()} origin="create" onSaved={onSaved} />,
+    );
+    await fireEvent.changeText(newField(), "password1234");
+    await fireEvent.changeText(confirmField(), "password1234");
+    await screen.findByText(/Too easy to guess/);
+    await fireEvent.changeText(newField(), STRONG_PASSWORD);
+    await screen.findByText("Strong password.");
+    expect(finish()).toBeDisabled();
+    await fireEvent(confirmField(), "submitEditing");
+    await fireEvent.press(finish());
+    await fireEvent.changeText(confirmField(), STRONG_PASSWORD);
+    expect(finish()).toBeEnabled();
+    await fireEvent.changeText(newField(), `${STRONG_PASSWORD}-lantern`);
+    await screen.findByText("Strong password.");
+    expect(finish()).toBeDisabled();
+    await fireEvent(confirmField(), "submitEditing");
+    expect(onSaved).not.toHaveBeenCalled();
+    expect(isUnlocked()).toBe(false);
   });
 
   it("suggests a visible passphrase and saves the created wallet encrypted, naming its portfolio", async () => {

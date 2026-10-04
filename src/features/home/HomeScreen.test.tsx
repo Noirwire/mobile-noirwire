@@ -1,4 +1,7 @@
+import { portfolioCopy } from "@noirwire/shared/copy";
 import {
+  balancesUnavailable,
+  betaView,
   STILL_WORKING_AFTER_MS,
   WAITING_DELAY_MS,
   WAIT_LIMIT_MS,
@@ -53,7 +56,7 @@ function handlers() {
   };
 }
 
-async function populated() {
+async function populated(options?: { balancesRead: boolean }) {
   return unlockedWallet((w) => {
     const [first] = w.portfolios;
     const investing = withHolding(
@@ -67,7 +70,7 @@ async function populated() {
         activity({ portfolioId: first.id, kind: "buy", symbol: "NVDAx", usd: 100, shown: 1 }),
       ],
     };
-  });
+  }, options);
 }
 
 describe("HomeScreen", () => {
@@ -188,6 +191,30 @@ describe("HomeScreen", () => {
     expect(screen.getByText("$457.33")).toBeOnTheScreen();
   });
 
+  it("shows no money figure for balances that never loaded, until a retry reads them", async () => {
+    await populated({ balancesRead: false });
+    const balances = fakeBalances();
+    let whole = false;
+    balances.money.refresh.everything = async () => whole;
+    await renderScreen(await testServices(), <HomeScreen {...handlers()} />, balances);
+    const retry = await screen.findByRole("button", { name: balancesUnavailable().retry });
+    const figures = /\$968\.08|\$457\.33|\$0\.00/;
+    expect(screen.queryByText(figures)).toBeNull();
+    expect(screen.queryByLabelText(figures)).toBeNull();
+    expect(screen.queryByText(STALE)).toBeNull();
+    expect(screen.queryByText(portfolioCopy.home.yourInvestments)).toBeNull();
+    whole = true;
+    await fireEvent.press(retry);
+    expect(await screen.findByText("$457.33")).toBeOnTheScreen();
+    expect(screen.queryByRole("button", { name: balancesUnavailable().retry })).toBeNull();
+  });
+
+  it("tags the brand as in testing", async () => {
+    await unlockedWallet();
+    await renderScreen(await testServices(), <HomeScreen {...handlers()} />);
+    expect(screen.getByText(betaView().tag)).toBeOnTheScreen();
+  });
+
   it("drops the notice on the next read that comes back whole", async () => {
     await populated();
     const balances = fakeBalances();
@@ -235,7 +262,7 @@ describe("HomeScreen", () => {
   });
 
   it("holds the balance's place quietly at first, then as loading, and never for ever", async () => {
-    await unlockedWallet((wallet) => ({ ...wallet, portfolios: [] }));
+    await unlockedWallet((wallet) => ({ ...wallet, portfolios: [] }), { balancesRead: false });
     jest.useFakeTimers();
     const never = fakeBalances();
     never.money.refresh.everything = () => new Promise<boolean>(() => undefined);
@@ -248,7 +275,6 @@ describe("HomeScreen", () => {
     expect(screen.getByText("Still loading. This is taking longer than usual.")).toBeOnTheScreen();
     await act(() => jest.advanceTimersByTimeAsync(WAIT_LIMIT_MS.content));
     expect(screen.queryAllByLabelText("Loading")).toHaveLength(0);
-    expect(screen.getByText(STALE)).toBeOnTheScreen();
     expect(screen.getByRole("button", { name: "Try again" })).toBeEnabled();
     // Twenty seconds of the placeholder's animation frames pass under the fake clock.
   }, 20_000);

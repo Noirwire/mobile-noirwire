@@ -32,6 +32,7 @@ import type { ReactElement } from "react";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { renderWith, STRONG_PASSWORD } from "../testServices";
 import type { AppServices } from "../services";
+import { recordBalanceRead } from "./balanceFreshness";
 import { MoneyProvider, type Money } from "./money";
 
 type Unsendable = Awaited<ReturnType<Money["checkRecipient"]>>;
@@ -477,6 +478,8 @@ type Setup = {
   funding?: number;
   /** The first is the one a created wallet comes with. */
   portfolios?: PortfolioSpec[];
+  /** False leaves the balances never read, as before Home's first refresh answers. */
+  balancesRead?: boolean;
 };
 
 /** A stored, unlocked wallet with these portfolios; answers their ids, in order. */
@@ -487,10 +490,15 @@ export async function portfoliosWith(portfolios: PortfolioSpec[]): Promise<strin
 
 /**
  * An unlocked wallet with the given balances, stored in the shared store and
- * mirrored into `chain`, so a refresh reads back what the wallet shows.
+ * mirrored into `chain`, so a refresh reads back what the wallet shows. Its
+ * balances count as read once, as they are after Home's first refresh.
  */
 export async function walletWith(chain: FakeChain, setup: Setup = {}): Promise<Wallet> {
-  const { funding = 500, portfolios = [{ label: "Investing", cash: 457.33 }] } = setup;
+  const {
+    funding = 500,
+    portfolios = [{ label: "Investing", cash: 457.33 }],
+    balancesRead = true,
+  } = setup;
   const draft = createWallet();
   const mnemonic = draft.phrase.join(" ");
   const [first] = draft.wallet.portfolios;
@@ -531,5 +539,6 @@ export async function walletWith(chain: FakeChain, setup: Setup = {}): Promise<W
   };
   setBalance(chain, wallet.funding.address, USDC, funding);
   await storeNewWallet(wallet, draft.phrase, STRONG_PASSWORD);
+  if (balancesRead) recordBalanceRead(true);
   return getSnapshot() ?? wallet;
 }

@@ -4,11 +4,13 @@ import {
   fundPrivately,
   fundingDraft,
 } from "@noirwire/shared/application";
+import { hasLoaded } from "@noirwire/shared/domain";
 import { activePortfolios, cashOf } from "@noirwire/shared/wallet";
 import { describeFailure, WAIT_LIMIT_MS } from "@noirwire/shared/presentation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useWaiting, withinLimit } from "@/ui/useWaiting";
 import { useServices } from "../services";
+import { useBalanceFreshness } from "../network/balanceFreshness";
 import { useMoney } from "../network/money";
 import { usePendingBlock } from "../network/usePendingBlock";
 import { useWalletSnapshot } from "../network/useWalletSnapshot";
@@ -46,7 +48,10 @@ export function useFundFlow(initialPortfolioId: string | null) {
   const [step, setStep] = useState<FundStep>(needsChoice ? "choose" : "amount");
   const [amountText, setAmountTyped] = useState("");
   const [touched, setTouched] = useState(false);
-  const [read, setRead] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+  const [answer, setAnswer] = useState<{ attempt: number; ok: boolean } | null>(null);
+  const read = answer?.attempt !== attempt ? "reading" : answer.ok ? "read" : "failed";
+  const balances = useBalanceFreshness();
   const [failure, setFailure] = useState<string | null>(null);
   const [completed, setCompleted] = useState(0);
   const [result, setResult] = useState<Result | null>(null);
@@ -62,19 +67,22 @@ export function useFundFlow(initialPortfolioId: string | null) {
   useEffect(() => {
     if (!fundingAddress) return;
     let current = true;
-    withinLimit(money.refresh.funding(fundingAddress, CASH), WAIT_LIMIT_MS.content)
-      .catch(() => undefined)
-      .finally(() => current && setRead(true));
+    withinLimit(money.refresh.funding(fundingAddress, CASH), WAIT_LIMIT_MS.content).then(
+      () => current && setAnswer({ attempt, ok: true }),
+      () => current && setAnswer({ attempt, ok: false }),
+    );
     return () => {
       current = false;
     };
-  }, [money, fundingAddress]);
+  }, [money, fundingAddress, attempt]);
 
-  const reading = useWaiting(!read, "content");
+  const reading = useWaiting(read === "reading", "content");
   const working = useWaiting(step === "progress", "action");
 
   const portfolio = portfolios.find((entry) => entry.id === chosen) ?? null;
-  const fundingBalance = read && wallet ? (wallet.funding.tokens[CASH] ?? 0) : null;
+  // A read that failed still shows what this unlock's refresh of every balance read.
+  const known = read === "read" || (read === "failed" && hasLoaded(balances));
+  const fundingBalance = known && wallet ? (wallet.funding.tokens[CASH] ?? 0) : null;
   const draft = fundingDraft({
     privateRoute: true,
     decimals: USDC_DECIMALS,
@@ -150,11 +158,15 @@ export function useFundFlow(initialPortfolioId: string | null) {
     touched,
     decimals: USDC_DECIMALS,
     fundingBalance,
+    readFailed: read === "failed",
+    /** Reads the funding wallet again after a read that failed. */
+    retryRead: () => setAttempt((count) => count + 1),
+    balances,
     draft,
     failure,
     completed,
     /** The funding wallet's balance is still being read on opening. */
-    stillReading: !read,
+    stillReading: read === "reading",
     /** The funding wallet's balance being read on opening. */
     reading,
     /** The progress step's wait: its calm line, and whether it has run past its limit. */

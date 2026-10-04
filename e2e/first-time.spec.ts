@@ -67,11 +67,16 @@ test("a stored wallet unlocks while NoirWire cannot be reached, and is told abou
   await expectNothingTechnical(page);
 
   await unlock(page, funded.password);
-  // What needs the chain says so itself; what the phone stores is shown.
-  await expect(page.getByText("$457.33").first()).toBeVisible();
+  // Balances that were never read are not shown as figures: not the stored ones, not a zero.
+  const retry = page.getByRole("button", { name: "Try again" });
+  await expect(retry).toBeVisible({ timeout: 40_000 });
+  await expect(page.getByText(/\$457\.33|\$0\.00/)).toHaveCount(0);
   await expect(page.getByText(CANNOT_REACH)).toHaveCount(0);
 
   api.up();
+  await retry.click();
+  // A retry pressed while the failed read is still backing off joins it, so the next read may be the one that lands.
+  await expect(page.getByText("$457.33").first()).toBeVisible({ timeout: 60_000 });
   await expect(page.getByText(/500\.00 USDC has arrived in your funding wallet/)).toBeVisible();
 });
 

@@ -33,6 +33,7 @@ import { confirmHaptic } from "@/ui/confirmHaptic";
 import { successHaptic, warningHaptic } from "@/ui/haptics";
 import { PortfolioChoice } from "@/ui/PortfolioChoice";
 import { PresetChip } from "@/ui/PresetChip";
+import { RetryLine } from "@/ui/RetryLine";
 import { Terms } from "@/ui/Terms";
 import { layout } from "@/ui/theme";
 import { ActionOverdue } from "../network/ActionOverdue";
@@ -93,6 +94,7 @@ export function FundScreen({ portfolioId, onClose, onAddMoney, onSeePublicView }
     asset: CASH,
     privateRoute: true,
     fundingBalance: flow.fundingBalance,
+    readFailed: flow.readFailed,
     amountText: flow.amountText,
     touched: flow.touched,
     decimals: flow.decimals,
@@ -167,7 +169,11 @@ export function FundScreen({ portfolioId, onClose, onAddMoney, onSeePublicView }
 }
 
 function ChooseStep({ flow }: { flow: FundFlow }) {
-  const view = choosePortfolioView({ portfolios: flow.portfolios, chosen: flow.chosen });
+  const view = choosePortfolioView({
+    portfolios: flow.portfolios,
+    chosen: flow.chosen,
+    balances: flow.balances,
+  });
   return (
     <View accessibilityRole="radiogroup" style={styles.list}>
       {view.rows.map((row, index) => (
@@ -200,15 +206,24 @@ function AmountStep({
         label={view.available.label}
         value={
           view.available.value === null ? (
-            <WaitingPlaceholder waiting={{ ...flow.reading, stillWorking: null }}>
-              <Skeleton width={96} />
-            </WaitingPlaceholder>
+            view.unavailable === null && (
+              <WaitingPlaceholder waiting={{ ...flow.reading, stillWorking: null }}>
+                <Skeleton width={96} />
+              </WaitingPlaceholder>
+            )
           ) : (
             <Text style={styles.figure}>{view.available.value}</Text>
           )
         }
         last
       />
+      {view.unavailable && (
+        <RetryLine
+          text={view.unavailable.text}
+          retry={view.unavailable.retry}
+          onRetry={flow.online ? flow.retryRead : undefined}
+        />
+      )}
       {view.emptyNotice ? (
         <EmptyState
           title={view.emptyNotice.title}
@@ -302,7 +317,11 @@ function Footer({
 }) {
   switch (flow.step) {
     case "choose": {
-      const view = choosePortfolioView({ portfolios: flow.portfolios, chosen: flow.chosen });
+      const view = choosePortfolioView({
+        portfolios: flow.portfolios,
+        chosen: flow.chosen,
+        balances: flow.balances,
+      });
       return (
         <Button
           label={view.next.label}

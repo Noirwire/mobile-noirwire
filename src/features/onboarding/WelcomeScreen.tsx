@@ -1,4 +1,4 @@
-import { welcomeView, type WelcomeAction } from "@noirwire/shared/presentation";
+import { betaView, welcomeView, type WelcomeAction } from "@noirwire/shared/presentation";
 import { StyleSheet, View } from "react-native";
 import { Button, Mark, Screen, Text } from "@/ui";
 import { layout } from "@/ui/theme";
@@ -15,6 +15,7 @@ export function WelcomeScreen({ onAction }: WelcomeScreenProps) {
       <View style={styles.brand}>
         <Mark size={28} />
         <Text variant="label">{view.brand}</Text>
+        <Text variant="faint">{betaView().tag}</Text>
       </View>
       <View style={styles.intro}>
         <Text variant="display" accessibilityRole="header">

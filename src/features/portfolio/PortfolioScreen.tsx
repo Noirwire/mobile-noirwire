@@ -30,6 +30,7 @@ import {
 } from "@/ui";
 import { FittedFigure } from "@/ui/FittedFigure";
 import { RefreshScreen } from "@/ui/RefreshScreen";
+import { RetryLine } from "@/ui/RetryLine";
 import { colors, fonts, layout, opacity, radius, size } from "@/ui/theme";
 import { ActivityDetailSheet } from "../activity/ActivityDetailSheet";
 import { ActivityRow } from "../activity/ActivityRow";
@@ -99,12 +100,12 @@ export function PortfolioScreen(props: PortfolioScreenProps) {
     AccessibilityInfo.announceForAccessibility(copy.publicView.announce);
   }, []);
 
-  const firstRead = refresh.reading && !refresh.settled;
-  const waiting = useWaiting(firstRead, "content");
+  const loading = refresh.reading && !refresh.settled;
+  const waiting = useWaiting(loading, "content");
   useTopLoader(refresh.reading);
 
   if (!wallet) return null;
-  const view = portfolioView(screenReads, wallet, id, updatedAt, inEarn);
+  const view = portfolioView(screenReads, wallet, id, updatedAt, refresh.freshness, inEarn);
 
   if (view.kind === "missing") {
     return (
@@ -120,8 +121,6 @@ export function PortfolioScreen(props: PortfolioScreenProps) {
 
   const portfolio = wallet.portfolios.find((entry) => entry.id === id)!;
   const inPublic = unlocked && publicMode !== "off";
-
-  const loading = firstRead && view.holdings === null && view.empty !== null;
 
   return (
     <View style={styles.safe}>
@@ -144,7 +143,7 @@ export function PortfolioScreen(props: PortfolioScreenProps) {
             <Header
               view={view}
               loading={loading ? waiting : null}
-              failed={refresh.failed}
+              failed={refresh.failed && view.unavailable === null}
               onRetry={online ? refresh.retry : undefined}
               onEnterPublic={enterPublic}
               onRelease={() => setPublicMode((mode) => (mode === "held" ? "off" : mode))}
@@ -288,7 +287,7 @@ function Header({
   onRelease,
 }: {
   view: PortfolioDetailView;
-  /** The first read's wait, while nothing is stored to show; null otherwise. */
+  /** The first read's wait, while no balance is known; null otherwise. */
   loading: Waiting | null;
   failed: boolean;
   /** Absent while offline: the banner says why nothing can be read. */
@@ -325,29 +324,28 @@ function Header({
           <WaitingPlaceholder waiting={{ ...loading, stillWorking: null }}>
             <Skeleton width="60%" height={42} />
           </WaitingPlaceholder>
-        ) : view.valueUnavailable ? (
+        ) : view.value === null ? null : view.valueUnavailable ? (
           <Text>{view.value}</Text>
         ) : (
           <View accessible accessibilityLabel={`${view.valueLabel}, ${view.value}`}>
             <FittedFigure value={view.value} />
           </View>
         )}
-        <Text variant="note">{view.cashLine}</Text>
+        {view.cashLine !== null && <Text variant="note">{view.cashLine}</Text>}
         {view.inEarn && <Text variant="note">{`${view.inEarn.label} ${view.inEarn.value}`}</Text>}
+        {view.unavailable && (
+          <RetryLine
+            text={view.unavailable.text}
+            retry={view.unavailable.retry}
+            onRetry={onRetry}
+          />
+        )}
         {failed && (
-          <View style={styles.retry}>
-            <Text variant="faint" accessibilityLiveRegion="polite">
-              {copy.detail.refreshFailed}
-            </Text>
-            {onRetry && (
-              <Button
-                variant="quiet"
-                label={commonCopy.tryAgain}
-                onPress={onRetry}
-                style={styles.compact}
-              />
-            )}
-          </View>
+          <RetryLine
+            text={copy.detail.refreshFailed}
+            retry={commonCopy.tryAgain}
+            onRetry={onRetry}
+          />
         )}
       </View>
       {view.pending && <Notice tone="warning">{view.pending}</Notice>}
@@ -388,7 +386,7 @@ function Actions({
               onPress={press(button)}
               style={styles.quietButton}
             />
-            {button.action.to === "send" && view.sendReason && (
+            {button.action.to === "send" && view.sendReason && !view.unavailable && (
               <Text variant="faint" style={styles.reason}>
                 {view.sendReason}
               </Text>
@@ -435,7 +433,9 @@ function Mix({
             <TrackerMark symbol={slice.symbol} />
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={`${slice.name}, ${slice.line}, ${slice.trailing}`}
+              accessibilityLabel={[slice.name, slice.line, slice.trailing]
+                .filter(Boolean)
+                .join(", ")}
               onPress={() => onAction({ to: "tracker", symbol: slice.symbol })}
               style={styles.flex}
             >
@@ -444,7 +444,7 @@ function Mix({
                 {slice.line}
               </Text>
             </Pressable>
-            <Text style={styles.figure}>{slice.trailing}</Text>
+            {slice.trailing !== null && <Text style={styles.figure}>{slice.trailing}</Text>}
             {slice.sell && (
               <Button
                 variant="quiet"
@@ -572,7 +572,6 @@ const styles = StyleSheet.create({
   missing: { flexGrow: 1, alignItems: "center", justifyContent: "center", gap: layout.group },
   identity: { flexDirection: "row", alignItems: "center", gap: layout.inset },
   value: { gap: layout.tight, paddingTop: layout.tight },
-  retry: { gap: layout.tight, alignItems: "flex-start" },
   quietRow: { flexDirection: "row", flexWrap: "wrap", gap: layout.tight },
   quiet: { flexGrow: 1, flexBasis: 96, gap: layout.hairline },
   quietButton: { paddingHorizontal: layout.tight },

@@ -94,7 +94,7 @@ cp .env.example .env
 
 Fill in the values (all are explained inline in `.env.example`):
 
-- `EXPO_PUBLIC_API_URL`: the NoirWire API the app talks to. Either the deployed API over https (`https://api.noirwire.com`), or the API running locally (`http://localhost:4000`, with `adb reverse tcp:4000 tcp:4000` on Android) - see the comments in `.env.example` for the local setup.
+- `EXPO_PUBLIC_API_URL`: the NoirWire API the app talks to. Either the deployed API over https (`https://api.noirwire.com`), or the API running locally: port 4000 is the test network (`http://localhost:4000`) and port 4001 is mainnet (`http://localhost:4001`). On Android, `npm run android:ports` forwards both - see the comments in `.env.example` for the local setup.
 - `EXPO_PUBLIC_SOLANA_NETWORK`: `mainnet` or `devnet`, matching whichever API you pointed at.
 - `EXPO_PUBLIC_JUPITER_REFERRAL_ACCOUNT` and `EXPO_PUBLIC_NOIRWIRE_FEE_BPS`: NoirWire's trading fee, collected through Jupiter's referral program. Both or neither - a fee with nowhere to go is refused. These must match the web app's own values, since the Costs screen on each states the same percentage.
 
@@ -154,7 +154,7 @@ Every `EXPO_PUBLIC_` value is compiled into the app and readable by anyone who h
 
 **`npm run android:debug` fails with "cannot write to emulator" or similar.** With no device attached, it cold-starts an emulator and tries to install the app before the emulator has finished booting. Run the command again once the emulator is up. With a phone and an emulator both attached, pick one explicitly: `npm run android:debug -- --device`.
 
-**It worked, and now the screen is white or balances will not load.** The `adb reverse` forwards (8081 for Metro, 4000 for a local API) are lost whenever the phone is unplugged or restarted. Run `npm run android:ports` and reopen the app.
+**It worked, and now the screen is white or balances will not load.** The `adb reverse` forwards (8081 for Metro, 4000 and 4001 for a local API) are lost whenever the phone is unplugged or restarted. Run `npm run android:ports` and reopen the app.
 
 **Dev build on a phone can't reach Metro** ("Failed to connect to /192.168.x.x:8081"). macOS's firewall blocks the phone's incoming connection to Metro on the Mac. With the phone on USB: `adb reverse tcp:8081 tcp:8081`, then open the dev build against `http://localhost:8081` instead of the LAN address Metro printed.
 

@@ -9,7 +9,11 @@ import {
   type FakeChain,
 } from "../network/testMoney";
 import { forgetWallet, installTestPlatform, testServices } from "../testServices";
-import { STILL_WORKING_AFTER_MS, WAIT_LIMIT_MS } from "@noirwire/shared/presentation";
+import {
+  balancesUnavailable,
+  STILL_WORKING_AFTER_MS,
+  WAIT_LIMIT_MS,
+} from "@noirwire/shared/presentation";
 import { FundScreen } from "./FundScreen";
 
 afterEach(() => {
@@ -56,6 +60,32 @@ describe("FundScreen", () => {
     expect(screen.getByText("+ 0.10 USDC")).toBeOnTheScreen();
     expect(screen.getByText("100.30 USDC")).toBeOnTheScreen();
     expect(screen.getByRole("button", { name: "Review" })).toBeEnabled();
+  });
+
+  it("shows no balance for a funding wallet that could not be read, until a retry reads it", async () => {
+    installTestPlatform();
+    const chain = fakeChain();
+    const wallet = await walletWith(chain, { balancesRead: false });
+    const money = testMoney(chain);
+    const read = money.refresh.funding;
+    let reachable = false;
+    money.refresh.funding = (...args) =>
+      reachable ? read(...args) : Promise.reject(new Error("unreachable"));
+    await renderWithMoney(
+      await testServices(),
+      money,
+      <FundScreen
+        portfolioId={wallet.portfolios[0].id}
+        onClose={jest.fn()}
+        onAddMoney={jest.fn()}
+        onSeePublicView={jest.fn()}
+      />,
+    );
+    const retry = await screen.findByRole("button", { name: balancesUnavailable().retry });
+    expect(screen.queryByText("500.00 USDC")).toBeNull();
+    reachable = true;
+    await fireEvent.press(retry);
+    expect(await screen.findByText("500.00 USDC")).toBeOnTheScreen();
   });
 
   it("states its fees on the form to the same decimal as on the review", async () => {

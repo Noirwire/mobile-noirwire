@@ -16,9 +16,12 @@ import {
 } from "@/ui";
 import { readAsOne } from "@/ui/accessibility";
 import { selectionHaptic } from "@/ui/haptics";
+import { RetryLine } from "@/ui/RetryLine";
 import { colors, layout, opacity } from "@/ui/theme";
 import type { EarnAction } from "@noirwire/shared/application";
 import { earnScreenView, type EarnRowView } from "@noirwire/shared/presentation";
+import { useBalanceFreshness } from "../network/balanceFreshness";
+import { useBalanceRetry } from "../portfolio/useBalanceRefresh";
 import { EarnSheet } from "./EarnSheet";
 import type { EarnOpening } from "./useEarnFlow";
 import { useEarnScreen } from "./useEarnScreen";
@@ -34,7 +37,9 @@ export function EarnScreen({ onNewPortfolio, onMoveMoney }: EarnScreenProps) {
   const state = useEarnScreen();
   const [opening, setOpening] = useState<EarnOpening | null>(null);
   const [risksOpen, setRisksOpen] = useState(false);
-  const view = earnScreenView({ ...state, platform: "mobile" });
+  const balances = useBalanceFreshness();
+  const retryBalances = useBalanceRetry();
+  const view = earnScreenView({ ...state, platform: "mobile", balances });
   const reading =
     view.notHere === null && (view.rate === null || view.rows.some((row) => row.inEarn === null));
   const waiting = useWaiting(reading, "content");
@@ -102,6 +107,14 @@ export function EarnScreen({ onNewPortfolio, onMoveMoney }: EarnScreenProps) {
               )}
             </View>
 
+            {view.unavailable && (
+              <RetryLine
+                text={view.unavailable.text}
+                retry={view.unavailable.retry}
+                onRetry={state.online ? retryBalances : undefined}
+              />
+            )}
+
             <View style={styles.actions}>
               {view.deposit && (
                 <Button
@@ -110,7 +123,9 @@ export function EarnScreen({ onNewPortfolio, onMoveMoney }: EarnScreenProps) {
                   onPress={() => open("deposit", null)}
                 />
               )}
-              {view.deposit?.reason && <Text variant="note">{view.deposit.reason}</Text>}
+              {view.deposit?.reason && !view.unavailable && (
+                <Text variant="note">{view.deposit.reason}</Text>
+              )}
               {view.withdraw && (
                 <Button
                   label={view.withdraw.label}
@@ -209,7 +224,7 @@ function PortfolioRow({
       <IdentityMark {...resolvePortfolioIcon(icon)} size="md" />
       <View style={styles.copy}>
         <Text numberOfLines={1}>{row.label}</Text>
-        <Text variant="note">{row.cash}</Text>
+        {row.cash !== null && <Text variant="note">{row.cash}</Text>}
         {row.archived && (
           <Text variant="note" tone="warning">
             {row.archived}

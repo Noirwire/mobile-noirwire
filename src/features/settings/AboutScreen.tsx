@@ -36,6 +36,7 @@ export function AboutScreen({ version, build, onOpenRisks }: AboutScreenProps) {
         <Mark size={40} />
         <Text variant="h2">{appCopy.name}</Text>
       </View>
+      <Text tone="dim">{view.beta}</Text>
       <Panel style={styles.panel}>
         <ListRow
           label={copy.version}

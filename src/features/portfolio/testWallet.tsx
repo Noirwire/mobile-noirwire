@@ -8,6 +8,7 @@ import { fakeApi } from "@noirwire/shared/testing";
 import { createWallet, getSnapshot, storeNewWallet, updateWallet } from "@noirwire/shared/wallet";
 import { act } from "@testing-library/react-native";
 import type { ReactElement } from "react";
+import { recordBalanceRead } from "../network/balanceFreshness";
 import type { Money } from "../network/money";
 import { fakeChain, renderWithMoney, testMoney } from "../network/testMoney";
 import type { AppServices } from "../services";
@@ -65,11 +66,19 @@ export function activity(
   };
 }
 
-/** A new wallet, stored and unlocked, then changed by `shape` before any screen reads it. */
-export async function unlockedWallet(shape: (wallet: Wallet) => Wallet = (wallet) => wallet) {
+/**
+ * A new wallet, stored and unlocked, then changed by `shape` before any
+ * screen reads it. Its balances count as read once, as they are after Home's
+ * first refresh; `balancesRead: false` leaves them never read.
+ */
+export async function unlockedWallet(
+  shape: (wallet: Wallet) => Wallet = (wallet) => wallet,
+  { balancesRead = true } = {},
+) {
   const draft = createWallet();
   await storeNewWallet(draft.wallet, draft.phrase, STRONG_PASSWORD);
   await updateWallet(shape);
+  if (balancesRead) recordBalanceRead(true);
   return getSnapshot()!;
 }
 

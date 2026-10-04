@@ -8,8 +8,8 @@ import { layout, type ColorToken } from "./theme";
 type BalanceHeaderProps = {
   /** "Total value". */
   label: string;
-  /** The figure, already formatted: "$8,729.89", or "Value unavailable". */
-  value: string;
+  /** The figure, already formatted: "$8,729.89", or "Value unavailable". Null draws nothing. */
+  value: string | null;
   /** The line under it, already formatted: "+$98.79 (1.2%) held trackers · 24h approximate". */
   change?: string;
   changeTone?: ColorToken;
@@ -40,7 +40,7 @@ export function BalanceHeader({
       {arc && <SignatureArc />}
       <View {...readAsOne} accessibilityLabel={spoken} style={styles.copy}>
         <Text variant="faint">{label}</Text>
-        {unavailable ? <Text>{value}</Text> : <FittedFigure value={value} />}
+        {value !== null && (unavailable ? <Text>{value}</Text> : <FittedFigure value={value} />)}
         {change !== undefined && (
           <Text variant="note" tone={changeTone}>
             {change}

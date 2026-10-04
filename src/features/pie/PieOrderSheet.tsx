@@ -57,6 +57,7 @@ import { errorHaptic, heavyHaptic, lightHaptic, successHaptic, warningHaptic } f
 import { colors, fonts, layout } from "@/ui/theme";
 import type { MoneyTarget } from "@/navigation/moneyRoutes";
 import { useLivePrices } from "../markets/useMarketData";
+import { useBalanceFreshness } from "../network/balanceFreshness";
 import { useWalletSnapshot } from "../network/useWalletSnapshot";
 import { ActionOverdue } from "../network/ActionOverdue";
 import { PendingNote } from "../network/PendingNote";
@@ -100,6 +101,7 @@ export function PieOrderSheet({ portfolioId, mode, onClose, onNoMoney }: PieOrde
   const online = useServices().useOnline();
   const wallet = useWalletSnapshot();
   const { updatedAt } = useLivePrices();
+  const balances = useBalanceFreshness();
   const pending = usePendingBlock(portfolioId);
   const portfolio = wallet?.portfolios.find((entry) => entry.id === portfolioId) ?? null;
 
@@ -141,7 +143,7 @@ export function PieOrderSheet({ portfolioId, mode, onClose, onNoMoney }: PieOrde
   const isPriced = piePriced(portfolio, updatedAt);
   const amount = typedAmount(amountText);
   const preview = planInvest(amount, slices);
-  const invest = pieInvestView({ amount, cash, preview, priced: isPriced, nameOf });
+  const invest = pieInvestView({ amount, cash, preview, priced: isPriced, nameOf, balances });
   const floor = investFloorView(isPriced ? investFloor(amount, slices, smallest) : null);
   const rebalancing = rebalanceSells(slices, smallest);
   const leftAlone = rebalanceNote(rebalancing.leftAlone);
@@ -305,7 +307,7 @@ export function PieOrderSheet({ portfolioId, mode, onClose, onNoMoney }: PieOrde
   let footer: React.ReactNode = undefined;
 
   if (step === "input" && mode === "invest") {
-    const noMoney = wallet ? noMoneyView(screenReads, wallet, portfolioId) : null;
+    const noMoney = wallet ? noMoneyView(screenReads, wallet, portfolioId, balances) : null;
     if (noMoney) {
       body = <EmptyState title={copy.noMoney} detail={noMoney.detail} />;
       footer = (
@@ -330,6 +332,7 @@ export function PieOrderSheet({ portfolioId, mode, onClose, onNoMoney }: PieOrde
             />
           </View>
           <Row label={commonCopy.cash} value={invest.available} last />
+          {invest.balanceUnavailable && <Text tone="dim">{invest.balanceUnavailable}</Text>}
           {invest.overCash && (
             <Text variant="note" tone="danger" accessibilityRole="alert">
               {invest.overCash}

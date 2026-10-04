@@ -1,5 +1,6 @@
 import { appCopy, commonCopy, mobilePortfolioCopy, portfolioCopy } from "@noirwire/shared/copy";
 import {
+  betaView,
   homeView,
   type HomeAction,
   type HomeTarget,
@@ -24,6 +25,7 @@ import {
 } from "@/ui";
 import { ActionNotice } from "@/ui/ActionNotice";
 import { RefreshScreen } from "@/ui/RefreshScreen";
+import { RetryLine } from "@/ui/RetryLine";
 import { colors, layout, opacity, size } from "@/ui/theme";
 import { ActivityDetailSheet } from "../activity/ActivityDetailSheet";
 import { ActivityRow } from "../activity/ActivityRow";
@@ -65,10 +67,11 @@ export function HomeScreen(props: HomeScreenProps) {
   const online = useOnline();
   const inView = useInView(props.focused ?? true);
   const now = useScreenClock(inView);
-  const refresh = useBalanceRefresh(useMoney().refresh.everything, online, inView);
+  const refresh = useBalanceRefresh(useMoney().refresh.everything, online, inView, true);
   const { total: earnTotal, archivedHeld } = useHomeEarn();
   const [opened, setOpened] = useState<string | null>(null);
-  const waiting = useWaiting(refresh.reading && !refresh.settled, "content");
+  const loading = refresh.reading && !refresh.settled;
+  const waiting = useWaiting(loading, "content");
   useTopLoader(refresh.reading);
 
   if (!wallet) return null;
@@ -77,9 +80,6 @@ export function HomeScreen(props: HomeScreenProps) {
     balances: refresh.freshness,
     prices: prices.freshness,
   });
-  const storedNothing =
-    view.empty && wallet.activity.length === 0 && view.archived.rows.length === 0;
-  const loading = view.loading && refresh.reading && storedNothing;
 
   return (
     <RefreshScreen refreshing={refresh.refreshing} onRefresh={refresh.pull}>
@@ -87,6 +87,7 @@ export function HomeScreen(props: HomeScreenProps) {
         <View style={styles.brand}>
           <Mark size={22} />
           <Text>{appCopy.name}</Text>
+          <Text variant="faint">{betaView().tag}</Text>
         </View>
         <IconButton label={appCopy.nav.lock} onPress={props.onLock}>
           <LockIcon size={size.icon} color={colors.ink} />
@@ -135,7 +136,7 @@ export function HomeScreen(props: HomeScreenProps) {
         />
       )}
 
-      {!view.empty && (
+      {!view.empty && view.total.value !== null && (
         <Section title={copy.yourInvestments}>
           {view.investments.length === 0 ? (
             <Text variant="faint">{copy.noInvestmentsYet}</Text>
@@ -218,30 +219,19 @@ function Balance({
         />
         {explained && <Text variant="faint">{copy.togetherExplained}</Text>}
       </View>
-      {view.stale && (
-        <View style={styles.together}>
-          <Text variant="faint" accessibilityLiveRegion="polite">
-            {view.stale}
-          </Text>
-          {onRetry && (
-            <Button
-              variant="quiet"
-              label={commonCopy.tryAgain}
-              onPress={onRetry}
-              style={styles.compact}
-            />
-          )}
-        </View>
+      {view.unavailable && (
+        <RetryLine text={view.unavailable.text} retry={view.unavailable.retry} onRetry={onRetry} />
       )}
-      <Row label={view.cash.label} value={view.cash.value} last={view.earning === null} />
-      {view.earning && (
+      {view.stale && <RetryLine text={view.stale} retry={commonCopy.tryAgain} onRetry={onRetry} />}
+      <Row label={view.cash.label} value={view.cash.value} last={view.earn === null} />
+      {view.earn && (
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={`${view.earning.label}, ${view.earning.value}`}
+          accessibilityLabel={`${view.earn.label}, ${view.earn.value}`}
           onPress={onOpenEarn}
           style={({ pressed }) => pressed && styles.pressed}
         >
-          <Row label={view.earning.label} value={view.earning.value} last />
+          <Row label={view.earn.label} value={view.earn.value} last />
         </Pressable>
       )}
     </View>
@@ -312,7 +302,7 @@ function Portfolios({
   onNew,
 }: {
   view: HomeView;
-  /** The first read's wait, while nothing is stored to show; null otherwise. */
+  /** The first read's wait, while no balance is known; null otherwise. */
   loading: Waiting | null;
   onOpen: (id: string) => void;
   onNew: () => void;

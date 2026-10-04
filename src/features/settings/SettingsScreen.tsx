@@ -83,7 +83,7 @@ export function SettingsScreen({ onOpen, appVersion }: SettingsScreenProps) {
         />
         <ListRow
           label={settingsCopy.risks.title}
-          caption={mobile.risksCaption}
+          caption={settingsCopy.risks.description}
           onPress={() => onOpen("risks")}
         />
       </Section>
