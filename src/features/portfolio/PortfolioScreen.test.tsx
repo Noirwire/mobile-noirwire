@@ -4,6 +4,7 @@ import { act, fireEvent, screen, waitFor } from "@testing-library/react-native";
 import { AccessibilityInfo } from "react-native";
 import { copySecret } from "@/ui/secretClipboard";
 import { forgetWallet, installTestPlatform, testServices } from "../testServices";
+import { fakeChain, type FakeChain } from "../network/testMoney";
 import { PortfolioScreen } from "./PortfolioScreen";
 import {
   activity,
@@ -35,7 +36,12 @@ async function walletWith(shape: (first: Portfolio) => Portfolio) {
 
 async function show(
   id: string,
-  overrides: { online?: boolean; initialPublic?: boolean; readsFail?: boolean } = {},
+  overrides: {
+    online?: boolean;
+    initialPublic?: boolean;
+    readsFail?: boolean;
+    chain?: FakeChain;
+  } = {},
 ) {
   const on = {
     onAction: jest.fn(),
@@ -43,7 +49,7 @@ async function show(
     onOpenPortfolio: jest.fn(),
     onSeeAllActivity: jest.fn(),
   };
-  const balances = fakeBalances(!overrides.readsFail);
+  const balances = fakeBalances(!overrides.readsFail, overrides.chain);
   await renderScreen(
     await testServices({ useOnline: () => overrides.online ?? true }),
     <PortfolioScreen
@@ -83,6 +89,24 @@ describe("PortfolioScreen", () => {
     await fireEvent.press(screen.getByRole("button", { name: "Home" }));
     expect(on.onBack).toHaveBeenCalled();
     await waitFor(() => expect(balances.calls).toEqual([`portfolio:${portfolio.id}`]));
+  });
+
+  it("counts what the portfolio has in Earn in its value, and says how much that is", async () => {
+    const portfolio = await walletWith(invested);
+    const chain = fakeChain();
+    chain.earn.deposited.set(portfolio.address, 25);
+    await show(portfolio.id, { chain });
+    expect(await screen.findByLabelText("Portfolio value, $993.08")).toBeOnTheScreen();
+    expect(screen.getByText("Earning $25.00")).toBeOnTheScreen();
+  });
+
+  it("says when what is in Earn cannot be read, and counts only what it holds", async () => {
+    const portfolio = await walletWith(invested);
+    const chain = fakeChain();
+    chain.earn.unreadable.add(portfolio.address);
+    await show(portfolio.id, { chain });
+    expect(await screen.findByText("Earning Unavailable")).toBeOnTheScreen();
+    expect(screen.getByLabelText("Portfolio value, $968.08")).toBeOnTheScreen();
   });
 
   it("leads an empty portfolio with moving money in, and says why Send waits", async () => {

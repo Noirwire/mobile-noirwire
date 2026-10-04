@@ -56,7 +56,8 @@ The platform adapters:
 - **Vault**: `fileVault.ts` keeps one encrypted file per key under the app's documents directory, written atomically so a crash never leaves half a record. The directory carries the iOS do-not-backup flag, set by the local module in `modules/backup-exclusion` and read back to confirm it held; Android backups are off for the whole app (`allowBackup: false`).
 - **Biometric key store**: `biometricKeystore.ts` keeps the vault key, and nothing else, in the Keychain or Keystore behind biometric access control, on this device only, destroyed when the enrolment changes.
 - **Recovery phrase seed**: on a phone, the bundler hands out `@scure/bip39` with its seed step done by native crypto (`metro.config.js`, `src/platform/bip39.ts`). In JavaScript that step takes seconds per key on a phone, and an import derives dozens of keys. The start-up checks hold it to a known answer.
-- **Relay**: every network request goes to a NoirWire relay route (`/api/rpc`, `/api/prices`, `/api/jupiter`, `/api/relayer`, `/api/private-payments`) under one origin, and carries `X-NoirWire-Client: mobile/<app version>`.
+- **API**: every network request goes to the NoirWire API (`/v1/rpc`, `/v1/prices`, `/v1/history`, `/v1/jupiter`, `/v1/relayer`, `/v1/private-payments`, `/v1/events`) under one origin, `EXPO_PUBLIC_API_URL`. The shared package builds each address and adds the one header every request carries.
+- **Session**: each request carries an anonymous session the API issues, which the shared package starts and renews on its own; nobody signs in. `sessionStore.ts` keeps it as plain text beside the preferences, outside the encrypted wallet record and the biometric key store, because it is read before a wallet exists or is unlocked. It is a quota bucket, not an identity: it is not derived from the wallet, it is replaced daily, and a wallet reset drops it.
 - **Activity, preferences, analytics**: the idle lock's activity source, the analytics and biometric settings outside the encrypted record, and the closed event list, sent only while Usage analytics is on.
 
 How it relates to the other NoirWire repositories:
@@ -65,7 +66,8 @@ How it relates to the other NoirWire repositories:
 | ---------------------------------------------------------------- | ------------------------------------------------------------------- |
 | [shared-noirwire](https://github.com/Noirwire/shared-noirwire)   | The wallet core this app and the web app both install.              |
 | [relayer-noirwire](https://github.com/Noirwire/relayer-noirwire) | The fee relayer that lets a portfolio pay its network cost in USDC. |
-| app-noirwire                                                     | The web app, which also serves the relay routes this app calls.     |
+| [api-noirwire](https://github.com/Noirwire/api-noirwire)         | The API this app sends every request to.                            |
+| app-noirwire                                                     | The web app.                                                        |
 | mobile-noirwire                                                  | This repository.                                                    |
 
 ## Quick start
@@ -92,8 +94,8 @@ cp .env.example .env
 
 Fill in the two values (both are explained inline in `.env.example`):
 
-- `EXPO_PUBLIC_RELAY_URL`: the relay the app talks to. Either a deployed relay over https (such as `https://app.noirwire.com`), or the web app running locally - see the comments in `.env.example` for the local setup.
-- `EXPO_PUBLIC_SOLANA_NETWORK`: `mainnet` or `devnet`, matching whichever relay you pointed at.
+- `EXPO_PUBLIC_API_URL`: the NoirWire API the app talks to. Either the deployed API over https (`https://api.noirwire.com`), or the API running locally (`http://localhost:4000`, with `adb reverse tcp:4000 tcp:4000` on Android) - see the comments in `.env.example` for the local setup.
+- `EXPO_PUBLIC_SOLANA_NETWORK`: `mainnet` or `devnet`, matching whichever API you pointed at.
 
 **4. Build and install a dev build**
 
@@ -136,12 +138,12 @@ npm run web            # the app in a browser, for a quick look
 
 ### Environment
 
-| Variable                     | Purpose                                                           |
-| ---------------------------- | ----------------------------------------------------------------- |
-| `EXPO_PUBLIC_RELAY_URL`      | Origin of the NoirWire relay, such as `https://app.noirwire.com`. |
-| `EXPO_PUBLIC_SOLANA_NETWORK` | `mainnet` or `devnet`.                                            |
+| Variable                     | Purpose                                                         |
+| ---------------------------- | --------------------------------------------------------------- |
+| `EXPO_PUBLIC_API_URL`        | Origin of the NoirWire API, such as `https://api.noirwire.com`. |
+| `EXPO_PUBLIC_SOLANA_NETWORK` | `mainnet` or `devnet`.                                          |
 
-Every `EXPO_PUBLIC_` value is compiled into the app and readable by anyone who has it, so nothing secret belongs in them. Both are checked at start (`src/platform/env.ts`): the relay must be an https origin with no path (plain http only to `localhost`, `127.0.0.1` or the Android emulator's `10.0.2.2`). A bad value, or a missing `.env`, stops the app on the runtime failure screen - in a development build, that screen also names the underlying error.
+Every `EXPO_PUBLIC_` value is compiled into the app and readable by anyone who has it, so nothing secret belongs in them. Both are checked at start (`src/platform/env.ts`, by the shared package's rules): the API must be an https origin with no path (plain http only in a development build, and only to `localhost`, `127.0.0.1` or the Android emulator's `10.0.2.2`). A bad value, or a missing `.env`, stops the app on the runtime failure screen - in a development build, that screen also names the underlying error.
 
 ### Troubleshooting
 
@@ -149,15 +151,15 @@ Every `EXPO_PUBLIC_` value is compiled into the app and readable by anyone who h
 
 **`npm run android:debug` fails with "cannot write to emulator" or similar.** With no device attached, it cold-starts an emulator and tries to install the app before the emulator has finished booting. Run the command again once the emulator is up. With a phone and an emulator both attached, pick one explicitly: `npm run android:debug -- --device`.
 
-**It worked, and now the screen is white or balances will not load.** The `adb reverse` forwards are lost whenever the phone is unplugged or restarted. Run `npm run android:ports` and reopen the app.
+**It worked, and now the screen is white or balances will not load.** The `adb reverse` forwards (8081 for Metro, 4000 for a local API) are lost whenever the phone is unplugged or restarted. Run `npm run android:ports` and reopen the app.
 
 **Dev build on a phone can't reach Metro** ("Failed to connect to /192.168.x.x:8081"). macOS's firewall blocks the phone's incoming connection to Metro on the Mac. With the phone on USB: `adb reverse tcp:8081 tcp:8081`, then open the dev build against `http://localhost:8081` instead of the LAN address Metro printed.
 
-**The app shows "NoirWire cannot run safely on this device: App configuration" with no further detail.** This means `.env` is missing (the `cp .env.example .env` step above is easy to miss) or carries a value the app rejects, such as the placeholder `https://relay.example.com` left unedited. Create or fix `.env` as described in step 3 above, then restart Metro with `npm start -- --clear` - changes to `.env` are not picked up by a running Metro. A development build also prints the specific error under "App configuration" on that screen and to the console, so a missing or wrong setting names itself.
+**The app shows "NoirWire cannot run safely on this device: App configuration" with no further detail.** This means `.env` is missing (the `cp .env.example .env` step above is easy to miss) or carries a value the app rejects, such as `EXPO_PUBLIC_API_URL` left empty as `.env.example` ships it, or a leftover `EXPO_PUBLIC_RELAY_URL` from before the app talked to the API. Create or fix `.env` as described in step 3 above, then restart Metro with `npm start -- --clear` - changes to `.env` are not picked up by a running Metro. A development build also prints the specific error under "App configuration" on that screen and to the console, so a missing or wrong setting names itself.
 
 **What the install warnings mean:** `npm ci`'s peer-dependency warning is a test tool's `react-reconciler` wanting React 19.3 while Expo SDK 57 pins React 19.2.3 - harmless, Expo's version is the one that ships. The vulnerability count is Expo's own build tooling (the `xcode`/`node-forge` chain behind prebuild) plus two transitive Solana library advisories (`stream-json`, `uuid`, pulled in via `@solana/web3.js`) with no patched release yet. Never run `npm audit fix --force`: it rewrites these to major versions Expo and the Solana libraries do not support.
 
-Full setup detail, including running against the web app locally instead of a deployed relay, is in [`docs/running-on-a-device.md`](docs/running-on-a-device.md).
+Full setup detail, including running against a local API instead of the deployed one, is in [`docs/running-on-a-device.md`](docs/running-on-a-device.md).
 
 ## Development
 
@@ -173,7 +175,7 @@ Full setup detail, including running against the web app locally instead of a de
 
 ### UI tests on the web export
 
-`npm run test:e2e` exports the app for the web (`dist/e2e`, built against `https://app.noirwire.com` on mainnet), serves it on `127.0.0.1:8061` (`E2E_PORT` changes it) and runs `e2e/` in Chromium. Every request to the relay origin is answered from committed fixtures in `e2e/fixtures/` and `e2e/support/relay.ts`: Solana RPC, prices, price history, Jupiter quotes, Earn vaults and the fee relayer. Any request to another host is blocked and fails the test, as does an uncaught page error, so the suite never reaches production or the internet. A funded wallet is seeded into the browser by the shared wallet code itself, encrypted exactly as the app stores it.
+`npm run test:e2e` exports the app for the web (`dist/e2e`, built against `https://api.noirwire.com` on mainnet), serves it on `127.0.0.1:8061` (`E2E_PORT` changes it) and runs `e2e/` in Chromium. Every request to the API's origin is answered from committed fixtures in `e2e/fixtures/` and `e2e/support/api.ts`, in the shapes the API documents: the anonymous session and its renewal, Solana RPC, prices, price history, Jupiter quotes, Earn vaults and the fee relayer. A request without the session's token is answered `401`, as the API would. Any request to another host is blocked and fails the test, as does an uncaught page error, so the suite never reaches production or the internet. A funded wallet is seeded into the browser by the shared wallet code itself, encrypted exactly as the app stores it.
 
 Journeys covered:
 
@@ -186,7 +188,8 @@ Journeys covered:
 - Fund privately: a comma is read as the decimal separator, and the review shows both fees and the total leaving the funding wallet.
 - Earn: a deposit from a chosen portfolio reaches its review.
 - Settings reset: Delete stays disabled until RESET is typed, and the vault is empty afterwards.
-- Waiting and failing (`e2e/waiting.spec.ts`): the relay is made slow, failing or silent for import, Home and Markets. A signal appears, nothing technical is shown, and nothing waits for ever.
+- Waiting and failing (`e2e/waiting.spec.ts`): the API is made slow, failing or silent for import, Home and Markets. A signal appears, nothing technical is shown, and nothing waits for ever.
+- The session (`e2e/session.spec.ts`): a first launch obtains one before anything else is asked and then loads prices; an expired one is renewed without a word on screen; an API that is down at first launch gets the plain message, and Try again recovers.
 
 `E2E_SKIP_EXPORT=1 npm run test:e2e` reuses an existing `dist/e2e`. On failure, CI uploads the Playwright report and traces.
 

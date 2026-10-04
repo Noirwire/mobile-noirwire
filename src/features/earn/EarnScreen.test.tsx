@@ -175,6 +175,59 @@ describe("EarnScreen", () => {
     expect(chain.calls).toHaveLength(0);
   });
 
+  it("drops a failed attempt's message once the amount changes", async () => {
+    installTestPlatform();
+    const chain = fakeChain();
+    await walletWith(chain);
+    await openEarn(chain);
+    await fireEvent.press(
+      await screen.findByRole("button", { name: /^Investing, \$457\.33 cash available/ }),
+    );
+    await fireEvent.changeText(amountField(), "100");
+    await fireEvent.press(await screen.findByRole("button", { name: "Review" }));
+    chain.relayed = "costRose";
+    await fireEvent.press(screen.getByRole("button", { name: "Deposit 100.00 USDC" }));
+    const failure =
+      "The network cost rose before this could be sent. Nothing was sent. Review the new network cost.";
+    expect(await screen.findByText(failure)).toBeOnTheScreen();
+
+    await fireEvent.press(screen.getByRole("button", { name: "Back" }));
+    await fireEvent.changeText(amountField(), "50");
+    await fireEvent.press(await screen.findByRole("button", { name: "Review" }));
+    expect(screen.getByRole("button", { name: "Deposit 50.00 USDC" })).toBeOnTheScreen();
+    expect(screen.queryByText(failure)).toBeNull();
+    expect(chain.calls).toEqual([{ kind: "deposit", amount: 100, to: undefined }]);
+  });
+
+  it("asks the relayer again on a new review after one that found it down", async () => {
+    installTestPlatform();
+    const chain = fakeChain();
+    await walletWith(chain);
+    await openEarn(chain);
+    await fireEvent.press(
+      await screen.findByRole("button", { name: /^Investing, \$457\.33 cash available/ }),
+    );
+    await fireEvent.changeText(amountField(), "100");
+    await fireEvent.press(await screen.findByRole("button", { name: "Review" }));
+    chain.relayed = "relayerUnavailable";
+    chain.relayerFeeRaw = null;
+    await fireEvent.press(screen.getByRole("button", { name: "Deposit 100.00 USDC" }));
+    const notNow =
+      "This can't be done right now. Nothing was charged. Please try again in a few minutes.";
+    expect((await screen.findAllByText(notNow)).length).toBeGreaterThan(0);
+    expect(screen.getByRole("button", { name: "Deposit 100.00 USDC" })).toBeDisabled();
+
+    chain.relayed = "lands";
+    chain.relayerFeeRaw = 20_000n;
+    await fireEvent.press(screen.getByRole("button", { name: "Back" }));
+    await fireEvent.press(await screen.findByRole("button", { name: "Review" }));
+    expect(screen.queryByText(notNow)).toBeNull();
+    const confirm = screen.getByRole("button", { name: "Deposit 100.00 USDC" });
+    expect(confirm).toBeEnabled();
+    await fireEvent.press(confirm);
+    expect(await screen.findByText("Deposited 100.00 USDC")).toBeOnTheScreen();
+  });
+
   it("reports an unknown outcome and holds the portfolio's next Confirm until it settles", async () => {
     installTestPlatform();
     const chain = fakeChain();

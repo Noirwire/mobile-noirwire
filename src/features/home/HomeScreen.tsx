@@ -35,7 +35,6 @@ import { PortfolioRow } from "../portfolio/PortfolioRow";
 import { TrackerMark } from "@/ui/TrackerMark";
 import { useBalanceRefresh } from "../portfolio/useBalanceRefresh";
 import { useLivePrices, useWalletSnapshot } from "../portfolio/useWalletSnapshot";
-import { phoneCopy } from "../phoneCopy";
 import { useServices } from "../services";
 import { TextToggle } from "./TextToggle";
 
@@ -226,7 +225,7 @@ function Balance({
           {onRetry && (
             <Button
               variant="quiet"
-              label={phoneCopy.tryAgain}
+              label={commonCopy.tryAgain}
               onPress={onRetry}
               style={styles.compact}
             />

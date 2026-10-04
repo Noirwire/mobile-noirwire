@@ -5,9 +5,9 @@ import {
   fundingDraft,
 } from "@noirwire/shared/application";
 import { activePortfolios, cashOf } from "@noirwire/shared/wallet";
-import { describeFailure } from "@noirwire/shared/presentation";
+import { describeFailure, WAIT_LIMIT_MS } from "@noirwire/shared/presentation";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useWaiting, WAITING_LIMIT_MS, withinLimit } from "@/ui/useWaiting";
+import { useWaiting, withinLimit } from "@/ui/useWaiting";
 import { useServices } from "../services";
 import { useMoney } from "../network/money";
 import { usePendingBlock } from "../network/usePendingBlock";
@@ -62,7 +62,7 @@ export function useFundFlow(initialPortfolioId: string | null) {
   useEffect(() => {
     if (!fundingAddress) return;
     let current = true;
-    withinLimit(money.refresh.funding(fundingAddress, CASH), WAITING_LIMIT_MS.content)
+    withinLimit(money.refresh.funding(fundingAddress, CASH), WAIT_LIMIT_MS.content)
       .catch(() => undefined)
       .finally(() => current && setRead(true));
     return () => {

@@ -2,8 +2,8 @@ import { createWallet, unlock } from "./support/onboarding";
 import { expect, expectNothingTechnical, test } from "./support/test";
 
 /**
- * What the app shows while the relay is slow, and what it says when the
- * relay fails: a signal appears, nothing technical is shown, and nothing
+ * What the app shows while the API is slow, and what it says when the
+ * API fails: a signal appears, nothing technical is shown, and nothing
  * waits for ever.
  */
 
@@ -23,12 +23,12 @@ async function typePhrase(page: import("@playwright/test").Page) {
 }
 
 test.describe("import", () => {
-  test("keeps the phrase form on screen on a slow relay, with the one top loader running, and still finishes", async ({
+  test("keeps the phrase form on screen on a slow API, with the one top loader running, and still finishes", async ({
     page,
-    relay,
+    api,
   }) => {
     await typePhrase(page);
-    relay.slow("/api/rpc", 400);
+    api.slow("/v1/rpc", 400);
     await page.getByRole("button", { name: "Continue" }).click();
 
     // No new page: the same form, the field held, Continue still reading
@@ -48,9 +48,9 @@ test.describe("import", () => {
     ).toBeVisible({ timeout: 60_000 });
   });
 
-  test("can be cancelled while it runs, with the phrase kept", async ({ page, relay }) => {
+  test("can be cancelled while it runs, with the phrase kept", async ({ page, api }) => {
     await typePhrase(page);
-    relay.silent("/api/rpc");
+    api.silent("/v1/rpc");
     await page.getByRole("button", { name: "Continue" }).click();
     await expect(page.getByRole("button", { name: "Cancel" })).toBeVisible();
     await page.getByRole("button", { name: "Cancel" }).click();
@@ -63,12 +63,12 @@ test.describe("import", () => {
     await expect(page.getByRole("progressbar")).toHaveCount(0);
   });
 
-  test("says plainly that it could not finish on a failing relay, and can be tried again", async ({
+  test("says plainly that it could not finish on a failing API, and can be tried again", async ({
     page,
-    relay,
+    api,
   }) => {
     await typePhrase(page);
-    relay.failing("/api/rpc");
+    api.failing("/v1/rpc");
     await page.getByRole("button", { name: "Continue" }).click();
     await expect(page.getByRole("button", { name: "Cancel" })).toBeVisible();
 
@@ -78,7 +78,7 @@ test.describe("import", () => {
       TEST_ONLY_PHRASE,
     );
 
-    relay.healthy("/api/rpc");
+    api.healthy("/v1/rpc");
     await page.getByRole("button", { name: "Continue" }).click();
     await expect(
       page.getByRole("heading", { name: "Where did this phrase come from?" }),
@@ -106,10 +106,10 @@ test.describe("import", () => {
 test.describe("Home", () => {
   test("holds the balance's place while a new wallet's first read is slow", async ({
     page,
-    relay,
+    api,
   }) => {
     await page.goto("/");
-    relay.slow("/api/rpc", 2_500);
+    api.slow("/v1/rpc", 2_500);
     await createWallet(page);
 
     await expect(page.getByLabel("Loading").first()).toBeVisible();
@@ -119,29 +119,29 @@ test.describe("Home", () => {
     await expect(page.getByLabel("Loading")).toHaveCount(0);
   });
 
-  test("says what may be out of date on a failing relay, and reads again on Try again", async ({
+  test("says what may be out of date on a failing API, and reads again on Try again", async ({
     page,
-    relay,
+    api,
     funded,
   }) => {
     await page.goto("/");
     await expect(page.getByRole("heading", { name: "Unlock NoirWire" })).toBeVisible();
-    relay.failing("/api/rpc");
+    api.failing("/v1/rpc");
     await unlock(page, funded.password);
 
     await expect(page.getByText(BALANCES_STALE)).toBeVisible({ timeout: 30_000 });
     await expect(page.getByText("$457.33").first()).toBeVisible();
     await expectNothingTechnical(page);
 
-    relay.healthy("/api/rpc");
+    api.healthy("/v1/rpc");
     await page.getByRole("button", { name: "Try again" }).click();
     await expect(page.getByText(BALANCES_STALE)).toBeHidden({ timeout: 30_000 });
   });
 
-  test("never waits for ever on a relay that does not answer", async ({ page, relay, funded }) => {
+  test("never waits for ever on an API that does not answer", async ({ page, api, funded }) => {
     await page.goto("/");
     await expect(page.getByRole("heading", { name: "Unlock NoirWire" })).toBeVisible();
-    relay.silent("/api/rpc");
+    api.silent("/v1/rpc");
     await unlock(page, funded.password);
 
     await expect(page.getByText(BALANCES_STALE)).toBeVisible({ timeout: 40_000 });
@@ -156,10 +156,10 @@ test.describe("Markets", () => {
 
   test("holds the list's place while prices are slow, then shows them", async ({
     page,
-    relay,
+    api,
     funded,
   }) => {
-    relay.slow("/api/prices", 3_000);
+    api.slow("/v1/prices", 3_000);
     await page.goto("/");
     await unlock(page, funded.password);
     await page.getByRole("tab", { name: "Markets" }).click();
@@ -173,12 +173,12 @@ test.describe("Markets", () => {
     await expect(page.getByText(PRICES_MISSING)).toHaveCount(0);
   });
 
-  test("lists the trackers without prices on a failing relay, and no number that is not live", async ({
+  test("lists the trackers without prices on a failing API, and no number that is not live", async ({
     page,
-    relay,
+    api,
     funded,
   }) => {
-    relay.failing("/api/prices");
+    api.failing("/v1/prices");
     await page.goto("/");
     await unlock(page, funded.password);
     await page.getByRole("tab", { name: "Markets" }).click();
@@ -192,10 +192,10 @@ test.describe("Markets", () => {
 
   test("stops waiting for prices that never come, and says they are missing", async ({
     page,
-    relay,
+    api,
     funded,
   }) => {
-    relay.silent("/api/prices");
+    api.silent("/v1/prices");
     await page.goto("/");
     await unlock(page, funded.password);
     await page.getByRole("tab", { name: "Markets" }).click();

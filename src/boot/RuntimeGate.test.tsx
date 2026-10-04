@@ -16,13 +16,17 @@ describe("RuntimeGate", () => {
     const error = jest.spyOn(console, "error").mockImplementation(() => {});
     await render(
       <RuntimeGate
-        prepare={() => Promise.reject(new Error("EXPO_PUBLIC_RELAY_URL must use https."))}
+        prepare={() =>
+          Promise.reject(new Error("The API base URL is not set. Check EXPO_PUBLIC_API_URL."))
+        }
       >
         <Text>wallet</Text>
       </RuntimeGate>,
     );
     await waitFor(() => expect(screen.getByText(PREPARE_FAILURE)).toBeTruthy());
-    expect(screen.getByText("EXPO_PUBLIC_RELAY_URL must use https.")).toBeTruthy();
+    expect(
+      screen.getByText("The API base URL is not set. Check EXPO_PUBLIC_API_URL."),
+    ).toBeTruthy();
     expect(error).toHaveBeenCalledWith("RuntimeGate: prepare failed", expect.any(Error));
     error.mockRestore();
   });

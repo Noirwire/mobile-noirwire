@@ -83,6 +83,7 @@ export function EarnSheet(props: EarnSheetProps) {
       venue: props.venue,
       pending: flow.pending,
       online: flow.online,
+      failure: flow.failure,
     });
   const progress = earnProgressView(action, flow.draft.amount);
 
@@ -96,7 +97,7 @@ export function EarnSheet(props: EarnSheetProps) {
   }[step];
   const onBack =
     step === "review"
-      ? () => flow.goTo("amount")
+      ? flow.editAmount
       : step === "risks"
         ? () => flow.goTo("review")
         : step === "amount" && !props.opening.portfolioId
@@ -181,7 +182,7 @@ export function EarnSheet(props: EarnSheetProps) {
               />
             </View>
           )}
-          {flow.failure && <Notice tone="danger">{flow.failure}</Notice>}
+          {review.error && <Notice tone="danger">{review.error}</Notice>}
           {review.risk && (
             <View style={styles.list}>
               <Text variant="note">{review.risk.line}</Text>

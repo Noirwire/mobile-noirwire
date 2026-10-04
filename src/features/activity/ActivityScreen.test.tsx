@@ -10,10 +10,11 @@ afterEach(() => forgetWallet());
 const NOW = new Date(2026, 8, 30, 12, 0).getTime();
 const RECIPIENT = "Dest1111Dest2222Dest3333Dest4444";
 
-async function show(entries: (id: string) => Parameters<typeof activity>[0][]) {
+async function show(entries: (id: string) => Parameters<typeof activity>[0][], imported = false) {
   installTestPlatform();
   const wallet = await unlockedWallet((w) => ({
     ...w,
+    ...(imported ? { imported: true as const } : {}),
     portfolios: w.portfolios.map((p) => ({ ...p, label: "Investing" })),
     activity: entries(w.portfolios[0].id).map(activity),
   }));
@@ -88,6 +89,55 @@ describe("ActivityScreen", () => {
     await fireEvent.press(screen.getByRole("button", { name: "Portfolio, Investing" }));
     expect(onOpenPortfolio).toHaveBeenCalledWith(wallet.portfolios[0].id);
     expect(screen.queryByText("Value at the time")).toBeNull();
+  });
+
+  it("shows what a return from Earn really brought once its network cost was taken out", async () => {
+    await show((id) => [
+      { portfolioId: id, kind: "earnWithdraw", at: NOW, usd: 10, amount: 10, networkCost: 0.02 },
+    ]);
+    const row = screen.getByRole("button", {
+      name: /^Returned from Earn, Investing, 30 September, plus \$9\.98, 9\.98 USDC, Network cost 0\.02 USDC$/,
+    });
+    expect(screen.getByText("+$9.98")).toBeOnTheScreen();
+    expect(screen.getByText("Network cost 0.02 USDC")).toBeOnTheScreen();
+    await fireEvent.press(row);
+    expect(screen.getByText("Amount")).toBeOnTheScreen();
+    expect(screen.getByText("10.00 USDC")).toBeOnTheScreen();
+    expect(screen.getByText("Network cost")).toBeOnTheScreen();
+    expect(screen.getByText("0.02 USDC")).toBeOnTheScreen();
+    expect(screen.getByText("Arrived")).toBeOnTheScreen();
+  });
+
+  it("shows no network cost on an entry that was charged none", async () => {
+    await show((id) => [{ portfolioId: id, kind: "fund", at: NOW, usd: 100, amount: 100 }]);
+    expect(screen.queryByText(/Network cost/)).toBeNull();
+    await fireEvent.press(screen.getByRole("button", { name: /^Money arrived/ }));
+    expect(screen.queryByText("Network cost")).toBeNull();
+    expect(screen.queryByText("Arrived")).toBeNull();
+  });
+
+  describe("on an imported wallet", () => {
+    const note =
+      "This wallet was imported on this phone. Activity from before the import, made on another device, is not shown here. Your balances are complete.";
+    const funded = (id: string) => [
+      { portfolioId: id, kind: "fund" as const, at: NOW, usd: 100, amount: 100 },
+    ];
+
+    it("says earlier activity is not shown when nothing has moved here yet", async () => {
+      await show(() => [], true);
+      expect(screen.getByText(note)).toBeOnTheScreen();
+    });
+
+    it("says so under the entries made since the import", async () => {
+      await show(funded, true);
+      expect(screen.getByText("Money arrived")).toBeOnTheScreen();
+      expect(screen.getByText(note)).toBeOnTheScreen();
+    });
+
+    it("says nothing of an import on a wallet created here", async () => {
+      await show(funded);
+      expect(screen.queryByText(note)).toBeNull();
+    });
   });
 
   it("says older entries are no longer kept once the list has reached the most the phone keeps", async () => {

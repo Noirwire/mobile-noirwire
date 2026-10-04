@@ -1,5 +1,6 @@
 import {
   STILL_WORKING_AFTER_MS,
+  WAIT_LIMIT_MS,
   WAITING_DELAY_MS,
   waitingView,
   type WaitingKind,
@@ -7,19 +8,6 @@ import {
   type WaitingView,
 } from "@noirwire/shared/presentation";
 import { useEffect, useState } from "react";
-
-/**
- * How long a wait may run before it is ended with a way out: Back, Cancel or
- * Try again. A read that never answers must not keep a screen waiting, and an
- * action that never answers must not lock a sheet for good. A rule the shared
- * waiting standard does not carry yet.
- */
-export const WAITING_LIMIT_MS: Record<WaitingKind, number> = {
-  content: 20_000,
-  check: 20_000,
-  review: 30_000,
-  action: 120_000,
-};
 
 export type Waiting = WaitingView & {
   /** How long the wait has run, as of the last moment it changed what is shown. */
@@ -45,7 +33,7 @@ type Options = {
  * signal from here, so they all behave alike.
  */
 export function useWaiting(active: boolean, kind: WaitingKind, options: Options = {}): Waiting {
-  const limitMs = options.limitMs ?? WAITING_LIMIT_MS[kind];
+  const limitMs = options.limitMs ?? WAIT_LIMIT_MS[kind];
   const extra = (options.moments ?? []).join(",");
   const [elapsed, setElapsed] = useState(0);
 

@@ -1,9 +1,9 @@
 import { defineConfig, devices } from "@playwright/test";
 
 // The UI suite runs against the static web export, served on its own port.
-// The export is built against https://app.noirwire.com, and every request to
-// that origin is answered by committed fixtures (e2e/support/relay.ts): no
-// test reaches the real relay, Solana or any other host.
+// The export is built against https://api.noirwire.com, and every request to
+// that origin is answered by committed fixtures (e2e/support/api.ts): no
+// test reaches the real API, Solana or any other host.
 const PORT = Number(process.env.E2E_PORT ?? 8061);
 const BASE_URL = `http://127.0.0.1:${PORT}`;
 const EXPORT_DIR = "dist/e2e";
@@ -38,7 +38,7 @@ export default defineConfig({
         ? `node e2e/support/serve.mjs ${EXPORT_DIR} ${PORT}`
         : `npx expo export --platform web --clear --output-dir ${EXPORT_DIR} && node e2e/support/serve.mjs ${EXPORT_DIR} ${PORT}`,
     env: {
-      EXPO_PUBLIC_RELAY_URL: "https://app.noirwire.com",
+      EXPO_PUBLIC_API_URL: "https://api.noirwire.com",
       EXPO_PUBLIC_SOLANA_NETWORK: "mainnet",
     },
     url: BASE_URL,

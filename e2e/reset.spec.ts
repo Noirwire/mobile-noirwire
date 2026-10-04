@@ -1,9 +1,14 @@
 import { unlock } from "./support/onboarding";
 import { expect, test } from "./support/test";
 
+/** Where the browser build keeps the app's anonymous session (`src/platform/sessionStore.ts`). */
+const SESSION_FILE = "noirwire.vault/noirwire%2Emobile%2Esession.value";
+
 test("Settings reset deletes the wallet only after RESET is typed", async ({ page, funded }) => {
   await page.goto("/");
   await unlock(page, funded.password);
+  const sessionBefore = await page.evaluate((key) => localStorage.getItem(key), SESSION_FILE);
+  expect(sessionBefore).toContain("e2e-access-1");
   await page.getByRole("tab", { name: "Settings" }).click();
   await page.getByRole("button", { name: "Reset wallet" }).click();
 
@@ -19,8 +24,11 @@ test("Settings reset deletes the wallet only after RESET is typed", async ({ pag
 
   await expect(page).toHaveURL(/\/welcome$/);
   await expect(page.getByRole("button", { name: "Create my wallet" })).toBeVisible();
-  const vaultFiles = await page.evaluate(
-    () => Object.keys(localStorage).filter((key) => key.startsWith("noirwire.vault/")).length,
+  // Nothing of the wallet is left. The session it was used with went with
+  // it: at most a new one is there, started by whatever the app asked next.
+  const left = await page.evaluate(() =>
+    Object.entries(localStorage).filter(([key]) => key.startsWith("noirwire.vault/")),
   );
-  expect(vaultFiles).toBe(0);
+  expect(left.filter(([key]) => key !== SESSION_FILE)).toEqual([]);
+  expect(left.some(([, value]) => value.includes("e2e-access-1"))).toBe(false);
 });

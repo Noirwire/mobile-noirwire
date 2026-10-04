@@ -2,7 +2,7 @@ import { getSnapshot } from "@noirwire/shared/wallet";
 import { act, fireEvent, screen } from "@testing-library/react-native";
 import { forgetWallet, installTestPlatform, renderWith, testServices } from "../testServices";
 import { portfoliosWith as walletWith } from "../network/testMoney";
-import { installFakeRelay } from "../trade/testDoubles";
+import { installFakePrices } from "../trade/testDoubles";
 import { MarketsScreen } from "./MarketsScreen";
 
 afterEach(async () => {
@@ -26,7 +26,7 @@ async function show(visitor = false) {
 describe("MarketsScreen", () => {
   it("holds the place of the list with skeletons until the first prices answer", async () => {
     installTestPlatform();
-    installFakeRelay();
+    installFakePrices();
     global.fetch = jest.fn(() => new Promise(() => undefined)) as unknown as typeof fetch;
     await walletWith([{ label: "Investing" }]);
     await show();
@@ -36,7 +36,7 @@ describe("MarketsScreen", () => {
 
   it("shows live prices on the shelves and the list, and opens a tracker", async () => {
     installTestPlatform();
-    installFakeRelay();
+    installFakePrices();
     await walletWith([{ label: "Investing" }]);
     const { onOpen } = await show();
     expect(await screen.findByText("Top movers")).toBeOnTheScreen();
@@ -51,7 +51,7 @@ describe("MarketsScreen", () => {
 
   it("shows no number and no change without a live price", async () => {
     installTestPlatform();
-    installFakeRelay({ prices: null });
+    installFakePrices({ prices: null });
     await walletWith([{ label: "Investing" }]);
     await show();
     // The list's place is held for a moment first, in case the prices are only late.
@@ -72,7 +72,7 @@ describe("MarketsScreen", () => {
 
   it("searches by ticker without its trailing x, by name, and says when nothing matches", async () => {
     installTestPlatform();
-    installFakeRelay();
+    installFakePrices();
     await walletWith([{ label: "Investing" }]);
     await show();
     const search = screen.getByLabelText("Search trackers");
@@ -87,7 +87,7 @@ describe("MarketsScreen", () => {
 
   it("stars a tracker into the watchlist and filters by it, with the empty watchlist explained", async () => {
     installTestPlatform();
-    installFakeRelay();
+    installFakePrices();
     await walletWith([{ label: "Investing" }]);
     await act(async () => {
       const { updateWallet } = await import("@noirwire/shared/wallet");
@@ -107,7 +107,7 @@ describe("MarketsScreen", () => {
 
   it("lists 25 at a time", async () => {
     installTestPlatform();
-    installFakeRelay();
+    installFakePrices();
     await walletWith([{ label: "Investing" }]);
     await show();
     await screen.findByText("Browse all");
@@ -118,7 +118,7 @@ describe("MarketsScreen", () => {
 
   it("gives a visitor no watchlist and one way forward", async () => {
     installTestPlatform();
-    installFakeRelay();
+    installFakePrices();
     const { onCreate } = await show(true);
     await screen.findByText("Top movers");
     expect(screen.queryByText("My watchlist")).toBeNull();
@@ -130,7 +130,7 @@ describe("MarketsScreen", () => {
 
   it("says when a link named a tracker that does not exist", async () => {
     installTestPlatform();
-    installFakeRelay();
+    installFakePrices();
     await walletWith([{ label: "Investing" }]);
     await renderWith(await testServices(), <MarketsScreen onOpen={jest.fn()} unknownTracker />);
     expect(screen.getByText("No such investment.")).toBeOnTheScreen();

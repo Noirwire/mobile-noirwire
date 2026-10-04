@@ -1,10 +1,10 @@
 import type { Activity, Holding, Portfolio, Wallet } from "@noirwire/shared/domain";
 import {
-  configureHttp,
   livePricesUpdatedAt,
   watchLivePrices,
   type LivePrice,
 } from "@noirwire/shared/infrastructure";
+import { fakeApi } from "@noirwire/shared/testing";
 import { createWallet, getSnapshot, storeNewWallet, updateWallet } from "@noirwire/shared/wallet";
 import { act } from "@testing-library/react-native";
 import type { ReactElement } from "react";
@@ -21,18 +21,12 @@ export const TEST_PRICES: Record<string, LivePrice> = {
 };
 
 /**
- * Has the shared live-price feed read `TEST_PRICES` once, through a stand-in
- * for the relay, and answers when they were read. Prices stay fresh for the
+ * Has the shared live-price feed read `TEST_PRICES` once, from the shared
+ * fake of the API, and answers when they were read. Prices stay fresh for the
  * rest of the test file. The platform must be installed first.
  */
 export async function seedLivePrices(): Promise<number> {
-  configureHttp({ baseUrl: "https://relay.test", headers: () => ({}) });
-  const fetched = jest.fn(async () => ({
-    ok: true,
-    headers: { get: () => "0" },
-    json: async () => ({ prices: TEST_PRICES }),
-  }));
-  global.fetch = fetched as unknown as typeof fetch;
+  fakeApi({ "GET /v1/prices": () => ({ prices: TEST_PRICES }) });
   const stop = watchLivePrices({ hidden: () => false, subscribe: () => () => undefined });
   await act(async () => {
     for (let tries = 0; tries < 20 && livePricesUpdatedAt() === null; tries += 1) {
@@ -83,9 +77,9 @@ export async function unlockedWallet(shape: (wallet: Wallet) => Wallet = (wallet
  * The money wiring with balance reads that answer at once, with `ok`, and
  * count how often they were asked. Nothing else about it reaches a network.
  */
-export function fakeBalances(ok = true): { money: Money; calls: string[] } {
+export function fakeBalances(ok = true, chain = fakeChain()): { money: Money; calls: string[] } {
   const calls: string[] = [];
-  const money = testMoney(fakeChain());
+  const money = testMoney(chain);
   return {
     calls,
     money: {

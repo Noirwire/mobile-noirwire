@@ -9,8 +9,7 @@ import {
   type FakeChain,
 } from "../network/testMoney";
 import { forgetWallet, installTestPlatform, testServices } from "../testServices";
-import { STILL_WORKING_AFTER_MS } from "@noirwire/shared/presentation";
-import { WAITING_LIMIT_MS } from "@/ui";
+import { STILL_WORKING_AFTER_MS, WAIT_LIMIT_MS } from "@noirwire/shared/presentation";
 import { FundScreen } from "./FundScreen";
 
 afterEach(() => {
@@ -57,6 +56,21 @@ describe("FundScreen", () => {
     expect(screen.getByText("+ 0.10 USDC")).toBeOnTheScreen();
     expect(screen.getByText("100.30 USDC")).toBeOnTheScreen();
     expect(screen.getByRole("button", { name: "Review" })).toBeEnabled();
+  });
+
+  it("states its fees on the form to the same decimal as on the review", async () => {
+    installTestPlatform();
+    const chain = fakeChain();
+    await walletWith(chain);
+    await openFund(chain);
+    await fireEvent.changeText(amountField(), "25");
+    expect(screen.getByText("+ 0.025 USDC")).toBeOnTheScreen();
+    expect(screen.getByText("25.225 USDC")).toBeOnTheScreen();
+    expect(screen.queryByText(/0\.03 USDC|25\.23 USDC/)).toBeNull();
+    await fireEvent.press(screen.getByRole("button", { name: "Review" }));
+    expect(screen.getByText("0.025 USDC")).toBeOnTheScreen();
+    expect(screen.getByText("25.225 USDC")).toBeOnTheScreen();
+    expect(screen.queryByText(/0\.03 USDC|25\.23 USDC/)).toBeNull();
   });
 
   it("checks the minimum and the balance with fees, and disables presets it cannot cover", async () => {
@@ -286,7 +300,7 @@ describe("FundScreen", () => {
     expect(
       screen.getByText("Still working. You can leave this open; nothing more is needed from you."),
     ).toBeOnTheScreen();
-    await act(() => jest.advanceTimersByTimeAsync(WAITING_LIMIT_MS.action));
+    await act(() => jest.advanceTimersByTimeAsync(WAIT_LIMIT_MS.action));
     expect(
       screen.getByText(
         "This is taking longer than it should. It may still go through, so check the balance and Activity before doing it again.",

@@ -8,7 +8,7 @@ import { act, fireEvent, screen, waitFor } from "@testing-library/react-native";
 import { FundScreen } from "../funding/FundScreen";
 import { SendScreen } from "../send/SendScreen";
 import { forgetWallet, installTestPlatform, testServices } from "../testServices";
-import { installFakeRelay } from "../trade/testDoubles";
+import { installFakePrices } from "../trade/testDoubles";
 import { TradeSheet } from "../trade/TradeSheet";
 import {
   FAKE_SIGNATURE,
@@ -52,7 +52,7 @@ const onePoll = () =>
 /** One portfolio with cash, and the trade sheet and one other money screen mounted over the same money wiring. */
 async function mounted(other: "send" | "fund") {
   installTestPlatform();
-  installFakeRelay();
+  installFakePrices();
   const chain = fakeChain();
   const wallet = await walletWith(chain);
   const [portfolio] = wallet.portfolios;

@@ -1,3 +1,4 @@
+import { commonCopy, mobileWaitingCopy } from "@noirwire/shared/copy";
 import { resolvePortfolioIcon } from "@noirwire/shared/domain";
 import { useState } from "react";
 import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from "react-native";
@@ -19,7 +20,6 @@ import { selectionHaptic } from "@/ui/haptics";
 import { colors, layout, opacity } from "@/ui/theme";
 import type { EarnAction } from "@noirwire/shared/application";
 import { earnScreenView, type EarnRowView } from "@noirwire/shared/presentation";
-import { phoneCopy } from "../phoneCopy";
 import { EarnSheet } from "./EarnSheet";
 import type { EarnOpening } from "./useEarnFlow";
 import { useEarnScreen } from "./useEarnScreen";
@@ -94,10 +94,10 @@ export function EarnScreen({ onReadRisks, onNewPortfolio, onMoveMoney }: EarnScr
               {unread && !reading && (
                 <View style={styles.risk}>
                   <Text variant="faint" accessibilityLiveRegion="polite">
-                    {phoneCopy.overdue.earn}
+                    {mobileWaitingCopy.overdue.earn}
                   </Text>
                   {state.online && (
-                    <Button variant="quiet" label={phoneCopy.tryAgain} onPress={state.reload} />
+                    <Button variant="quiet" label={commonCopy.tryAgain} onPress={state.reload} />
                   )}
                 </View>
               )}

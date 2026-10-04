@@ -33,7 +33,7 @@ import { RefreshScreen } from "@/ui/RefreshScreen";
 import { colors, fonts, layout, opacity, radius, size } from "@/ui/theme";
 import { ActivityDetailSheet } from "../activity/ActivityDetailSheet";
 import { ActivityRow } from "../activity/ActivityRow";
-import { phoneCopy } from "../phoneCopy";
+import { usePortfolioEarn } from "../earn/useEarnScreen";
 import { useServices } from "../services";
 import { useMoney } from "../network/money";
 import { FadeLayer } from "./FadeLayer";
@@ -82,6 +82,7 @@ export function PortfolioScreen(props: PortfolioScreenProps) {
     [balances, id],
   );
   const refresh = useBalanceRefresh(read, online);
+  const inEarn = usePortfolioEarn(id);
   const [publicMode, setPublicMode] = useState<PublicMode>(props.initialPublic ? "button" : "off");
   const [settings, setSettings] = useState(false);
   const [opened, setOpened] = useState<string | null>(null);
@@ -99,7 +100,7 @@ export function PortfolioScreen(props: PortfolioScreenProps) {
   useTopLoader(refresh.reading);
 
   if (!wallet) return null;
-  const view = portfolioView(screenReads, wallet, id, updatedAt);
+  const view = portfolioView(screenReads, wallet, id, updatedAt, inEarn);
 
   if (view.kind === "missing") {
     return (
@@ -327,6 +328,7 @@ function Header({
           </View>
         )}
         <Text variant="note">{view.cashLine}</Text>
+        {view.inEarn && <Text variant="note">{`${view.inEarn.label} ${view.inEarn.value}`}</Text>}
         {failed && (
           <View style={styles.retry}>
             <Text variant="faint" accessibilityLiveRegion="polite">
@@ -335,7 +337,7 @@ function Header({
             {onRetry && (
               <Button
                 variant="quiet"
-                label={phoneCopy.tryAgain}
+                label={commonCopy.tryAgain}
                 onPress={onRetry}
                 style={styles.compact}
               />

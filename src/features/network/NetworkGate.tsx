@@ -7,7 +7,7 @@ import { checkNetwork, networkGateView, type GateState, type NetworkCheck } from
 
 type NetworkGateProps = {
   children: ReactNode;
-  /** Which chain the RPC serves; the device asks the relay for its genesis hash. */
+  /** Which chain the RPC serves; the device asks for its genesis hash through the API. */
   check?: () => Promise<NetworkCheck>;
   /** The network this build is for, in words. */
   network?: () => string;

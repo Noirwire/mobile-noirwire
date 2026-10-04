@@ -25,6 +25,7 @@ import {
   pieRunStopped,
   rebalanceNote,
   type PieOrder,
+  WAIT_LIMIT_MS,
 } from "@noirwire/shared/presentation";
 import {
   asset,
@@ -49,7 +50,6 @@ import {
   useTopLoader,
   useWaiting,
   withinLimit,
-  WAITING_LIMIT_MS,
 } from "@/ui";
 import { errorHaptic, heavyHaptic, lightHaptic, successHaptic, warningHaptic } from "@/ui/haptics";
 import { colors, fonts, layout } from "@/ui/theme";
@@ -113,7 +113,7 @@ export function PieOrderSheet({ portfolioId, mode, onClose, onAddMoney }: PieOrd
   useTopLoader(pricingNow);
   // Each order gets the action's limit, and a question waiting for an answer is not a wait.
   const working = useWaiting(step === "progress" && approval === null, "action", {
-    limitMs: WAITING_LIMIT_MS.action * Math.max(outcomes.length, 1),
+    limitMs: WAIT_LIMIT_MS.action * Math.max(outcomes.length, 1),
   });
 
   const title = portfolio
@@ -150,7 +150,7 @@ export function PieOrderSheet({ portfolioId, mode, onClose, onAddMoney }: PieOrd
     for (const leg of legs) {
       const quoted = await withinLimit(
         service.quote(portfolioId, side, leg.symbol, leg.amount),
-        WAITING_LIMIT_MS.review,
+        WAIT_LIMIT_MS.review,
       ).catch(() => ({ error: errorsCopy.trade.noPrice }));
       if ("error" in quoted) {
         setNotice(copy.legFailed(leg.symbol, quoted.error));
@@ -162,7 +162,7 @@ export function PieOrderSheet({ portfolioId, mode, onClose, onAddMoney }: PieOrd
     try {
       const reviewed = await withinLimit(
         service.reviewCost(portfolioId, orders, false),
-        WAITING_LIMIT_MS.review,
+        WAIT_LIMIT_MS.review,
       );
       const spent = side === "buy" ? legs.reduce((sum, leg) => sum + leg.usd, 0) : 0;
       setPriced({
@@ -274,7 +274,7 @@ export function PieOrderSheet({ portfolioId, mode, onClose, onAddMoney }: PieOrd
     }
     // The sells landed: the buys are planned from the cash they really returned, read from the chain.
     const cashBefore = cash;
-    const reread = await withinLimit(service.refresh(portfolioId), WAITING_LIMIT_MS.content).catch(
+    const reread = await withinLimit(service.refresh(portfolioId), WAIT_LIMIT_MS.content).catch(
       () => false,
     );
     if (!reread) return finish(final, copy.proceedsUnread);

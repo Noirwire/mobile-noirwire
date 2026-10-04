@@ -31,7 +31,6 @@ jest.mock("./vaultFiles", () => {
   };
 });
 
-jest.mock("expo-constants", () => ({ expoConfig: { version: "1.2.3" } }));
 jest.mock("expo-local-authentication", () => ({}));
 jest.mock("expo-secure-store", () => ({}));
 
@@ -47,7 +46,7 @@ function sourceFiles(directory: string): string[] {
 
 describe("installMobilePlatform", () => {
   beforeAll(() => {
-    process.env.EXPO_PUBLIC_RELAY_URL = "https://relay.test";
+    process.env.EXPO_PUBLIC_API_URL = "https://api.noirwire.test";
     process.env.EXPO_PUBLIC_SOLANA_NETWORK = "devnet";
   });
 

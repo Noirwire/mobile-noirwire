@@ -47,6 +47,11 @@ export function ActivityRow({ row, onPress }: { row: ActivityRowView; onPress: (
         <Text variant="faint" style={styles.figure}>
           {row.amount}
         </Text>
+        {row.networkCost !== null && (
+          <Text variant="faint" style={styles.figure}>
+            {row.networkCost}
+          </Text>
+        )}
       </View>
     </Pressable>
   );

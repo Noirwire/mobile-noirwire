@@ -1,38 +1,39 @@
 import { mobileEnv } from "./env";
 
+const settings = (apiUrl: string | undefined, network: string | undefined = "devnet") => ({
+  network,
+  apiUrl,
+  development: false,
+});
+
 describe("mobileEnv", () => {
-  it("reads the network and the relay's origin", () => {
-    expect(mobileEnv({ network: "mainnet", relayUrl: "https://app.noirwire.com/" })).toEqual({
-      env: { network: "mainnet-beta", referralAccount: null, feeBps: 0 },
-      relayUrl: "https://app.noirwire.com",
+  it("reads the network and the API's origin", () => {
+    expect(mobileEnv(settings("https://api.noirwire.com/", "mainnet"))).toEqual({
+      network: "mainnet-beta",
+      referralAccount: null,
+      feeBps: 0,
+      apiBaseUrl: "https://api.noirwire.com",
     });
   });
 
   it("defaults to devnet like the shared settings do", () => {
-    expect(
-      mobileEnv({ network: undefined, relayUrl: "https://relay.example.com" }).env.network,
-    ).toBe("devnet");
+    expect(mobileEnv(settings("https://api.example.com", undefined)).network).toBe("devnet");
   });
 
   it("refuses an unknown network", () => {
-    expect(() => mobileEnv({ network: "testnet", relayUrl: "https://a.example" })).toThrow(
-      /network/,
-    );
+    expect(() => mobileEnv(settings("https://a.example", "testnet"))).toThrow(/network/);
   });
 
-  it("refuses a missing, plain http or path-carrying relay URL", () => {
-    expect(() => mobileEnv({ network: "devnet", relayUrl: undefined })).toThrow(/RELAY_URL/);
-    expect(() => mobileEnv({ network: "devnet", relayUrl: "http://relay.example.com" })).toThrow(
-      /https/,
-    );
-    expect(() => mobileEnv({ network: "devnet", relayUrl: "https://a.example/api" })).toThrow(
-      /path/,
-    );
+  it("refuses a missing, plain http or path-carrying API URL, and names the variable to fix", () => {
+    expect(() => mobileEnv(settings(undefined))).toThrow(/not set.*EXPO_PUBLIC_API_URL/);
+    expect(() => mobileEnv(settings("http://api.example.com"))).toThrow(/https/);
+    expect(() => mobileEnv(settings("https://a.example/api"))).toThrow(/no path/);
+    expect(() => mobileEnv(settings("/api"))).toThrow(/only in a browser/);
   });
 
-  it("allows plain http to a development machine", () => {
-    expect(mobileEnv({ network: "devnet", relayUrl: "http://localhost:3300" }).relayUrl).toBe(
-      "http://localhost:3300",
-    );
+  it("allows plain http to a development machine in a development build only", () => {
+    const local = { network: "devnet", apiUrl: "http://localhost:4000" };
+    expect(mobileEnv({ ...local, development: true }).apiBaseUrl).toBe("http://localhost:4000");
+    expect(() => mobileEnv({ ...local, development: false })).toThrow(/https/);
   });
 });

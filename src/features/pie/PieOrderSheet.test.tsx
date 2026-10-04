@@ -10,7 +10,7 @@ import {
   type PortfolioSpec,
 } from "../network/testMoney";
 import { forgetWallet, installTestPlatform, testServices } from "../testServices";
-import { installFakeRelay } from "../trade/testDoubles";
+import { installFakePrices } from "../trade/testDoubles";
 import { PieOrderSheet, type PieOrderMode } from "./PieOrderSheet";
 
 afterEach(async () => {
@@ -29,7 +29,7 @@ async function open(
   shape: (chain: FakeChain) => void = () => undefined,
 ) {
   installTestPlatform();
-  installFakeRelay();
+  installFakePrices();
   const chain = fakeChain();
   shape(chain);
   const wallet = await walletWith(chain, {

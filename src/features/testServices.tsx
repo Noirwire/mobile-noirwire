@@ -1,6 +1,5 @@
-import { installPlatform } from "@noirwire/shared/platform";
 import {
-  memoryPlatform,
+  installTestPlatform as installSharedTestPlatform,
   memoryVault,
   recordingTrack,
   type MemoryVault,
@@ -17,10 +16,13 @@ import { ServicesProvider, type AppServices } from "./services";
 /** A password the shared strength check accepts. */
 export const STRONG_PASSWORD = "harbor-velvet-orbit-canyon-meadow";
 
-/** The shared store over an in-memory vault, with every event recorded. */
+/**
+ * The shared test platform (every port in memory, a session that asks
+ * nobody) over a vault the test can inspect, with every event recorded.
+ */
 export function installTestPlatform(vault: MemoryVault = memoryVault()) {
   const recorded = recordingTrack();
-  installPlatform(memoryPlatform({ vault, track: recorded.track }));
+  installSharedTestPlatform({ vault, track: recorded.track });
   return { vault, events: recorded.events };
 }
 

@@ -1,13 +1,11 @@
-import { STILL_WORKING_AFTER_MS, WAITING_DELAY_MS } from "@noirwire/shared/presentation";
+import {
+  STILL_WORKING_AFTER_MS,
+  WAITING_DELAY_MS,
+  WAIT_LIMIT_MS,
+} from "@noirwire/shared/presentation";
 import { act, render, renderHook, screen } from "@testing-library/react-native";
 import { Skeleton } from "./Skeleton";
-import {
-  useWaiting,
-  WaitOverdueError,
-  WAITING_LIMIT_MS,
-  withinLimit,
-  type Waiting,
-} from "./useWaiting";
+import { useWaiting, WaitOverdueError, withinLimit, type Waiting } from "./useWaiting";
 import { StillWorking, WaitingLine, WaitingPlaceholder } from "./Waiting";
 
 beforeEach(() => jest.useFakeTimers());
@@ -69,7 +67,7 @@ describe("useWaiting", () => {
 
   it("is overdue once the wait passes its limit, and never before", async () => {
     const { result } = await renderHook(() => useWaiting(true, "content"));
-    await pass(WAITING_LIMIT_MS.content - 1);
+    await pass(WAIT_LIMIT_MS.content - 1);
     expect(result.current.overdue).toBe(false);
     await pass(1);
     expect(result.current.overdue).toBe(true);

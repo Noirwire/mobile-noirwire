@@ -1,18 +1,14 @@
 import { isOnChain, type EventData, type EventName } from "@noirwire/shared/domain";
-import type { HttpConfig } from "@noirwire/shared/infrastructure";
+import { apiUrl, authorizedFetch } from "@noirwire/shared/infrastructure";
 import type { Track } from "@noirwire/shared/platform";
 
 /** An event that coincides with a transaction waits this long, at random, before it is reported, as on the web. */
 export const ON_CHAIN_DELAY_MS = { min: 60_000, max: 600_000 };
 
-export const EVENT_PATH = "/api/event";
-
 type TrackDeps = {
-  http: HttpConfig;
   enabled: () => boolean;
   /** The screen the event happened on, already reduced by `screenPath`. */
   screen: () => string;
-  fetch: typeof fetch;
   later: (run: () => void, ms: number) => void;
   random: () => number;
 };
@@ -20,7 +16,7 @@ type TrackDeps = {
 const TABS = new Set(["markets", "earn", "activity", "settings"]);
 
 /**
- * The route as the relay's closed list accepts it: a tab, a tracker or a
+ * The route as the API's closed list accepts it: a tab, a tracker or a
  * portfolio without its symbol or id, and everything else (onboarding,
  * unlock, home) as the root. Group segments such as `(tabs)` are dropped.
  */
@@ -33,22 +29,22 @@ export function screenPath(pathname: string): string {
 }
 
 /**
- * The platform's `track`: the shared closed event list, posted to the relay's
- * `/api/event` with the client header, only while analytics is on. The relay
- * checks every event against the same list and forwards it without the
- * phone's IP. A failed post is dropped: analytics never gets in the way of
- * the wallet.
+ * The platform's `track`: the shared closed event list, posted to the API's
+ * events route like every other request the app makes, only while analytics
+ * is on. The API checks every event against the same list and forwards it
+ * without the phone's address. A failed post is dropped: analytics never gets
+ * in the way of the wallet.
  */
-export function relayTrack(deps: TrackDeps): Track {
+export function apiTrack(deps: TrackDeps): Track {
   const post = (body: object) => {
     if (!deps.enabled()) return;
-    void deps
-      .fetch(`${deps.http.baseUrl}${EVENT_PATH}`, {
-        method: "POST",
-        headers: { ...deps.http.headers(), "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      })
-      .catch(() => undefined);
+    void authorizedFetch(apiUrl("events"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      // Counting an event moves nothing, so it may be sent again with a renewed session.
+      asksAgain: true,
+    }).catch(() => undefined);
   };
 
   return (event, ...props) => {

@@ -72,6 +72,8 @@ export function ActivityDetailSheet({
             )}
             <Row label={copy.date} value={view.date} />
             <Row label={copy.amount} value={view.amount} />
+            {view.networkCost !== null && <Row label={copy.networkCost} value={view.networkCost} />}
+            {view.arrived !== null && <Row label={copy.arrived} value={view.arrived} />}
             <Row label={copy.valueAtTime} value={view.value} last={view.recipient === null} />
             {view.recipient !== null && (
               <AddressReveal

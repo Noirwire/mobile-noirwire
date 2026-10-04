@@ -62,7 +62,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
-      EXPO_PUBLIC_RELAY_URL: https://app.noirwire.com
+      EXPO_PUBLIC_API_URL: https://api.noirwire.com
       EXPO_PUBLIC_SOLANA_NETWORK: mainnet
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

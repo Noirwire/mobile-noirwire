@@ -1,6 +1,6 @@
+import { mobileWalletCopy } from "@noirwire/shared/copy";
 import { assessPassword } from "@noirwire/shared/wallet";
 import { act, renderHook } from "@testing-library/react-native";
-import { phoneCopy } from "../phoneCopy";
 import { STRENGTH_DELAY_MS, useNewPassword } from "./newPassword";
 
 jest.mock("@noirwire/shared/wallet", () => ({
@@ -27,7 +27,7 @@ describe("useNewPassword", () => {
       text: "Could not check this password. Type it again.",
       tone: "danger",
     });
-    expect(phoneCopy.passwordCheckFailed).not.toMatch(/connection|network|online/i);
+    expect(mobileWalletCopy.newPassword.checkFailed).not.toMatch(/connection|network|online/i);
     expect(result.current.ready).toBe(false);
 
     await act(async () => result.current.setPassword("harbor-velvet-orbit-canyon-meadow"));

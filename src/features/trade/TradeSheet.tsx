@@ -23,6 +23,7 @@ import {
   tradeReviewView,
   type TradePhase,
   type TradeResultView,
+  WAIT_LIMIT_MS,
 } from "@noirwire/shared/presentation";
 import { asset, cashOf, isLivePrice, screenReads, unitsPerHeld } from "@noirwire/shared/wallet";
 import { useEffect, useState } from "react";
@@ -43,7 +44,6 @@ import {
   useTopLoader,
   useWaiting,
   withinLimit,
-  WAITING_LIMIT_MS,
 } from "@/ui";
 import { errorHaptic, heavyHaptic, successHaptic, warningHaptic } from "@/ui/haptics";
 import { fonts, layout } from "@/ui/theme";
@@ -187,12 +187,15 @@ export function TradeSheet({
     if (!portfolio || !symbol) return;
     setFormError(null);
     setNotice(null);
+    // A new review starts over: the relayer is asked again, whatever the last review found.
+    setRelayerDown(false);
+    setWithoutRelayer(false);
     setQuoting(true);
     // A price that does not come within the review's limit ends the wait
     // with the plain failure, and the form is usable again.
     const quoted = await withinLimit(
       service.quote(portfolio.id, side, symbol, draft.amountToQuote),
-      WAITING_LIMIT_MS.review,
+      WAIT_LIMIT_MS.review,
     ).catch(() => ({ error: errorsCopy.trade.noPrice }));
     if ("error" in quoted) {
       setQuoting(false);
@@ -209,8 +212,8 @@ export function TradeSheet({
         paid
           ? { lamports: 0, cost: { kind: "covered" } }
           : await withinLimit(
-              service.reviewCost(portfolio.id, [quoted.plan], withoutRelayer),
-              WAITING_LIMIT_MS.review,
+              service.reviewCost(portfolio.id, [quoted.plan], false),
+              WAIT_LIMIT_MS.review,
             ),
       );
     } catch {
@@ -269,7 +272,7 @@ export function TradeSheet({
       setWithoutRelayer(off);
       const next = await withinLimit(
         service.reviewCost(portfolio.id, [outcome.replacement ?? reviewed], off),
-        WAITING_LIMIT_MS.review,
+        WAIT_LIMIT_MS.review,
       ).catch(() => ({
         lamports: network.lamports,
         cost: { kind: "unavailable" } as NetworkCost,

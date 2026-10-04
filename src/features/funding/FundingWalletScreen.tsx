@@ -1,11 +1,11 @@
-import { fundingWalletView } from "@noirwire/shared/presentation";
+import { commonCopy } from "@noirwire/shared/copy";
+import { fundingWalletView, WAIT_LIMIT_MS } from "@noirwire/shared/presentation";
 import { useEffect, useState } from "react";
 import { RefreshControl, ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Button, Skeleton, Text, useWaiting, WaitingPlaceholder } from "@/ui";
 import { colors, layout } from "@/ui/theme";
-import { WAITING_LIMIT_MS, withinLimit } from "@/ui/useWaiting";
-import { phoneCopy } from "../phoneCopy";
+import { withinLimit } from "@/ui/useWaiting";
 import { useServices } from "../services";
 import { useMoney } from "../network/money";
 import { useWalletSnapshot } from "../network/useWalletSnapshot";
@@ -32,7 +32,7 @@ export function FundingWalletScreen({ onMove, onShowAddress }: FundingWalletScre
   useEffect(() => {
     if (!address) return;
     let current = true;
-    withinLimit(money.refresh.funding(address, CASH), WAITING_LIMIT_MS.content)
+    withinLimit(money.refresh.funding(address, CASH), WAIT_LIMIT_MS.content)
       .then(
         () => current && setReadFailed(false),
         () => current && setReadFailed(true),
@@ -89,7 +89,7 @@ export function FundingWalletScreen({ onMove, onShowAddress }: FundingWalletScre
               </Text>
               {online && (
                 <Button
-                  label={phoneCopy.tryAgain}
+                  label={commonCopy.tryAgain}
                   variant="quiet"
                   onPress={() => setVersion((count) => count + 1)}
                 />

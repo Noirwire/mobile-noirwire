@@ -22,7 +22,6 @@ import { Button, Chip, Field, Notice, PieRing, Segmented, Sheet, Shelf, Text } f
 import { selectionHaptic, successHaptic } from "@/ui/haptics";
 import { layout } from "@/ui/theme";
 import { PieMixEditor } from "../pie/PieBuilderSheet";
-import { phoneCopy } from "../phoneCopy";
 import { IconPicker } from "./IconPicker";
 import { addPortfolio, noteSheetOpened } from "./portfolioActions";
 import { useWalletSnapshot } from "./useWalletSnapshot";
@@ -70,7 +69,7 @@ export function NewPortfolioSheet({ onClose, onCreated }: NewPortfolioSheetProps
     wallet !== null && portfolioNameTaken(wallet, name.trim())
       ? errorsCopy.duplicateName
       : asked && name.trim() === ""
-        ? phoneCopy.nameNeeded
+        ? mobilePortfolioCopy.create.nameNeeded
         : undefined;
 
   async function create() {
@@ -123,7 +122,7 @@ export function NewPortfolioSheet({ onClose, onCreated }: NewPortfolioSheetProps
       <Text tone="dim">{view.lead}</Text>
       <Field
         label={view.nameLabel}
-        placeholder={phoneCopy.forExample(view.placeholder)}
+        placeholder={mobilePortfolioCopy.create.forExample(view.placeholder)}
         value={name}
         maxLength={NAME_MAX}
         onChangeText={setName}

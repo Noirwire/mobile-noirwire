@@ -1,7 +1,11 @@
-import { STILL_WORKING_AFTER_MS, WAITING_DELAY_MS } from "@noirwire/shared/presentation";
+import {
+  STILL_WORKING_AFTER_MS,
+  WAITING_DELAY_MS,
+  WAIT_LIMIT_MS,
+} from "@noirwire/shared/presentation";
 import { act, fireEvent, render, screen } from "@testing-library/react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { Text, WAITING_LIMIT_MS } from "@/ui";
+import { Text } from "@/ui";
 import { renderWith, testServices } from "../testServices";
 import { checkNetwork } from "./gateCheck";
 import { NetworkGate } from "./NetworkGate";
@@ -99,7 +103,7 @@ describe("NetworkGate", () => {
           <Text>The wallet</Text>
         </NetworkGate>,
       );
-      await act(() => jest.advanceTimersByTimeAsync(WAITING_LIMIT_MS.check));
+      await act(() => jest.advanceTimersByTimeAsync(WAIT_LIMIT_MS.check));
       expect(
         screen.getByText(
           "We can't show your balances right now. Your money has not moved. Try again.",

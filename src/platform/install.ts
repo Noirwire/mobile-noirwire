@@ -1,8 +1,6 @@
-import Constants from "expo-constants";
 import * as LocalAuthentication from "expo-local-authentication";
 import * as SecureStore from "expo-secure-store";
 import { processLocks } from "@noirwire/shared/application";
-import { configureHttp } from "@noirwire/shared/infrastructure";
 import { assertRuntime, inProcessLocks, installPlatform } from "@noirwire/shared/platform";
 import { installMoney, type Money } from "@noirwire/shared/wallet";
 import { AppState, Platform } from "react-native";
@@ -10,9 +8,9 @@ import { appActivity, type AppActivity } from "./activity";
 import { biometricKeystore, type BiometricKeystore } from "./biometricKeystore";
 import { buildSettings, mobileEnv } from "./env";
 import { fileVault } from "./fileVault";
-import { mobileHttpConfig } from "./httpConfig";
 import { vaultPreferences, type Preferences } from "./preferences";
-import { relayTrack, screenPath } from "./track";
+import { plainSessionStore } from "./sessionStore";
+import { apiTrack, screenPath } from "./track";
 import { deviceVaultFiles } from "./vaultFiles";
 
 export type Installed = {
@@ -58,24 +56,21 @@ export async function installMobilePlatform(): Promise<Installed> {
 
 async function runInstall(): Promise<Installed> {
   assertRuntime();
-  const { env, relayUrl } = mobileEnv(buildSettings());
-  const http = mobileHttpConfig(relayUrl, Constants.expoConfig?.version ?? "0.0.0");
+  const env = mobileEnv(buildSettings());
   const locks = inProcessLocks();
   const vault = fileVault(deviceVaultFiles(), locks);
   const preferences = vaultPreferences(vault);
   const activity = appActivity(AppState);
 
-  configureHttp(http);
   installPlatform({
     vault,
     env,
     activity,
     locks,
-    track: relayTrack({
-      http,
+    sessionStore: plainSessionStore(vault),
+    track: apiTrack({
       enabled: preferences.analyticsEnabled,
       screen: () => currentScreen,
-      fetch: (...args) => fetch(...args),
       later: (run, ms) => void setTimeout(run, ms),
       random: Math.random,
     }),

@@ -31,7 +31,7 @@ const afterNextFrame = () =>
 
 /**
  * Spec 2.5: a 12 or 24 word phrase, checked on the phone and then against
- * the chain through the relay, each candidate address in its own request.
+ * the chain through the API, each candidate address in its own request.
  * Continue can always be pressed, and a phrase that is refused is told why.
  * The form stays on screen for the whole lookup: the field holds what was
  * typed, Continue keeps its own label, and the app's one top loader runs

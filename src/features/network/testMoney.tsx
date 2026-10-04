@@ -380,6 +380,7 @@ export function testMoney(chain: FakeChain): Money {
         quoteRelayed: quote,
       }),
       isRecipientAddress,
+      checkRecipient: async () => chain.recipient,
       cashSymbol: USDC,
       networkFeeSol: 0.000005,
       cost,

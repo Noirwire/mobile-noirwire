@@ -5,7 +5,7 @@ import {
   send,
   sendDraft,
 } from "@noirwire/shared/application";
-import { sendCopy } from "@noirwire/shared/copy";
+import { sendCopy, waitingCopy } from "@noirwire/shared/copy";
 import {
   classifyRecipient,
   hasForeignCharacters,
@@ -17,11 +17,15 @@ import {
   isRecipientAddress,
   recipientFromCode,
 } from "@noirwire/shared/infrastructure";
-import { describeFailure, sendAssets, type SendStage } from "@noirwire/shared/presentation";
+import {
+  describeFailure,
+  sendAssets,
+  type SendStage,
+  WAIT_LIMIT_MS,
+} from "@noirwire/shared/presentation";
 import { isLivePrice, isPosition, price, unitsPerHeld } from "@noirwire/shared/wallet";
 import { useEffect, useRef, useState } from "react";
-import { useWaiting, WAITING_LIMIT_MS, withinLimit } from "@/ui/useWaiting";
-import { phoneCopy } from "../phoneCopy";
+import { useWaiting, withinLimit } from "@/ui/useWaiting";
 import { useServices } from "../services";
 import { phoneCost } from "../network/cost";
 import { assetDecimals } from "../network/decimals";
@@ -133,18 +137,12 @@ export function useSendFlow(portfolioId: string) {
     return true;
   }
 
-  async function readRecipient(): Promise<"ok" | "refused" | "unreadable"> {
-    try {
-      const kind = await money.checkRecipient(destination);
-      setUnsendable(kind);
-      return kind ? "refused" : "ok";
-    } catch {
-      setRecipientUnreadable(true);
-      return "unreadable";
-    }
-  }
-
-  async function priced(withoutRelayer = false): Promise<Review> {
+  /**
+   * Reviews the send: the shared use case reads the recipient from the
+   * network and works out the cost only for one that can receive. Null when
+   * the recipient cannot receive or could not be read, which the form says.
+   */
+  async function priced(withoutRelayer = false): Promise<Review | null> {
     const planned = await reviewSend(
       { ...money.deps, chain: money.sendChain },
       {
@@ -153,6 +151,12 @@ export function useSendFlow(portfolioId: string) {
         withoutRelayer,
       },
     );
+    if (planned.recipient === "unreadable") {
+      setRecipientUnreadable(true);
+      return null;
+    }
+    setUnsendable(planned.recipient);
+    if (planned.recipient !== null) return null;
     return { cost: phoneCost(planned.cost), amount: planned.amount };
   }
 
@@ -167,10 +171,7 @@ export function useSendFlow(portfolioId: string) {
     // The recipient is read and the cost worked out within the review's
     // limit: one that does not answer ends here, with the form usable again.
     try {
-      const next = await withinLimit(
-        readRecipient().then((read) => (read === "ok" ? priced() : null)),
-        WAITING_LIMIT_MS.review,
-      );
+      const next = await withinLimit(priced(), WAIT_LIMIT_MS.review);
       if (!live.current) return;
       setPreparing(false);
       if (!next) return;
@@ -179,7 +180,7 @@ export function useSendFlow(portfolioId: string) {
     } catch {
       if (!live.current) return;
       setPreparing(false);
-      setPrepareFailure(phoneCopy.overdue.review);
+      setPrepareFailure(waitingCopy.overdue.review);
     }
   }
 
@@ -189,8 +190,8 @@ export function useSendFlow(portfolioId: string) {
    * changes the cost, and the review is shown again with the new one.
    */
   async function recheck(current: Review): Promise<Review | "refused" | null> {
-    if ((await readRecipient()) !== "ok") return "refused";
     const next = await priced();
+    if (!next) return "refused";
     const opensBefore = current.cost.kind === "relayer" ? current.cost.opens : null;
     const opensNow = next.cost.kind === "relayer" ? next.cost.opens : null;
     return opensBefore === opensNow ? null : next;
@@ -204,11 +205,11 @@ export function useSendFlow(portfolioId: string) {
     setStep("progress");
     let changed: Awaited<ReturnType<typeof recheck>>;
     try {
-      changed = await withinLimit(recheck(review), WAITING_LIMIT_MS.review);
+      changed = await withinLimit(recheck(review), WAIT_LIMIT_MS.review);
     } catch {
       // Nothing has been signed yet: the review comes back and says so.
       if (!live.current) return;
-      setFailure(phoneCopy.overdue.review);
+      setFailure(waitingCopy.overdue.review);
       setStep("review");
       return;
     }
@@ -247,7 +248,7 @@ export function useSendFlow(portfolioId: string) {
     if (failed.reviewAgain) {
       const again = await withinLimit(
         priced(failed.reviewAgain === "other"),
-        WAITING_LIMIT_MS.review,
+        WAIT_LIMIT_MS.review,
       ).catch(() => null);
       if (!live.current) return;
       if (again) setReview(again);

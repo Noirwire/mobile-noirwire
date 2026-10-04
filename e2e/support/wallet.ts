@@ -1,5 +1,4 @@
-import { installPlatform } from "@noirwire/shared/platform";
-import { memoryPlatform, memoryVault, testEnv } from "@noirwire/shared/testing";
+import { installTestPlatform, memoryVault, testEnv } from "@noirwire/shared/testing";
 import { createWallet, getSnapshot, lock, storeNewWallet } from "@noirwire/shared/wallet";
 import { fileNameFor } from "../../src/platform/fileVault";
 
@@ -35,7 +34,7 @@ export function seededWallet(): Promise<SeededWallet> {
 
 async function seed(): Promise<SeededWallet> {
   const vault = memoryVault();
-  installPlatform(memoryPlatform({ vault, env: testEnv({ network: "mainnet-beta" }) }));
+  installTestPlatform({ vault, env: testEnv({ network: "mainnet-beta" }) });
   const draft = createWallet();
   const wallet = {
     ...draft.wallet,

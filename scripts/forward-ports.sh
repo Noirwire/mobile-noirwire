@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Forwards the dev server (8081) and a local relay (3000) to every Android
+# Forwards the dev server (8081) and a local API (4000) to every Android
 # device and emulator adb can see. The forwards are lost whenever a device is
 # unplugged, restarted or adb itself restarts, so run this again after any of those.
 set -euo pipefail
@@ -12,6 +12,6 @@ fi
 
 for device in $devices; do
   adb -s "$device" reverse tcp:8081 tcp:8081 >/dev/null
-  adb -s "$device" reverse tcp:3000 tcp:3000 >/dev/null
-  echo "$device: forwarding 8081 (dev server) and 3000 (local relay)"
+  adb -s "$device" reverse tcp:4000 tcp:4000 >/dev/null
+  echo "$device: forwarding 8081 (dev server) and 4000 (local API)"
 done

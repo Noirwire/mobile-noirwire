@@ -1,7 +1,7 @@
 import { fireEvent, screen, waitFor } from "@testing-library/react-native";
 import { forgetWallet, installTestPlatform, renderWith, testServices } from "../testServices";
 import { portfoliosWith as walletWith } from "../network/testMoney";
-import { installFakeRelay } from "../trade/testDoubles";
+import { installFakePrices } from "../trade/testDoubles";
 import { TrackerScreen } from "./TrackerScreen";
 
 afterEach(async () => {
@@ -21,7 +21,7 @@ async function show(symbol = "NVDAx", options: { visitor?: boolean; online?: boo
 describe("TrackerScreen", () => {
   it("shows the live price, its change, the chart with its text alternative, and what is held", async () => {
     installTestPlatform();
-    installFakeRelay();
+    installFakePrices();
     const [investing] = await walletWith([{ label: "Investing", holdings: { NVDAx: 5.1075 } }]);
     const onIntent = await show();
     expect(await screen.findByText("$235.91")).toBeOnTheScreen();
@@ -48,7 +48,7 @@ describe("TrackerScreen", () => {
 
   it("offers Buy alone and says nothing is owned when nothing is held", async () => {
     installTestPlatform();
-    installFakeRelay();
+    installFakePrices();
     await walletWith([{ label: "Investing" }]);
     await show();
     expect(await screen.findByText("You do not own this tracker yet.")).toBeOnTheScreen();
@@ -58,7 +58,7 @@ describe("TrackerScreen", () => {
 
   it("draws no chart without real history, naming the range", async () => {
     installTestPlatform();
-    installFakeRelay({ history: null });
+    installFakePrices({ history: null });
     await walletWith([{ label: "Investing" }]);
     await show();
     expect(await screen.findByText("No verified 1D chart available.")).toBeOnTheScreen();
@@ -69,7 +69,7 @@ describe("TrackerScreen", () => {
 
   it("shows no number when the price is unavailable, and keeps Buy and Sell enabled", async () => {
     installTestPlatform();
-    installFakeRelay({ prices: null });
+    installFakePrices({ prices: null });
     await walletWith([{ label: "Investing", holdings: { NVDAx: 2 } }]);
     await show();
     expect(await screen.findByText("Current price unavailable")).toBeOnTheScreen();
@@ -84,7 +84,7 @@ describe("TrackerScreen", () => {
 
   it("disables Buy and Sell while offline", async () => {
     installTestPlatform();
-    installFakeRelay();
+    installFakePrices();
     await walletWith([{ label: "Investing", holdings: { NVDAx: 2 } }]);
     await show("NVDAx", { online: false });
     await waitFor(() => expect(screen.getByRole("button", { name: "Buy" })).toBeDisabled());
@@ -93,7 +93,7 @@ describe("TrackerScreen", () => {
 
   it("offers to create a portfolio when there is none", async () => {
     installTestPlatform();
-    installFakeRelay();
+    installFakePrices();
     await walletWith([]);
     const onIntent = await show();
     await fireEvent.press(await screen.findByRole("button", { name: "Create a portfolio" }));
@@ -102,7 +102,7 @@ describe("TrackerScreen", () => {
 
   it("says when a symbol is not a listed tracker", async () => {
     installTestPlatform();
-    installFakeRelay();
+    installFakePrices();
     await walletWith([{ label: "Investing" }]);
     const onIntent = await show("NOPEx");
     expect(screen.getByText("No such investment.")).toBeOnTheScreen();
@@ -113,7 +113,7 @@ describe("TrackerScreen", () => {
 
   it("shows a visitor no holding and no trade, and the risks in place", async () => {
     installTestPlatform();
-    installFakeRelay();
+    installFakePrices();
     const onIntent = await show("NVDAx", { visitor: true });
     expect(await screen.findByText("$235.91")).toBeOnTheScreen();
     expect(screen.queryByText("Your holding")).toBeNull();

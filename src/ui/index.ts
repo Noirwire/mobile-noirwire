@@ -33,10 +33,4 @@ export { Text } from "./Text";
 export { TopLoader } from "./TopLoader";
 export { useTopLoader } from "./useTopLoader";
 export { StillWorking, WaitingLine, WaitingPlaceholder } from "./Waiting";
-export {
-  useWaiting,
-  withinLimit,
-  WaitOverdueError,
-  WAITING_LIMIT_MS,
-  type Waiting,
-} from "./useWaiting";
+export { useWaiting, withinLimit, WaitOverdueError, type Waiting } from "./useWaiting";

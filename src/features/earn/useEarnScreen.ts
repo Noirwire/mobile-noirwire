@@ -1,3 +1,4 @@
+import { WAIT_LIMIT_MS } from "@noirwire/shared/presentation";
 import { cashOf } from "@noirwire/shared/wallet";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { EarnPosition } from "@noirwire/shared/infrastructure";
@@ -5,23 +6,27 @@ import type { EarnPortfolio, EarnRateRead, EarnTotal } from "@noirwire/shared/pr
 import { useMoney } from "../network/money";
 import { useWalletSnapshot } from "../network/useWalletSnapshot";
 import { useServices } from "../services";
-import { WAITING_LIMIT_MS, withinLimit } from "@/ui/useWaiting";
+import { withinLimit } from "@/ui/useWaiting";
 
 /**
  * Each portfolio's position at the lending venue, one request per portfolio
  * so no request names two of them. Undefined while one is read, null when it
  * could not be, which includes one that did not answer within the content
- * limit. Read again whenever `version` changes.
+ * limit. Read again whenever `version` changes. `only` reads one portfolio
+ * and no other.
  */
-function useEarnPositions(version: number, onSettled?: () => void) {
+function useEarnPositions(version: number, onSettled?: () => void, only?: string) {
   const money = useMoney();
   const wallet = useWalletSnapshot();
   const available = money.earnChain.available();
   const [positions, setPositions] = useState<Record<string, EarnPosition | null>>({});
 
   const addresses = useMemo(
-    () => (wallet?.portfolios ?? []).map((portfolio) => [portfolio.id, portfolio.address] as const),
-    [wallet],
+    () =>
+      (wallet?.portfolios ?? [])
+        .filter((portfolio) => only === undefined || portfolio.id === only)
+        .map((portfolio) => [portfolio.id, portfolio.address] as const),
+    [wallet, only],
   );
   const key = addresses.map(([id]) => id).join(",");
 
@@ -29,7 +34,7 @@ function useEarnPositions(version: number, onSettled?: () => void) {
     if (!available) return;
     let current = true;
     const reads = addresses.map(([id, address]) =>
-      withinLimit(money.earnVenue.position(address), WAITING_LIMIT_MS.content)
+      withinLimit(money.earnVenue.position(address), WAIT_LIMIT_MS.content)
         .then((position): EarnPosition | null => position)
         .catch(() => null)
         .then((position) => current && setPositions((all) => ({ ...all, [id]: position }))),
@@ -64,6 +69,19 @@ export function useEarnTotal(): EarnTotal {
 }
 
 /**
+ * What one portfolio has in Earn, for its own screen, whose value counts it:
+ * undefined where Earn is not offered, while it is still read and when
+ * nothing is lent, null when it could not be read.
+ */
+export function usePortfolioEarn(id: string): number | null | undefined {
+  const moves = useWalletSnapshot()?.activity.length ?? 0;
+  const { available, positions } = useEarnPositions(moves, undefined, id);
+  const position = available ? positions[id] : undefined;
+  if (position === null) return null;
+  return position && position.deposited > 0 ? position.deposited : undefined;
+}
+
+/**
  * What the Earn screen reads: the venue's rate and each portfolio's position.
  * Read on open and again on pull to refresh or after an action.
  */
@@ -79,7 +97,7 @@ export function useEarnScreen() {
   useEffect(() => {
     if (!available) return;
     let current = true;
-    withinLimit(money.earnVenue.rate(), WAITING_LIMIT_MS.content)
+    withinLimit(money.earnVenue.rate(), WAIT_LIMIT_MS.content)
       .then((next) => current && setRate(next))
       .catch(() => current && setRate(null));
     return () => {

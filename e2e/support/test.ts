@@ -1,5 +1,5 @@
 import { expect, test as base, type Page } from "@playwright/test";
-import { FixtureRelay } from "./relay";
+import { FixtureApi } from "./api";
 import {
   FUNDING_USDC,
   PORTFOLIO_EARN_USDC,
@@ -9,30 +9,30 @@ import {
 } from "./wallet";
 
 type Fixtures = {
-  relay: FixtureRelay;
+  api: FixtureApi;
   /** A locked wallet already stored in this browser, with USDC in the funding wallet and one portfolio. */
   funded: SeededWallet;
 };
 
 export const test = base.extend<Fixtures>({
-  relay: [
+  api: [
     async ({ context, baseURL }, provide) => {
-      const relay = new FixtureRelay(new URL(baseURL ?? "http://127.0.0.1").origin);
-      await relay.install(context);
+      const api = new FixtureApi(new URL(baseURL ?? "http://127.0.0.1").origin);
+      await api.install(context);
       const errors: string[] = [];
       context.on("weberror", (error) => errors.push(String(error.error())));
-      await provide(relay);
-      expect(relay.outsiders, "requests that left the test machine").toEqual([]);
-      expect(relay.unanswered, "relay routes the fixtures do not cover").toEqual([]);
+      await provide(api);
+      expect(api.outsiders, "requests that left the test machine").toEqual([]);
+      expect(api.unanswered, "API routes the fixtures do not cover").toEqual([]);
       expect(errors, "uncaught page errors").toEqual([]);
     },
     { auto: true },
   ],
-  funded: async ({ context, relay }, provide) => {
+  funded: async ({ context, api }, provide) => {
     const wallet = await seededWallet();
-    relay.holdUsdc(wallet.fundingAddress, FUNDING_USDC);
-    relay.holdUsdc(wallet.portfolio.address, PORTFOLIO_USDC);
-    relay.holdEarn(wallet.portfolio.address, PORTFOLIO_EARN_USDC);
+    api.holdUsdc(wallet.fundingAddress, FUNDING_USDC);
+    api.holdUsdc(wallet.portfolio.address, PORTFOLIO_USDC);
+    api.holdEarn(wallet.portfolio.address, PORTFOLIO_EARN_USDC);
     // Seeds the first page load only, so a reset in the test stays a reset.
     await context.addInitScript((entries) => {
       if (sessionStorage.getItem("e2e.seeded")) return;

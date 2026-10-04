@@ -46,10 +46,10 @@ maestro test --include-tags funded \
 
 ## Notes
 
-- Point `EXPO_PUBLIC_RELAY_URL` and `EXPO_PUBLIC_SOLANA_NETWORK` (in `.env`)
+- Point `EXPO_PUBLIC_API_URL` and `EXPO_PUBLIC_SOLANA_NETWORK` (in `.env`)
   at whatever the build should talk to before running `ios:sim` /
   `android:debug` - Maestro only drives the UI, it does not control which
-  relay or network the app was built against.
+  API or network the app was built against.
 - These flows were written against the accessibility labels verified in the
   Playwright web-export suite (`e2e/`) and have not yet been run on a device.
 - A release build (`npm run android:apk`, `npm run ios:device`,

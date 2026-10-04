@@ -1,6 +1,7 @@
+import { WAIT_LIMIT_MS } from "@noirwire/shared/presentation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { lightHaptic } from "@/ui/haptics";
-import { WAITING_LIMIT_MS, withinLimit } from "@/ui/useWaiting";
+import { withinLimit } from "@/ui/useWaiting";
 
 type RefreshState = {
   /** A read is on its way. */
@@ -42,7 +43,7 @@ export function useBalanceRefresh(read: () => Promise<boolean>, online: boolean)
       if (busy.current) return;
       busy.current = true;
       setState((current) => ({ ...current, reading: true, pulled }));
-      const ok = await withinLimit(read(), WAITING_LIMIT_MS.content).catch(() => false);
+      const ok = await withinLimit(read(), WAIT_LIMIT_MS.content).catch(() => false);
       busy.current = false;
       if (mounted.current) {
         setState({ reading: false, pulled: false, failed: !ok, settled: true });

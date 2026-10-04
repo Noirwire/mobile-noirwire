@@ -16,7 +16,7 @@ npm run test:e2e
 
 ## UI tests
 
-A change to a screen keeps its journeys passing in both UI suites: `e2e/` (Playwright on the web export, run in CI) and `.maestro/` (Maestro on a native build, run on a device). Select elements by role and accessible label, the way a person using a screen reader finds them, and add a `testID` only where no label can tell an element apart. A new relay route the app calls needs a fixture in `e2e/support/relay.ts`; the suite fails on any request it does not answer.
+A change to a screen keeps its journeys passing in both UI suites: `e2e/` (Playwright on the web export, run in CI) and `.maestro/` (Maestro on a native build, run on a device). Select elements by role and accessible label, the way a person using a screen reader finds them, and add a `testID` only where no label can tell an element apart. A new API route the app calls needs a fixture in `e2e/support/api.ts`, in the shape the API documents; the suite fails on any request it does not answer.
 
 ## Commits
 

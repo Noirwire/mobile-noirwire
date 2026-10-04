@@ -12,8 +12,8 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { inProcessLocks, installPlatform } from "@noirwire/shared/platform";
-import { memoryPlatform, memoryVault } from "@noirwire/shared/testing";
+import { inProcessLocks } from "@noirwire/shared/platform";
+import { installTestPlatform, memoryVault } from "@noirwire/shared/testing";
 import {
   STORAGE_KEY,
   createWallet,
@@ -57,7 +57,7 @@ describe("a record sealed by the shared keystore under Node", () => {
 
   it("opens through the mobile file vault, byte for byte the same envelope", async () => {
     const sealedBy = memoryVault();
-    installPlatform(memoryPlatform({ vault: sealedBy }));
+    installTestPlatform({ vault: sealedBy });
     const draft = createWallet();
     await storeNewWallet(draft.wallet, draft.phrase, PASSWORD);
     const envelope = sealedBy.peek(STORAGE_KEY)!;
@@ -67,7 +67,7 @@ describe("a record sealed by the shared keystore under Node", () => {
     const locks = inProcessLocks();
     const vault = fileVault(diskFiles(directory), locks);
     expect((await vault.update(STORAGE_KEY, () => ({ write: envelope }))).persisted).toBe(true);
-    installPlatform(memoryPlatform({ vault, locks }));
+    installTestPlatform({ vault, locks });
 
     expect(await vault.read(STORAGE_KEY)).toEqual({ ok: true, value: envelope });
     expect(await unlock("not the password at all")).not.toBeNull();

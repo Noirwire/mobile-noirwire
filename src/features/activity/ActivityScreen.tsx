@@ -80,11 +80,18 @@ export function ActivityScreen({ onOpenPortfolio, now = Date.now }: ActivityScre
         keyExtractor={(row) => row.id}
         ListHeaderComponent={header}
         ListFooterComponent={
-          view.kind === "list" && view.olderNotKept ? (
-            <Text variant="faint" style={styles.older}>
-              {view.olderNotKept}
-            </Text>
-          ) : null
+          <>
+            {view.kind === "list" && view.olderNotKept && (
+              <Text variant="faint" style={styles.older}>
+                {view.olderNotKept}
+              </Text>
+            )}
+            {view.importedNote && (
+              <Text variant="faint" style={styles.older}>
+                {view.importedNote}
+              </Text>
+            )}
+          </>
         }
         ListEmptyComponent={
           view.kind === "none" ? (

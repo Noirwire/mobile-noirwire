@@ -73,9 +73,9 @@ function textDecodes({ TextDecoder }: Runtime) {
 }
 
 function urlParses({ URL }: Runtime) {
-  const url = new URL("https://relay.example.com:8443/v1/quote?side=buy");
+  const url = new URL("https://api.example.com:8443/v1/quote?side=buy");
   return (
-    url.hostname === "relay.example.com" &&
+    url.hostname === "api.example.com" &&
     url.port === "8443" &&
     url.pathname === "/v1/quote" &&
     url.searchParams.get("side") === "buy"

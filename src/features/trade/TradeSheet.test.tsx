@@ -10,7 +10,7 @@ import {
   type PortfolioSpec,
 } from "../network/testMoney";
 import { forgetWallet, installTestPlatform, testServices } from "../testServices";
-import { installFakeRelay } from "./testDoubles";
+import { installFakePrices } from "./testDoubles";
 import { TradeSheet } from "./TradeSheet";
 
 afterEach(async () => {
@@ -30,7 +30,7 @@ type Setup = {
 
 async function open(setup: Setup = {}) {
   installTestPlatform();
-  installFakeRelay();
+  installFakePrices();
   const chain = fakeChain();
   setup.chain?.(chain);
   const wallet = await walletWith(chain, {
@@ -223,6 +223,24 @@ describe("TradeSheet", () => {
     ).toBeGreaterThan(0);
     expect(screen.getByRole("button", { name: "Confirm buy" })).toBeDisabled();
     expect(orders(chain)).toHaveLength(0);
+  });
+
+  it("asks the relayer again on a new review after one that found it down", async () => {
+    const { chain } = await open({ chain: firstBuy });
+    await toReview();
+    chain.relayed = "relayerUnavailable";
+    chain.relayerFeeRaw = null;
+    await press("Confirm buy");
+    const notNow =
+      "This can't be done right now. Nothing was charged. Please try again in a few minutes.";
+    expect((await screen.findAllByText(notNow)).length).toBeGreaterThan(0);
+
+    chain.relayed = "lands";
+    chain.relayerFeeRaw = 210_000n;
+    await press("Back");
+    await fireEvent.press(screen.getByRole("button", { name: "Review buy" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Confirm buy" })).toBeEnabled());
+    expect(screen.queryByText(notNow)).toBeNull();
   });
 
   it("says when the network cost rose, with the new figure to confirm again", async () => {

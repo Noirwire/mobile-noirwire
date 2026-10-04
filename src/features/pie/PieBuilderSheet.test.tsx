@@ -3,7 +3,7 @@ import { fireEvent, screen, waitFor } from "@testing-library/react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { forgetWallet, installTestPlatform, renderWith, testServices } from "../testServices";
 import { PHONE_METRICS, portfoliosWith as walletWith } from "../network/testMoney";
-import { installFakeRelay } from "../trade/testDoubles";
+import { installFakePrices } from "../trade/testDoubles";
 import { PieBuilderSheet } from "./PieBuilderSheet";
 
 afterEach(async () => {
@@ -18,7 +18,7 @@ async function open(
   ],
 ) {
   installTestPlatform();
-  installFakeRelay();
+  installFakePrices();
   const [id] = await walletWith([{ label: "Core", pie }]);
   const onClose = jest.fn();
   await renderWith(
@@ -72,7 +72,7 @@ describe("PieBuilderSheet", () => {
 
   it("says when saving failed", async () => {
     const { vault } = installTestPlatform();
-    installFakeRelay();
+    installFakePrices();
     const [id] = await walletWith([{ label: "Core", pie: [{ symbol: "NVDAx", weight: 100 }] }]);
     vault.refuseWrites = true;
     await renderWith(

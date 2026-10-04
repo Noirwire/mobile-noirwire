@@ -1,3 +1,4 @@
+import { WAIT_LIMIT_MS } from "@noirwire/shared/presentation";
 import { getSnapshot } from "@noirwire/shared/wallet";
 import { Keypair, PublicKey } from "@solana/web3.js";
 import { Buffer } from "buffer";
@@ -12,7 +13,6 @@ import {
 } from "../network/testMoney";
 import type { AppServices } from "../services";
 import { forgetWallet, installTestPlatform, testServices } from "../testServices";
-import { WAITING_LIMIT_MS } from "@/ui";
 import { SendScreen } from "./SendScreen";
 
 jest.mock("expo-camera", () => {
@@ -322,11 +322,11 @@ describe("SendScreen", () => {
     const chain = fakeChain();
     await walletWith(chain);
     const { money } = await openSend(chain);
-    money.checkRecipient = () => new Promise(() => undefined);
+    money.sendChain.checkRecipient = () => new Promise(() => undefined);
     await fillIn(someone(), "10");
     jest.useFakeTimers();
     await fireEvent.press(screen.getByRole("button", { name: "Review" }));
-    await act(() => jest.advanceTimersByTimeAsync(WAITING_LIMIT_MS.review));
+    await act(() => jest.advanceTimersByTimeAsync(WAIT_LIMIT_MS.review));
     expect(
       screen.getByText("We couldn't prepare your review. Nothing was sent. Try again."),
     ).toBeOnTheScreen();
@@ -340,7 +340,7 @@ describe("SendScreen", () => {
     await walletWith(chain);
     const { money } = await openSend(chain);
     money.sendChain.token = () => {
-      throw new Error("502 Bad Gateway from /api/relayer");
+      throw new Error("502 Bad Gateway from /v1/relayer");
     };
     await fillIn(someone(), "10");
     await fireEvent.press(screen.getByRole("button", { name: "Review" }));
@@ -359,7 +359,7 @@ describe("SendScreen", () => {
     await toReview(someone(), "25");
     jest.useFakeTimers();
     await fireEvent.press(screen.getByRole("button", { name: "Send" }));
-    await act(() => jest.advanceTimersByTimeAsync(WAITING_LIMIT_MS.action));
+    await act(() => jest.advanceTimersByTimeAsync(WAIT_LIMIT_MS.action));
     expect(
       screen.getByText(
         "This is taking longer than it should. It may still go through, so check the balance and Activity before doing it again.",

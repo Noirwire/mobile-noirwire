@@ -1,4 +1,8 @@
-import { STILL_WORKING_AFTER_MS, WAITING_DELAY_MS } from "@noirwire/shared/presentation";
+import {
+  STILL_WORKING_AFTER_MS,
+  WAITING_DELAY_MS,
+  WAIT_LIMIT_MS,
+} from "@noirwire/shared/presentation";
 import { getSnapshot } from "@noirwire/shared/wallet";
 import { act, fireEvent, screen, waitFor, within } from "@testing-library/react-native";
 import {
@@ -11,7 +15,6 @@ import {
   withHolding,
 } from "../portfolio/testWallet";
 import { forgetWallet, installTestPlatform, testServices } from "../testServices";
-import { WAITING_LIMIT_MS } from "@/ui";
 import { HomeScreen, RESTORED_MS } from "./HomeScreen";
 
 let updatedAt: number;
@@ -229,7 +232,7 @@ describe("HomeScreen", () => {
     expect(screen.getAllByLabelText("Loading").length).toBeGreaterThan(0);
     await act(() => jest.advanceTimersByTimeAsync(STILL_WORKING_AFTER_MS.content));
     expect(screen.getByText("Still loading. This is taking longer than usual.")).toBeOnTheScreen();
-    await act(() => jest.advanceTimersByTimeAsync(WAITING_LIMIT_MS.content));
+    await act(() => jest.advanceTimersByTimeAsync(WAIT_LIMIT_MS.content));
     expect(screen.queryAllByLabelText("Loading")).toHaveLength(0);
     expect(
       screen.getByText(

@@ -1,3 +1,4 @@
+import { WAIT_LIMIT_MS } from "@noirwire/shared/presentation";
 import {
   livePricesUpdatedAt,
   livePricesVersion,
@@ -11,7 +12,7 @@ import type { PriceHistory } from "@noirwire/shared/presentation";
 import { getSnapshot, subscribe } from "@noirwire/shared/wallet";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { AppState } from "react-native";
-import { WAITING_LIMIT_MS, withinLimit } from "@/ui/useWaiting";
+import { withinLimit } from "@/ui/useWaiting";
 
 /** The phone is out of view while the app is in the background; prices are not polled then. */
 const appVisibility: Visibility = {
@@ -52,7 +53,7 @@ export function usePriceHistory(symbol: string, range: PriceRange, enabled = tru
     let current = true;
     // A history that does not come within the limit counts as none: the chart
     // says so instead of loading for ever.
-    void withinLimit(priceHistory(symbol, range), WAITING_LIMIT_MS.content)
+    void withinLimit(priceHistory(symbol, range), WAIT_LIMIT_MS.content)
       .catch(() => null)
       .then((points) => {
         if (current)

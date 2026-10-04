@@ -1,5 +1,5 @@
 import { MARKET_PAGE_SIZE as PAGE, type MarketCategory } from "@noirwire/shared/application";
-import { marketsCopy } from "@noirwire/shared/copy";
+import { marketsCopy, mobileWaitingCopy } from "@noirwire/shared/copy";
 import { livePricesVersion } from "@noirwire/shared/infrastructure";
 import { marketsView, STILL_WORKING_AFTER_MS } from "@noirwire/shared/presentation";
 import { screenReads } from "@noirwire/shared/wallet";
@@ -25,7 +25,6 @@ import {
 import { selectionHaptic } from "@/ui/haptics";
 import { colors, fonts, layout, radius, size } from "@/ui/theme";
 import { controlText, maxFontScale } from "@/ui/typography";
-import { phoneCopy } from "../phoneCopy";
 import { TrackerCard, TrackerRow } from "./TrackerRow";
 import { useLivePrices, useWalletSnapshot } from "./useMarketData";
 import { toggleWatch } from "./watchlist";
@@ -123,7 +122,7 @@ export function MarketsScreen({ onOpen, unknownTracker = false, visitor }: Marke
         <Loading waiting={waiting} />
       ) : (
         <>
-          {pricesMissing && <Notice tone="warning">{phoneCopy.overdue.prices}</Notice>}
+          {pricesMissing && <Notice tone="warning">{mobileWaitingCopy.overdue.prices}</Notice>}
           {view.moversWaiting && <Text variant="faint">{view.moversWaiting}</Text>}
           {view.shelves.map((shelf) => (
             <View key={shelf.key} style={styles.group}>

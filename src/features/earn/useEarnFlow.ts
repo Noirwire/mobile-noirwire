@@ -9,9 +9,9 @@ import {
 } from "@noirwire/shared/application";
 import type { NetworkCost } from "@noirwire/shared/domain";
 import type { EarnPosition } from "@noirwire/shared/infrastructure";
-import { describeFailure, type EarnPortfolio } from "@noirwire/shared/presentation";
+import { describeFailure, type EarnPortfolio, WAIT_LIMIT_MS } from "@noirwire/shared/presentation";
 import { useEffect, useRef, useState } from "react";
-import { useWaiting, WAITING_LIMIT_MS, withinLimit } from "@/ui/useWaiting";
+import { useWaiting, withinLimit } from "@/ui/useWaiting";
 import { useServices } from "../services";
 import { phoneCost } from "../network/cost";
 import { useMoney } from "../network/money";
@@ -38,9 +38,18 @@ export function useEarnFlow(
   const [chosen, setChosen] = useState<string | null>(opening.portfolioId);
   const [step, setStep] = useState<EarnStep>(opening.portfolioId ? "amount" : "choose");
   const [amountText, setAmountText] = useState("");
-  /** The network cost, and the portfolio it was worked out for. */
+  /** The network cost, and the portfolio and pricing round it was worked out for. */
   const [priced, setPriced] = useState<{ for: string; cost: NetworkCost } | null>(null);
-  const [failure, setFailure] = useState<string | null>(null);
+  /** Moves on when the cost must be worked out afresh for the same portfolio. */
+  const [round, setRound] = useState(0);
+  /** The cost on screen was worked out after a failed attempt, perhaps without the relayer. */
+  const [costFromFailure, setCostFromFailure] = useState(false);
+  /** What the last attempt answered, with the amount it was for: the review shows it only for that amount. */
+  const [failure, setFailure] = useState<{
+    text: string;
+    action: EarnAction;
+    amount: number;
+  } | null>(null);
   const [result, setResult] = useState<{
     outcome: "landed" | "unknown";
     amount: number;
@@ -82,10 +91,10 @@ export function useEarnFlow(
   useEffect(() => {
     if (!ready) return;
     let current = true;
-    const id = chosen;
+    const id = `${chosen}:${round}`;
     // A cost that cannot be worked out within the limit is unavailable, which
     // the review says, instead of a Max button that never enables.
-    void withinLimit(priceCost(), WAITING_LIMIT_MS.review)
+    void withinLimit(priceCost(), WAIT_LIMIT_MS.review)
       .catch((): NetworkCost => ({ kind: "unavailable" }))
       .then((next) => current && setPriced({ for: id, cost: next }));
     return () => {
@@ -93,9 +102,10 @@ export function useEarnFlow(
     };
     // The cost is worked out once per chosen portfolio, not on every keystroke.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready, chosen]);
+  }, [ready, chosen, round]);
 
-  const cost = ready && priced?.for === chosen ? priced.cost : null;
+  const pricedFor = `${chosen}:${round}`;
+  const cost = ready && priced?.for === pricedFor ? priced.cost : null;
   const draft = earnDraft({ action, amountText, cash, deposited, cost });
 
   async function confirm() {
@@ -124,19 +134,34 @@ export function useEarnFlow(
     if (failed.reviewAgain) {
       const again = await withinLimit(
         priceCost(failed.reviewAgain === "other"),
-        WAITING_LIMIT_MS.review,
+        WAIT_LIMIT_MS.review,
       ).catch((): NetworkCost => ({ kind: "unavailable" }));
       if (!live.current) return;
-      setPriced({ for: chosen, cost: again });
+      setPriced({ for: pricedFor, cost: again });
+      setCostFromFailure(true);
     }
-    setFailure(failed.error);
+    setFailure({ text: failed.error, action, amount });
     setStep("review");
+  }
+
+  /**
+   * Back from the review to the amount. A cost worked out after a failed
+   * attempt belongs to that attempt: the next review asks again from the
+   * start, so a relayer that is back is found.
+   */
+  function editAmount() {
+    if (costFromFailure) {
+      setCostFromFailure(false);
+      setRound((count) => count + 1);
+    }
+    setStep("amount");
   }
 
   return {
     action,
     step,
     goTo: setStep,
+    editAmount,
     online,
     pending,
     chosen,
@@ -149,7 +174,7 @@ export function useEarnFlow(
     failure,
     result,
     /** The network cost is still being worked out for the chosen portfolio. */
-    pricingCost: ready && priced?.for !== chosen,
+    pricingCost: ready && priced?.for !== pricedFor,
     /** The progress step's wait: its calm line, and whether it has run past its limit. */
     working,
     confirm,
