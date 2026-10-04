@@ -46,8 +46,8 @@ import {
   StepList,
   StillWorking,
   Text,
+  useTopLoader,
   useWaiting,
-  WaitingLine,
   withinLimit,
   WAITING_LIMIT_MS,
 } from "@/ui";
@@ -70,7 +70,7 @@ type PieOrderSheetProps = {
   onAddMoney: (portfolioId: string) => void;
 };
 
-type Step = "input" | "pricing" | "review" | "risks" | "progress" | "result";
+type Step = "input" | "review" | "risks" | "progress" | "result";
 
 type Priced = {
   side: Side;
@@ -108,7 +108,9 @@ export function PieOrderSheet({ portfolioId, mode, onClose, onAddMoney }: PieOrd
   const [approval, setApproval] = useState<Approval | null>(null);
   const [runningSide, setRunningSide] = useState<Side>(mode === "invest" ? "buy" : "sell");
   const [closing, setClosing] = useState<string | null>(null);
-  const pricing = useWaiting(step === "pricing", "review");
+  const [pricingNow, setPricingNow] = useState(false);
+  const pricingWait = useWaiting(pricingNow, "review");
+  useTopLoader(pricingNow);
   // Each order gets the action's limit, and a question waiting for an answer is not a wait.
   const working = useWaiting(step === "progress" && approval === null, "action", {
     limitMs: WAITING_LIMIT_MS.action * Math.max(outcomes.length, 1),
@@ -143,7 +145,7 @@ export function PieOrderSheet({ portfolioId, mode, onClose, onAddMoney }: PieOrd
 
   async function price(side: Side, legs: Leg[], offered: number) {
     setNotice(null);
-    setStep("pricing");
+    setPricingNow(true);
     const orders: TradePlan[] = [];
     for (const leg of legs) {
       const quoted = await withinLimit(
@@ -152,6 +154,7 @@ export function PieOrderSheet({ portfolioId, mode, onClose, onAddMoney }: PieOrd
       ).catch(() => ({ error: errorsCopy.trade.noPrice }));
       if ("error" in quoted) {
         setNotice(copy.legFailed(leg.symbol, quoted.error));
+        setPricingNow(false);
         return setStep("input");
       }
       orders.push(quoted.plan);
@@ -169,9 +172,11 @@ export function PieOrderSheet({ portfolioId, mode, onClose, onAddMoney }: PieOrd
         cost: reviewed.cost,
         leftover: side === "buy" ? Math.max(offered - spent, 0) : 0,
       });
+      setPricingNow(false);
       setStep("review");
     } catch {
       setNotice(copy.costCheckFailed);
+      setPricingNow(false);
       setStep("input");
     }
   }
@@ -282,7 +287,7 @@ export function PieOrderSheet({ portfolioId, mode, onClose, onAddMoney }: PieOrd
     await price("buy", buys, proceeds);
   }
 
-  const busy = step === "pricing" || (step === "progress" && !working.overdue);
+  const busy = pricingNow || (step === "progress" && !working.overdue);
   const dirty = amountText !== "" && step !== "result";
   const back =
     step === "review"
@@ -353,7 +358,7 @@ export function PieOrderSheet({ portfolioId, mode, onClose, onAddMoney }: PieOrd
       footer = (
         <Button
           label={invest.review.label}
-          disabled={invest.review.disabled || floor !== null || !online || !tradable}
+          disabled={invest.review.disabled || floor !== null || !online || !tradable || pricingNow}
           onPress={() => void price("buy", preview, amount)}
         />
       );
@@ -374,15 +379,9 @@ export function PieOrderSheet({ portfolioId, mode, onClose, onAddMoney }: PieOrd
     footer = (
       <Button
         label={rebalance.price.label}
-        disabled={rebalance.price.disabled || !online || !tradable}
+        disabled={rebalance.price.disabled || !online || !tradable || pricingNow}
         onPress={() => void price("sell", rebalancing.sells, 0)}
       />
-    );
-  } else if (step === "pricing") {
-    body = (
-      <View style={styles.centred}>
-        <WaitingLine waiting={{ ...pricing, label: copy.pricing }} />
-      </View>
     );
   } else if (step === "risks") {
     body = <RiskSections />;
@@ -515,6 +514,7 @@ export function PieOrderSheet({ portfolioId, mode, onClose, onAddMoney }: PieOrd
     >
       <IdentityLine tint={tint} />
       {body}
+      {step === "input" && pricingNow && <StillWorking waiting={pricingWait} />}
     </Sheet>
   );
 }
@@ -530,7 +530,6 @@ const styles = StyleSheet.create({
   medium: { fontFamily: fonts.medium },
   tabular: { fontVariant: ["tabular-nums"] },
   link: { alignSelf: "flex-start", paddingHorizontal: 0 },
-  centred: { alignItems: "center", paddingVertical: layout.section },
   order: { gap: layout.hairline, paddingVertical: layout.tight },
   ruled: { borderTopWidth: 1, borderTopColor: colors["line-subtle"] },
   orderHead: { flexDirection: "row", gap: layout.tight },

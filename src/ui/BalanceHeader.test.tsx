@@ -25,7 +25,15 @@ describe("BalanceHeader", () => {
   it("keeps its text out of the signature's zone", async () => {
     await render(<BalanceHeader label="Total value" value="$8,729.89" change="+$98.79" />);
     const copy = screen.getByLabelText("Total value, $8,729.89, +$98.79");
-    expect(copy).toHaveStyle({ marginRight: layout.signature });
+    expect(copy).toHaveStyle({ marginEnd: layout.signature });
+  });
+
+  it("bleeds the signature past the screen's own gutter instead of cutting it there", async () => {
+    await render(<BalanceHeader label="Total value" value="$8,729.89" />);
+    const copy = screen.getByLabelText("Total value, $8,729.89");
+    // The header, not the text column: the leading edge (where the text
+    // starts) keeps its position, only the trailing edge bleeds outward.
+    expect(copy.parent).toHaveStyle({ marginEnd: -layout.gutter });
   });
 
   it("shrinks a long figure to its column instead of running past it", async () => {

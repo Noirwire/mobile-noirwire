@@ -54,6 +54,12 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     paddingTop: layout.section,
     paddingBottom: layout.hero,
+    // Cancels the screen's own gutter on the trailing edge only, so the arc
+    // reaches the physical screen edge instead of stopping short of it with
+    // a hard cut at the gutter. The leading edge, where the text starts,
+    // keeps its position. `marginEnd` (not `marginRight`) so this still
+    // bleeds off the correct edge under a right-to-left layout.
+    marginEnd: -layout.gutter,
   },
-  copy: { gap: layout.tight, marginRight: layout.signature },
+  copy: { gap: layout.tight, marginEnd: layout.signature },
 });

@@ -153,6 +153,8 @@ export function useFundFlow(initialPortfolioId: string | null) {
     draft,
     failure,
     completed,
+    /** The funding wallet's balance is still being read on opening. */
+    stillReading: !read,
     /** The funding wallet's balance being read on opening. */
     reading,
     /** The progress step's wait: its calm line, and whether it has run past its limit. */

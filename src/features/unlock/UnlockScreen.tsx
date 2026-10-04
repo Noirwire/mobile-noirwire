@@ -3,7 +3,18 @@ import { isWrongPassword, unlockProblemText } from "@noirwire/shared/presentatio
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { StyleSheet, View, type TextInput } from "react-native";
 import type { BiometricMethod } from "@/platform/biometricKeystore";
-import { Button, Divider, Field, Mark, Notice, Screen, Text } from "@/ui";
+import {
+  Button,
+  Divider,
+  Field,
+  Mark,
+  Notice,
+  Screen,
+  StillWorking,
+  Text,
+  useTopLoader,
+  useWaiting,
+} from "@/ui";
 import { errorHaptic, successHaptic } from "@/ui/haptics";
 import { layout } from "@/ui/theme";
 import { takeResetRefused } from "../reset/resetOutcome";
@@ -34,6 +45,8 @@ export function UnlockScreen({ onReset }: UnlockScreenProps) {
   const field = useRef<TextInput>(null);
   const prompted = useRef(false);
   const biometricOn = setting === "on" && method !== null;
+  const waiting = useWaiting(busy, "action");
+  useTopLoader(busy);
 
   useEffect(() => {
     let current = true;
@@ -118,11 +131,10 @@ export function UnlockScreen({ onReset }: UnlockScreenProps) {
         />
         <Button
           label={copy.unlock}
-          loading={busy}
-          loadingLabel={copy.unlocking}
-          disabled={password === ""}
+          disabled={password === "" || busy}
           onPress={() => void submit()}
         />
+        <StillWorking waiting={waiting} />
         {biometricOn && method && (
           <Button
             label={mobileWalletCopy.unlock.use(method.name)}

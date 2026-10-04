@@ -25,6 +25,9 @@ import {
   StepList,
   StillWorking,
   Text,
+  useTopLoader,
+  useWaiting,
+  type Waiting,
 } from "@/ui";
 import { ActingFor } from "@/ui/ActingFor";
 import { confirmHaptic } from "@/ui/confirmHaptic";
@@ -50,6 +53,8 @@ export function SendScreen({ portfolioId, onClose, onMoveMoney }: SendScreenProp
   const flow = useSendFlow(portfolioId);
   const { step, portfolio } = flow;
   const name = portfolio?.label ?? "";
+  const preparingWait = useWaiting(flow.preparing, "review");
+  useTopLoader(flow.preparing);
 
   const form = sendFormView({
     platform: "mobile",
@@ -127,7 +132,15 @@ export function SendScreen({ portfolioId, onClose, onMoveMoney }: SendScreenProp
       dirty={(flow.recipient !== "" || flow.amountText !== "") && step !== "result"}
       busy={step === "progress" && !flow.working.overdue}
       secure
-      footer={<Footer flow={flow} form={form} review={review} onClose={onClose} />}
+      footer={
+        <Footer
+          flow={flow}
+          form={form}
+          review={review}
+          preparingWait={preparingWait}
+          onClose={onClose}
+        />
+      }
     >
       {step !== "result" && <OfflineBanner />}
       {portfolio && step !== "result" && step !== "scan" && (
@@ -357,24 +370,26 @@ function Footer({
   flow,
   form,
   review,
+  preparingWait,
   onClose,
 }: {
   flow: SendFlow;
   form: ReturnType<typeof sendFormView>;
   review: ReturnType<typeof sendReviewView> | null;
+  preparingWait: Waiting;
   onClose: () => void;
 }) {
   switch (flow.step) {
     case "details":
       return flow.assets.length === 0 ? null : (
-        <Button
-          label={form.review.label}
-          loading={flow.preparing}
-          loadingLabel={form.review.label}
-          waitingFor="review"
-          disabled={form.review.disabled}
-          onPress={() => void flow.openReview()}
-        />
+        <>
+          <Button
+            label={form.review.label}
+            disabled={form.review.disabled || flow.preparing}
+            onPress={() => void flow.openReview()}
+          />
+          <StillWorking waiting={preparingWait} />
+        </>
       );
     case "review":
       return review ? (

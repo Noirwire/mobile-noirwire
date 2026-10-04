@@ -17,6 +17,7 @@ import { WalletGate } from "@/navigation/WalletGate";
 import { ActivityCapture } from "@/platform/ActivityCapture";
 import { installedPlatform, installMobilePlatform, noteScreen } from "@/platform/install";
 import { PrivacyCover } from "@/platform/PrivacyCover";
+import { TopLoader } from "@/ui";
 import { colors } from "@/ui/theme";
 import { fontAssets } from "@/ui/typography";
 
@@ -39,6 +40,8 @@ export default function RootLayout() {
           <KeyboardProvider>
             <Routes />
           </KeyboardProvider>
+          {/* One waiting signal for the whole app: every screen switches it on through useTopLoader. */}
+          <TopLoader />
         </SafeAreaProvider>
       </RuntimeGate>
     </GestureHandlerRootView>

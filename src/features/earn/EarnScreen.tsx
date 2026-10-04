@@ -9,6 +9,7 @@ import {
   Notice,
   Skeleton,
   Text,
+  useTopLoader,
   useWaiting,
   WaitingPlaceholder,
   type Waiting,
@@ -37,6 +38,7 @@ export function EarnScreen({ onReadRisks, onNewPortfolio, onMoveMoney }: EarnScr
   const view = earnScreenView({ ...state, platform: "mobile" });
   const reading = view.rate === null || view.rows.some((row) => row.inEarn === null);
   const waiting = useWaiting(reading, "content");
+  useTopLoader(reading);
   /** A rate or a position that could not be read: said, with a way to ask again. */
   const unread =
     state.available &&

@@ -16,6 +16,7 @@ import {
   Segmented,
   Skeleton,
   Text,
+  useTopLoader,
   useWaiting,
   WaitingLine,
   WaitingPlaceholder,
@@ -59,6 +60,7 @@ export function TrackerScreen({ symbol, visitor = false, onIntent }: TrackerScre
   const { fontScale } = useWindowDimensions();
   const priceWaiting = useWaiting(updatedAt === null && history.status === "loading", "content");
   const chartWaiting = useWaiting(history.status === "loading", "check");
+  useTopLoader(updatedAt === null || history.status === "loading");
   const view = trackerView(screenReads, {
     symbol,
     wallet: visitor ? null : wallet,

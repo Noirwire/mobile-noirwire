@@ -18,6 +18,7 @@ import {
   Row,
   Skeleton,
   Text,
+  useTopLoader,
   useWaiting,
   WaitingPlaceholder,
   type Waiting,
@@ -68,6 +69,7 @@ export function HomeScreen(props: HomeScreenProps) {
   const [opened, setOpened] = useState<string | null>(null);
   const firstRead = refresh.reading && !refresh.settled;
   const waiting = useWaiting(firstRead, "content");
+  useTopLoader(refresh.reading);
 
   if (!wallet) return null;
   const view = homeView(screenReads, wallet, updatedAt, earnTotal);

@@ -14,8 +14,10 @@ import {
   EmptyState,
   IconButton,
   Notice,
+  Shelf,
   Skeleton,
   Text,
+  useTopLoader,
   useWaiting,
   WaitingPlaceholder,
   type Waiting,
@@ -46,6 +48,7 @@ export function MarketsScreen({ onOpen, unknownTracker = false, visitor }: Marke
   const [category, setCategory] = useState<MarketCategory>("all");
   const [shown, setShown] = useState(PAGE);
   const waiting = useWaiting(updatedAt === null, "content");
+  useTopLoader(updatedAt === null);
   // With no live price the list's place is held: until the limit while nothing
   // at all has answered, and only for a moment once something has, since that
   // may have been the prices failing. After that the trackers are listed
@@ -130,26 +133,18 @@ export function MarketsScreen({ onOpen, unknownTracker = false, visitor }: Marke
                 </Text>
                 {shelf.trailing && <Text variant="faint">{shelf.trailing}</Text>}
               </View>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.shelf}
-              >
+              <Shelf>
                 {shelf.rows.map((row) => (
                   <TrackerCard key={row.symbol} row={row} onOpen={onOpen} />
                 ))}
-              </ScrollView>
+              </Shelf>
             </View>
           ))}
           <View style={styles.group}>
             <Text accessibilityRole="header" style={styles.heading}>
               {view.browse.title}
             </Text>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.chips}
-            >
+            <Shelf gap={layout.tight} accessibilityRole="radiogroup">
               {view.browse.categories.map((entry) => (
                 <Chip
                   key={entry.category}
@@ -158,7 +153,7 @@ export function MarketsScreen({ onOpen, unknownTracker = false, visitor }: Marke
                   onPress={() => choose(entry.category)}
                 />
               ))}
-            </ScrollView>
+            </Shelf>
             {view.browse.empty ? (
               <EmptyState title={view.browse.empty.title} detail={view.browse.empty.detail} />
             ) : (
@@ -250,7 +245,6 @@ const styles = StyleSheet.create({
   shelfHead: { flexDirection: "row", alignItems: "baseline", justifyContent: "space-between" },
   heading: { fontFamily: fonts.medium },
   shelf: { flexDirection: "row", gap: layout.inset },
-  chips: { gap: layout.tight },
   bar: {
     paddingHorizontal: layout.gutter,
     paddingTop: layout.tight,

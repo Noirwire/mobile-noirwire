@@ -6,9 +6,9 @@ import {
 } from "@noirwire/shared/presentation";
 import { screenReads } from "@noirwire/shared/wallet";
 import { useState } from "react";
-import { ScrollView, SectionList, StyleSheet, View } from "react-native";
+import { SectionList, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Chip, EmptyState, Text } from "@/ui";
+import { Chip, EmptyState, Shelf, Text } from "@/ui";
 import { selectionHaptic } from "@/ui/haptics";
 import { colors, layout } from "@/ui/theme";
 import { useWalletSnapshot } from "../portfolio/useWalletSnapshot";
@@ -51,12 +51,10 @@ export function ActivityScreen({ onOpenPortfolio, now = Date.now }: ActivityScre
     <View style={styles.header}>
       <Text variant="h1">{copy.title}</Text>
       {view.kind !== "none" && (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
+        <Shelf
+          gap={layout.tight}
           accessibilityRole="radiogroup"
           accessibilityLabel={copy.filtersLabel}
-          contentContainerStyle={styles.chips}
         >
           {ACTIVITY_FILTERS.map((option) => (
             <Chip
@@ -66,7 +64,7 @@ export function ActivityScreen({ onOpenPortfolio, now = Date.now }: ActivityScre
               onPress={() => choose(option.id)}
             />
           ))}
-        </ScrollView>
+        </Shelf>
       )}
     </View>
   );
@@ -124,7 +122,6 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.base },
   content: { flexGrow: 1, paddingHorizontal: layout.gutter, paddingBottom: layout.section },
   header: { gap: layout.group, paddingTop: layout.gutter, paddingBottom: layout.tight },
-  chips: { gap: layout.tight },
   day: { paddingTop: layout.group, paddingBottom: layout.hairline },
   older: { paddingTop: layout.group },
   noMatch: { paddingTop: layout.section, textAlign: "center" },

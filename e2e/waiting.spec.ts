@@ -23,7 +23,7 @@ async function typePhrase(page: import("@playwright/test").Page) {
 }
 
 test.describe("import", () => {
-  test("shows its progress at once on a slow relay, and still finishes", async ({
+  test("keeps the phrase form on screen on a slow relay, with the one top loader running, and still finishes", async ({
     page,
     relay,
   }) => {
@@ -31,12 +31,16 @@ test.describe("import", () => {
     relay.slow("/api/rpc", 400);
     await page.getByRole("button", { name: "Continue" }).click();
 
-    await expect(page.getByRole("heading", { name: "Importing your wallet" })).toBeVisible({
-      timeout: 2_000,
-    });
-    await expect(page.getByLabel("Reading your recovery phrase, Done")).toBeVisible();
-    await expect(page.getByLabel("Finding your portfolios, In progress")).toBeVisible();
+    // No new page: the same form, the field held, Continue still reading
+    // "Continue" (disabled), and a Cancel - not a title, a step list or a
+    // phrase-import heading.
+    await expect(page.getByRole("heading", { name: "Import an existing wallet." })).toBeVisible();
+    await expect(page.getByRole("textbox", { name: "Recovery phrase" })).toHaveValue(
+      TEST_ONLY_PHRASE,
+    );
+    await expect(page.getByRole("button", { name: "Continue" })).toBeDisabled();
     await expect(page.getByRole("button", { name: "Cancel" })).toBeVisible();
+    await expect(page.getByRole("progressbar")).toBeVisible({ timeout: 2_000 });
     await expectNothingTechnical(page);
 
     await expect(
@@ -48,7 +52,7 @@ test.describe("import", () => {
     await typePhrase(page);
     relay.silent("/api/rpc");
     await page.getByRole("button", { name: "Continue" }).click();
-    await expect(page.getByRole("heading", { name: "Importing your wallet" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Cancel" })).toBeVisible();
     await page.getByRole("button", { name: "Cancel" }).click();
 
     await expect(page.getByRole("textbox", { name: "Recovery phrase" })).toHaveValue(
@@ -56,6 +60,7 @@ test.describe("import", () => {
     );
     await expect(page.getByRole("alert")).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Continue" })).toBeEnabled();
+    await expect(page.getByRole("progressbar")).toHaveCount(0);
   });
 
   test("says plainly that it could not finish on a failing relay, and can be tried again", async ({
@@ -65,7 +70,7 @@ test.describe("import", () => {
     await typePhrase(page);
     relay.failing("/api/rpc");
     await page.getByRole("button", { name: "Continue" }).click();
-    await expect(page.getByRole("heading", { name: "Importing your wallet" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Cancel" })).toBeVisible();
 
     await expect(page.getByRole("alert")).toHaveText(IMPORT_FAILED, { timeout: 60_000 });
     await expectNothingTechnical(page);
@@ -108,6 +113,7 @@ test.describe("Home", () => {
     await createWallet(page);
 
     await expect(page.getByLabel("Loading").first()).toBeVisible();
+    await expect(page.getByRole("progressbar").first()).toBeVisible();
     await expectNothingTechnical(page);
     await expect(page.getByText("Total value")).toBeVisible({ timeout: 30_000 });
     await expect(page.getByLabel("Loading")).toHaveCount(0);

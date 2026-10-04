@@ -24,6 +24,7 @@ import {
   Skeleton,
   StepList,
   Text,
+  useTopLoader,
   WaitingPlaceholder,
   type StepStatus,
 } from "@/ui";
@@ -84,6 +85,7 @@ export function FundScreen({
   const flow = useFundFlow(portfolioId);
   const { step, portfolio } = flow;
   const label = portfolio?.label ?? "";
+  useTopLoader(flow.stillReading);
 
   const outcome = flow.result?.outcome;
   useEffect(() => {

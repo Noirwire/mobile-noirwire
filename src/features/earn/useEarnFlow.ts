@@ -148,6 +148,8 @@ export function useEarnFlow(
     draft,
     failure,
     result,
+    /** The network cost is still being worked out for the chosen portfolio. */
+    pricingCost: ready && priced?.for !== chosen,
     /** The progress step's wait: its calm line, and whether it has run past its limit. */
     working,
     confirm,

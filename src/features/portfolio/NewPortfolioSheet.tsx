@@ -17,8 +17,8 @@ import {
 import { FUNDING_DERIVATION_INDEX } from "@noirwire/shared/infrastructure";
 import { screenReads } from "@noirwire/shared/wallet";
 import { useEffect, useState } from "react";
-import { ScrollView, StyleSheet, View } from "react-native";
-import { Button, Chip, Field, Notice, PieRing, Segmented, Sheet, Text } from "@/ui";
+import { StyleSheet, View } from "react-native";
+import { Button, Chip, Field, Notice, PieRing, Segmented, Sheet, Shelf, Text } from "@/ui";
 import { selectionHaptic, successHaptic } from "@/ui/haptics";
 import { layout } from "@/ui/theme";
 import { PieMixEditor } from "../pie/PieBuilderSheet";
@@ -131,11 +131,7 @@ export function NewPortfolioSheet({ onClose, onCreated }: NewPortfolioSheetProps
         error={nameProblem}
       />
       {view.suggestions.length > 0 && (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.chips}
-        >
+        <Shelf gap={layout.tight}>
           {view.suggestions.map((suggestion) => (
             <Chip
               key={suggestion}
@@ -147,7 +143,7 @@ export function NewPortfolioSheet({ onClose, onCreated }: NewPortfolioSheetProps
               }}
             />
           ))}
-        </ScrollView>
+        </Shelf>
       )}
       <IconPicker
         value={icon}
@@ -182,5 +178,4 @@ export function NewPortfolioSheet({ onClose, onCreated }: NewPortfolioSheetProps
 
 const styles = StyleSheet.create({
   group: { gap: layout.tight },
-  chips: { gap: layout.tight },
 });

@@ -15,7 +15,7 @@ tags:
 - tapOn: "Continue"
 - extendedWaitUntil:
     visible: "Where did this phrase come from?"
-    # The import shows "Importing your wallet" while it looks; a slow device takes a while.
+    # The form stays up with Continue disabled and the top loader running while it looks; a slow device takes a while.
     timeout: 180000
 - tapOn: "NoirWire\\..*"
 - tapOn: "Open this wallet"

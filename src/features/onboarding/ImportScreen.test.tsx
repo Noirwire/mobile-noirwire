@@ -22,7 +22,7 @@ afterEach(() => jest.useRealTimers());
 
 const field = () => screen.getByLabelText("Recovery phrase");
 const pressContinue = () => fireEvent.press(screen.getByRole("button", { name: "Continue" }));
-/** Lets the progress view be drawn and the lookup start. */
+/** Lets the top loader be drawn and the lookup start. */
 const settle = () => act(() => jest.advanceTimersByTimeAsync(50));
 
 /** A lookup that answers when the test says so. */
@@ -123,7 +123,7 @@ describe("ImportScreen", () => {
     expect(onFound).toHaveBeenCalledWith(PHRASE.split(" "), RESOLUTION);
   });
 
-  it("shows progress at once, before the lookup has started", async () => {
+  it("keeps the form on screen at once, before the lookup has started: no new page", async () => {
     const lookup = heldLookup();
     await renderWith(
       await testServices({ resolveImport: lookup.resolveImport }),
@@ -131,26 +131,15 @@ describe("ImportScreen", () => {
     );
     await fireEvent.changeText(field(), PHRASE);
     await pressContinue();
-    expect(screen.getByRole("header", { name: "Importing your wallet" })).toBeOnTheScreen();
-    expect(
-      screen.getByText("Keep the app open. This usually takes a few seconds."),
-    ).toBeOnTheScreen();
-    expect(screen.queryByLabelText("Recovery phrase")).toBeNull();
+    expect(screen.getByRole("header", { name: "Import an existing wallet." })).toBeOnTheScreen();
+    expect(field()).toBeOnTheScreen();
+    expect(field().props.value).toBe(PHRASE);
+    expect(field().props.editable).toBe(false);
+    expect(screen.getByRole("button", { name: "Continue" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Cancel" })).toBeOnTheScreen();
     expect(lookup.resolveImport).not.toHaveBeenCalled();
     await settle();
     expect(lookup.resolveImport).toHaveBeenCalledTimes(1);
-  });
-
-  it("moves to the last step only when the lookup has answered", async () => {
-    const { finish } = await importing();
-    expect(screen.getByLabelText("Reading your recovery phrase, Done")).toBeOnTheScreen();
-    expect(screen.getByLabelText("Finding your portfolios, In progress")).toBeOnTheScreen();
-    await act(() => jest.advanceTimersByTimeAsync(30_000));
-    expect(screen.getByLabelText("Finding your portfolios, In progress")).toBeOnTheScreen();
-    expect(screen.getByLabelText("Getting everything ready, Waiting")).toBeOnTheScreen();
-    await act(async () => finish());
-    expect(screen.getByLabelText("Finding your portfolios, Done")).toBeOnTheScreen();
-    expect(screen.getByLabelText("Getting everything ready, In progress")).toBeOnTheScreen();
   });
 
   it("says it is still working once the lookup runs long", async () => {

@@ -12,7 +12,17 @@ import {
 } from "@noirwire/shared/presentation";
 import { useEffect } from "react";
 import { StyleSheet, View } from "react-native";
-import { Button, Field, Notice, Row, Sheet, StepList, StillWorking, Text } from "@/ui";
+import {
+  Button,
+  Field,
+  Notice,
+  Row,
+  Sheet,
+  StepList,
+  StillWorking,
+  Text,
+  useTopLoader,
+} from "@/ui";
 import { ActingFor } from "@/ui/ActingFor";
 import { confirmHaptic } from "@/ui/confirmHaptic";
 import { errorHaptic, successHaptic, warningHaptic } from "@/ui/haptics";
@@ -41,6 +51,7 @@ export function EarnSheet(props: EarnSheetProps) {
   const flow = useEarnFlow(props.opening, props.portfolios, props.positionOf);
   const { step, portfolio, action } = flow;
   const label = portfolio?.label ?? "";
+  useTopLoader(flow.pricingCost);
 
   const ended = flow.result?.outcome;
   useEffect(() => {

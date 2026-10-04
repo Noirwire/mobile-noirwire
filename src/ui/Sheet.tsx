@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { confirmDiscard } from "./confirmDiscard";
 import { SheetHeader } from "./SheetHeader";
 import { colors, layout, motion, overlayColor, radius } from "./theme";
+import { TopLoader } from "./TopLoader";
 import { ProtectionRefused } from "./ProtectionRefused";
 import { useCaptureProtection } from "./useCaptureProtection";
 import { useSheetSwipe } from "./useSheetSwipe";
@@ -128,6 +129,7 @@ export function Sheet({
                 onLayout={(event) => swipe.onLayout(event.nativeEvent.layout.height)}
                 style={[styles.sheet, { paddingBottom: insets.bottom + layout.group }, swipe.style]}
               >
+                <TopLoader embedded />
                 <GestureDetector gesture={swipe.gesture}>
                   <View>
                     <SheetHeader
@@ -166,6 +168,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: radius.sheet,
     borderTopRightRadius: radius.sheet,
     backgroundColor: colors.surface,
+    overflow: "hidden",
   },
   refused: { gap: layout.group },
   scroll: { flexGrow: 0, flexShrink: 1 },

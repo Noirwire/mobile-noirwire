@@ -2,7 +2,7 @@ import { onboardingCopy, walletCopy, mobileOnboardingCopy } from "@noirwire/shar
 import type { WalletDraft } from "@noirwire/shared/wallet";
 import { useState } from "react";
 import { StyleSheet, View } from "react-native";
-import { Button, Notice, Screen, Text } from "@/ui";
+import { Button, Notice, Screen, StillWorking, Text, useTopLoader, useWaiting } from "@/ui";
 import { successHaptic } from "@/ui/haptics";
 import { layout } from "@/ui/theme";
 import { NewPasswordFields } from "../password/NewPasswordFields";
@@ -36,6 +36,8 @@ export function SetPasswordScreen({ draft, origin, onSaved }: SetPasswordScreenP
   const model = useNewPassword();
   const [saving, setSaving] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
+  const waiting = useWaiting(saving, "action");
+  useTopLoader(saving);
   useAppLeaves(() => {
     if (!saving) model.clear();
   });
@@ -65,13 +67,8 @@ export function SetPasswordScreen({ draft, origin, onSaved }: SetPasswordScreenP
       <NewPasswordFields model={model} editable={!saving} onSubmit={() => void save()} />
       {problem && <Notice tone="danger">{problem}</Notice>}
       <View style={styles.actions}>
-        <Button
-          label={copy.finish}
-          loading={saving}
-          loadingLabel={copy.encrypting}
-          disabled={!model.ready}
-          onPress={() => void save()}
-        />
+        <Button label={copy.finish} disabled={!model.ready || saving} onPress={() => void save()} />
+        <StillWorking waiting={waiting} />
         <Text variant="faint">{copy.forgotten}</Text>
       </View>
     </Screen>

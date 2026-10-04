@@ -24,11 +24,14 @@ export { Scanner } from "./Scanner";
 export { Screen } from "./Screen";
 export { Segmented } from "./Segmented";
 export { Sheet } from "./Sheet";
+export { Shelf } from "./Shelf";
 export { Skeleton } from "./Skeleton";
 export { Stepper } from "./Stepper";
 export { StepList, type Step, type StepStatus } from "./StepList";
 export { Switch } from "./Switch";
 export { Text } from "./Text";
+export { TopLoader } from "./TopLoader";
+export { useTopLoader } from "./useTopLoader";
 export { StillWorking, WaitingLine, WaitingPlaceholder } from "./Waiting";
 export {
   useWaiting,

@@ -40,6 +40,7 @@ import {
   StepList,
   StillWorking,
   Text,
+  useTopLoader,
   useWaiting,
   withinLimit,
   WAITING_LIMIT_MS,
@@ -127,6 +128,8 @@ export function TradeSheet({
     return () => clearInterval(timer);
   }, [reviewing]);
   const working = useWaiting(step === "progress", "action");
+  const quotingWait = useWaiting(quoting, "review");
+  useTopLoader(quoting);
   useEffect(() => {
     if (!settling) return;
     const timer = setTimeout(() => setSettling(false), REPLACED_HOLD_MS);
@@ -428,14 +431,14 @@ export function TradeSheet({
       form.action.kind === "addMoney" ? (
         <Button label={form.action.label} onPress={() => portfolio && onAddMoney(portfolio.id)} />
       ) : (
-        <Button
-          label={form.action.label}
-          disabled={reviewDisabled}
-          loading={quoting}
-          loadingLabel={copy.gettingPrice}
-          waitingFor="review"
-          onPress={() => void review()}
-        />
+        <>
+          <Button
+            label={form.action.label}
+            disabled={reviewDisabled || quoting}
+            onPress={() => void review()}
+          />
+          <StillWorking waiting={quotingWait} />
+        </>
       );
   } else if ((step === "review" || step === "risks") && plan && network && portfolio && symbol) {
     const model = tradeReviewView({
@@ -516,13 +519,10 @@ export function TradeSheet({
       );
       footer =
         model.action.kind === "newPrice" ? (
-          <Button
-            label={model.action.label}
-            loading={quoting}
-            loadingLabel={copy.gettingPrice}
-            waitingFor="review"
-            onPress={() => void review()}
-          />
+          <>
+            <Button label={model.action.label} disabled={quoting} onPress={() => void review()} />
+            <StillWorking waiting={quotingWait} />
+          </>
         ) : (
           <Button
             label={model.action.label}

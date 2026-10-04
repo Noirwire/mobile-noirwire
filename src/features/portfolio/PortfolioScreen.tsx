@@ -23,6 +23,7 @@ import {
   Screen,
   Skeleton,
   Text,
+  useTopLoader,
   useWaiting,
   WaitingPlaceholder,
   type Waiting,
@@ -95,6 +96,7 @@ export function PortfolioScreen(props: PortfolioScreenProps) {
 
   const firstRead = refresh.reading && !refresh.settled;
   const waiting = useWaiting(firstRead, "content");
+  useTopLoader(refresh.reading);
 
   if (!wallet) return null;
   const view = portfolioView(screenReads, wallet, id, updatedAt);

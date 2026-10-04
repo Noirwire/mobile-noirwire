@@ -1,7 +1,7 @@
 import { connection, expectedGenesisHash, networkLabel } from "@noirwire/shared/infrastructure";
 import { useEffect, useState, type ReactNode } from "react";
 import { AccessibilityInfo, StyleSheet, View } from "react-native";
-import { Button, Mark, StillWorking, Text, useWaiting } from "@/ui";
+import { Button, Mark, StillWorking, Text, useTopLoader, useWaiting } from "@/ui";
 import { colors, layout } from "@/ui/theme";
 import { checkNetwork, networkGateView, type GateState, type NetworkCheck } from "./gateCheck";
 
@@ -30,6 +30,7 @@ export function NetworkGate({
   const [state, setState] = useState<GateState>("checking");
   const [attempt, setAttempt] = useState(0);
   const waiting = useWaiting(state === "checking", "check");
+  useTopLoader(state === "checking");
 
   useEffect(() => {
     let current = true;
