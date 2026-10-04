@@ -273,14 +273,6 @@ describe("SendScreen", () => {
     expect(screen.getByRole("button", { name: "Review" })).toBeDisabled();
   });
 
-  it("says when the portfolio has nothing to send", async () => {
-    installTestPlatform();
-    const chain = fakeChain();
-    await walletWith(chain, { portfolios: [{ label: "Investing", cash: 0 }] });
-    await openSend(chain);
-    expect(screen.getByText("This portfolio is empty.")).toBeOnTheScreen();
-  });
-
   it("takes only the address from a scanned payment code", async () => {
     (useCameraPermissions as jest.Mock).mockReturnValue([
       { granted: true, canAskAgain: true, status: "granted" },
@@ -344,9 +336,7 @@ describe("SendScreen", () => {
     };
     await fillIn(someone(), "10");
     await fireEvent.press(screen.getByRole("button", { name: "Review" }));
-    expect(
-      await screen.findByText("We couldn't prepare your review. Nothing was sent. Try again."),
-    ).toBeOnTheScreen();
+    expect(await screen.findByText(/Nothing was sent/)).toBeOnTheScreen();
     expect(screen.queryByText(/502|Gateway|relayer/)).toBeNull();
   });
 

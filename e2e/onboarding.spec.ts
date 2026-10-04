@@ -46,12 +46,9 @@ test("imports a wallet from a recovery phrase", async ({ page }) => {
   await page.getByRole("button", { name: "Continue" }).click();
 
   // Nothing was found under either set of addresses, so there is no choice to make.
-  await expect(page.getByRole("heading", { name: "Wallet imported." })).toBeVisible({
+  await expect(page.getByRole("heading", { name: /^Wallet restored/ })).toBeVisible({
     timeout: 60_000,
   });
-  await expect(
-    page.getByText("Nothing found yet. This phrase will open a new, empty wallet."),
-  ).toBeVisible();
   await expect(page.getByRole("heading", { name: "Where did this phrase come from?" })).toHaveCount(
     0,
   );

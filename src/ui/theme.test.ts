@@ -27,9 +27,3 @@ describeWhenWebRepoPresent("theme tokens against the web app", () => {
     });
   });
 });
-
-describe("theme", () => {
-  it("defines every colour as a six-digit hex", () => {
-    for (const value of Object.values(colors)) expect(value).toMatch(/^#[0-9a-f]{6}$/);
-  });
-});

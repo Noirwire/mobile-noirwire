@@ -7,7 +7,7 @@ import {
   tradeParams,
   type PortfolioAction,
 } from "@noirwire/shared/presentation";
-import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import { useFocusEffect, useIsFocused, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 import { PortfolioScreen } from "@/features/portfolio/PortfolioScreen";
 import { portfolioHref, trackerHref, useDetailStack } from "../detailRoutes";
@@ -16,6 +16,7 @@ import { portfolioHref, trackerHref, useDetailStack } from "../detailRoutes";
 export function PortfolioRoute() {
   const router = useRouter();
   const stack = useDetailStack();
+  const focused = useIsFocused();
   const params = useLocalSearchParams<{ id: string; view?: string }>();
   const id = isAddressFreeParam(params.id) ? params.id : "";
   const [visit, setVisit] = useState(0);
@@ -53,6 +54,7 @@ export function PortfolioRoute() {
 
   return (
     <PortfolioScreen
+      focused={focused}
       key={visit}
       id={id}
       initialPublic={visit === 0 && readPublicView(params.view)}

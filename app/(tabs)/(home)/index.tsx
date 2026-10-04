@@ -1,5 +1,5 @@
 import type { HomeTarget } from "@noirwire/shared/presentation";
-import { useRouter } from "expo-router";
+import { useIsFocused, useRouter } from "expo-router";
 import { HomeScreen } from "@/features/home/HomeScreen";
 import { lockNow } from "@/features/wallet/walletActions";
 import { portfolioHref, trackerHref } from "@/navigation/detailRoutes";
@@ -7,6 +7,7 @@ import { moneyHref } from "@/navigation/moneyRoutes";
 
 export default function Home() {
   const router = useRouter();
+  const focused = useIsFocused();
 
   function navigate(target: HomeTarget) {
     if (target.to === "markets") return router.navigate("/markets");
@@ -15,6 +16,7 @@ export default function Home() {
 
   return (
     <HomeScreen
+      focused={focused}
       onNavigate={navigate}
       onOpenPortfolio={(id) => router.push(portfolioHref("(home)", id))}
       onOpenTracker={(symbol) => router.push(trackerHref("(home)", symbol))}

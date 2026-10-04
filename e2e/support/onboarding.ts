@@ -23,12 +23,12 @@ export async function createWallet(page: Page): Promise<string> {
   return finishWithSuggestedPassword(page);
 }
 
-/** Sets a suggested passphrase, declines biometrics if offered, and waits for Home. */
+/** Sets a suggested password, declines biometrics if offered, and waits for Home. */
 export async function finishWithSuggestedPassword(page: Page): Promise<string> {
-  await page.getByRole("button", { name: "Suggest a passphrase" }).click();
+  await page.getByRole("button", { name: "Suggest a password" }).click();
   const password = await page.getByLabel("New password", { exact: true }).inputValue();
   expect(password.length).toBeGreaterThan(0);
-  await page.getByRole("button", { name: "Encrypt and finish" }).click();
+  await page.getByRole("button", { name: "Save and finish" }).click();
   await expect(page.getByRole("button", { name: "Lock wallet" })).toBeVisible({ timeout: 60_000 });
   return password;
 }

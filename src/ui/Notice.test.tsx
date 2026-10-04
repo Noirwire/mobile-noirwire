@@ -2,12 +2,6 @@ import { render, screen } from "@testing-library/react-native";
 import { Notice } from "./Notice";
 
 describe("Notice", () => {
-  it("shows its title and message", async () => {
-    await render(<Notice title="What you are buying">A tracker follows a price.</Notice>);
-    expect(screen.getByText("What you are buying")).toBeOnTheScreen();
-    expect(screen.getByText("A tracker follows a price.")).toBeOnTheScreen();
-  });
-
   it("does not interrupt a screen reader for plain information", async () => {
     await render(<Notice>A tracker follows a price.</Notice>);
     expect(screen.queryByRole("alert")).toBeNull();

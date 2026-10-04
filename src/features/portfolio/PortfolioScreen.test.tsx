@@ -154,7 +154,6 @@ describe("PortfolioScreen", () => {
     );
     expect(screen.getByText("Public view")).toBeOnTheScreen();
     expect(screen.getByText("5.1075 NVDAx")).toBeOnTheScreen();
-    expect(screen.getByText("Not written on chain")).toBeOnTheScreen();
     expect(screen.getByText("Hidden")).toBeOnTheScreen();
     expect(screen.queryByText(portfolio.address, { exact: false })).toBeNull();
     await fireEvent.press(screen.getByRole("button", { name: "Show this portfolio's address" }));

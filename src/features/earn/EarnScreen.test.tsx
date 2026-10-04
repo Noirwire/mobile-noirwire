@@ -1,3 +1,4 @@
+import { earnCopy } from "@noirwire/shared/copy";
 import { getSnapshot } from "@noirwire/shared/wallet";
 import { fireEvent, screen } from "@testing-library/react-native";
 import {
@@ -13,7 +14,7 @@ import { EarnScreen } from "./EarnScreen";
 afterEach(() => forgetWallet());
 
 async function openEarn(chain: FakeChain, online = true) {
-  const handlers = { onReadRisks: jest.fn(), onNewPortfolio: jest.fn(), onMoveMoney: jest.fn() };
+  const handlers = { onNewPortfolio: jest.fn(), onMoveMoney: jest.fn() };
   await renderWithMoney(
     await testServices({ useOnline: () => online }),
     testMoney(chain),
@@ -25,23 +26,29 @@ async function openEarn(chain: FakeChain, online = true) {
 const amountField = () => screen.getByLabelText("Amount in USDC");
 
 describe("EarnScreen", () => {
-  it("shows the rate, what it is made of, each portfolio and the risk line", async () => {
+  it("shows the rate, what it is made of and each portfolio", async () => {
     installTestPlatform();
     const chain = fakeChain();
     await walletWith(chain);
-    const { onReadRisks } = await openEarn(chain);
+    await openEarn(chain);
     expect(await screen.findByText("4.16%")).toBeOnTheScreen();
     expect(screen.getByLabelText("Current variable rate, 4.16 percent a year")).toBeOnTheScreen();
-    expect(
-      screen.getByText("Your USDC could earn 4.16% a year at today's rate."),
-    ).toBeOnTheScreen();
-    expect(screen.getByText("Supply 3.79% · rewards 0.37%. The rate changes.")).toBeOnTheScreen();
+    expect(screen.getByText(/3\.79%.*0\.37%/)).toBeOnTheScreen();
     expect(screen.getByText("$457.33 ready to invest")).toBeOnTheScreen();
     expect(await screen.findByText("$0.00")).toBeOnTheScreen();
     expect(screen.queryByRole("button", { name: "Withdraw" })).toBeNull();
-    expect(screen.getByText("Lending carries risk and the rate changes.")).toBeOnTheScreen();
+  });
+
+  it("names who the USDC is lent through only behind Read the risks, on the screen itself", async () => {
+    installTestPlatform();
+    const chain = fakeChain();
+    await walletWith(chain);
+    await openEarn(chain);
+    await screen.findByText("4.16%");
+    expect(screen.queryByText(/Jupiter/)).toBeNull();
     await fireEvent.press(screen.getByRole("button", { name: "Read the risks" }));
-    expect(onReadRisks).toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Read the risks" })).toBeExpanded();
+    expect(screen.getByText(/Jupiter Lend/)).toBeOnTheScreen();
   });
 
   it("shows no stale rate when none can be read", async () => {
@@ -50,19 +57,19 @@ describe("EarnScreen", () => {
     chain.earn.rate = null;
     await walletWith(chain);
     await openEarn(chain);
-    expect(await screen.findByText("A current lending rate is unavailable.")).toBeOnTheScreen();
-    expect(screen.getByText("Unavailable")).toBeOnTheScreen();
-    expect(screen.queryByText(/Supply/)).toBeNull();
+    expect(await screen.findByLabelText("Unavailable")).toBeOnTheScreen();
+    expect(screen.queryByText(/\d%/)).toBeNull();
   });
 
-  it("is unavailable away from mainnet", async () => {
+  it("says one line where Earn does not run, with no rate, no rows and nothing to press", async () => {
     installTestPlatform();
     const chain = fakeChain();
     chain.earn.available = false;
     await walletWith(chain);
     await openEarn(chain);
-    expect(screen.getByText("Earn runs on Solana mainnet.")).toBeOnTheScreen();
-    expect(screen.getByRole("button", { name: "Deposit" })).toBeDisabled();
+    expect(screen.getByText(earnCopy.mainnetOnly)).toBeOnTheScreen();
+    expect(screen.queryByRole("button")).toBeNull();
+    expect(screen.queryByText(/%|\$/)).toBeNull();
   });
 
   it("chooses the portfolio first, then deposits after one review with the network cost", async () => {
@@ -71,7 +78,7 @@ describe("EarnScreen", () => {
     const wallet = await walletWith(chain);
     await openEarn(chain);
     await screen.findByText("$0.00");
-    await fireEvent.press(screen.getByRole("button", { name: "Deposit" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Add to Earn" }));
     await fireEvent.press(
       screen.getByRole("radio", { name: "Investing, $457.33 ready to invest" }),
     );
@@ -90,14 +97,9 @@ describe("EarnScreen", () => {
     expect(screen.getByText("Goes into Earn")).toBeOnTheScreen();
     expect(screen.getByText("0.02 USDC")).toBeOnTheScreen();
     expect(screen.getByLabelText("Total leaving Investing, 100.02 USDC")).toBeOnTheScreen();
-    expect(
-      screen.getByText(
-        "USDC is lent through Jupiter Lend. It is not a bank deposit, and withdrawals can be delayed.",
-      ),
-    ).toBeOnTheScreen();
 
-    await fireEvent.press(screen.getByRole("button", { name: "Deposit 100.00 USDC" }));
-    expect(await screen.findByText("Deposited 100.00 USDC")).toBeOnTheScreen();
+    await fireEvent.press(screen.getByRole("button", { name: "Add 100.00 USDC to Earn" }));
+    expect(await screen.findByText("Added 100.00 USDC to Earn")).toBeOnTheScreen();
     expect(screen.getByText("From Investing, now in Earn.")).toBeOnTheScreen();
     expect(chain.calls).toEqual([{ kind: "deposit", amount: 100, to: undefined }]);
     expect(chain.earn.deposited.get(wallet.portfolios[0].address)).toBe(100);
@@ -111,10 +113,7 @@ describe("EarnScreen", () => {
     chain.earn.deposited.set(wallet.portfolios[0].address, 120);
     await openEarn(chain);
     expect(await screen.findByText("$120.00")).toBeOnTheScreen();
-    expect(screen.getByRole("button", { name: "Deposit" })).toBeDisabled();
-    expect(
-      screen.getByText("No portfolio has USDC to deposit. Move money into a portfolio first."),
-    ).toBeOnTheScreen();
+    expect(screen.getByRole("button", { name: "Add to Earn" })).toBeDisabled();
 
     await fireEvent.press(
       screen.getByRole("button", { name: "Long term, $0.00 ready to invest, $120.00 in Earn" }),
@@ -188,7 +187,7 @@ describe("EarnScreen", () => {
     await fireEvent.changeText(amountField(), "100");
     await fireEvent.press(await screen.findByRole("button", { name: "Review" }));
     chain.relayed = "costRose";
-    await fireEvent.press(screen.getByRole("button", { name: "Deposit 100.00 USDC" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Add 100.00 USDC to Earn" }));
     const failure =
       "The network cost rose before this could be sent. Nothing was sent. Review the new network cost.";
     expect(await screen.findByText(failure)).toBeOnTheScreen();
@@ -196,7 +195,7 @@ describe("EarnScreen", () => {
     await fireEvent.press(screen.getByRole("button", { name: "Back" }));
     await fireEvent.changeText(amountField(), "50");
     await fireEvent.press(await screen.findByRole("button", { name: "Review" }));
-    expect(screen.getByRole("button", { name: "Deposit 50.00 USDC" })).toBeOnTheScreen();
+    expect(screen.getByRole("button", { name: "Add 50.00 USDC to Earn" })).toBeOnTheScreen();
     expect(screen.queryByText(failure)).toBeNull();
     expect(chain.calls).toEqual([{ kind: "deposit", amount: 100, to: undefined }]);
   });
@@ -213,21 +212,21 @@ describe("EarnScreen", () => {
     await fireEvent.press(await screen.findByRole("button", { name: "Review" }));
     chain.relayed = "relayerUnavailable";
     chain.relayerFeeRaw = null;
-    await fireEvent.press(screen.getByRole("button", { name: "Deposit 100.00 USDC" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Add 100.00 USDC to Earn" }));
     const notNow =
       "This can't be done right now. Nothing was charged. Please try again in a few minutes.";
     expect((await screen.findAllByText(notNow)).length).toBeGreaterThan(0);
-    expect(screen.getByRole("button", { name: "Deposit 100.00 USDC" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Add 100.00 USDC to Earn" })).toBeDisabled();
 
     chain.relayed = "lands";
     chain.relayerFeeRaw = 20_000n;
     await fireEvent.press(screen.getByRole("button", { name: "Back" }));
     await fireEvent.press(await screen.findByRole("button", { name: "Review" }));
     expect(screen.queryByText(notNow)).toBeNull();
-    const confirm = screen.getByRole("button", { name: "Deposit 100.00 USDC" });
+    const confirm = screen.getByRole("button", { name: "Add 100.00 USDC to Earn" });
     expect(confirm).toBeEnabled();
     await fireEvent.press(confirm);
-    expect(await screen.findByText("Deposited 100.00 USDC")).toBeOnTheScreen();
+    expect(await screen.findByText("Added 100.00 USDC to Earn")).toBeOnTheScreen();
   });
 
   it("reports an unknown outcome and holds the portfolio's next Confirm until it settles", async () => {
@@ -243,7 +242,7 @@ describe("EarnScreen", () => {
     );
     await fireEvent.changeText(amountField(), "10");
     await fireEvent.press(await screen.findByRole("button", { name: "Review" }));
-    await fireEvent.press(screen.getByRole("button", { name: "Deposit 10.00 USDC" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Add 10.00 USDC to Earn" }));
     expect(await screen.findByText("Sent, but not confirmed")).toBeOnTheScreen();
     await fireEvent.press(screen.getByText("Close"));
 
@@ -255,7 +254,7 @@ describe("EarnScreen", () => {
     expect(
       await screen.findByText(/Your last action from this portfolio .* is not confirmed yet/),
     ).toBeOnTheScreen();
-    expect(screen.getByRole("button", { name: "Deposit 5.00 USDC" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Add 5.00 USDC to Earn" })).toBeDisabled();
     expect(chain.calls).toHaveLength(1);
   });
 
@@ -266,7 +265,7 @@ describe("EarnScreen", () => {
     chain.earn.deposited.set(wallet.portfolios[0].address, 10);
     await openEarn(chain, false);
     await screen.findByText("$10.00");
-    expect(screen.getByRole("button", { name: "Deposit" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Add to Earn" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Withdraw" })).toBeDisabled();
   });
 
@@ -298,8 +297,8 @@ describe("EarnScreen", () => {
     await screen.findByText("457.31 USDC");
     await fireEvent.changeText(amountField(), "100");
     await fireEvent.press(screen.getByRole("button", { name: "Review" }));
-    await fireEvent.press(screen.getByRole("button", { name: "Deposit 100.00 USDC" }));
-    expect(await screen.findByText("Deposited 100.00 USDC")).toBeOnTheScreen();
+    await fireEvent.press(screen.getByRole("button", { name: "Add 100.00 USDC to Earn" }));
+    expect(await screen.findByText("Added 100.00 USDC to Earn")).toBeOnTheScreen();
     expect(screen.getByText(/Balances will update shortly\.$/)).toBeOnTheScreen();
   });
 
@@ -309,20 +308,11 @@ describe("EarnScreen", () => {
     chain.earn.rate = null;
     await walletWith(chain);
     await openEarn(chain);
-    const stale = "We couldn't update what is in Earn. What you see may be out of date.";
+    const stale = /out of date/;
     expect(await screen.findByText(stale)).toBeOnTheScreen();
     chain.earn.rate = { apy: 4.16, supplyApy: 3.79, rewardsApy: 0.37 };
     await fireEvent.press(screen.getByRole("button", { name: "Try again" }));
     expect(await screen.findByText("4.16%")).toBeOnTheScreen();
     expect(screen.queryByText(stale)).toBeNull();
-  });
-
-  it("offers no retry where Earn is simply not offered", async () => {
-    installTestPlatform();
-    const chain = fakeChain();
-    chain.earn.available = false;
-    await walletWith(chain);
-    await openEarn(chain);
-    expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
   });
 });

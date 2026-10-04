@@ -11,6 +11,7 @@ import {
 } from "../testServices";
 import { biometricUnlock } from "./biometricUnlock";
 import { sharedVaultKeyAccess } from "./vaultKeyAccess";
+import { withRealKeyDerivation } from "../../../jest/keyDerivation";
 
 const NEXT_PASSWORD = "lantern-quartz-meadow-harbor-violet";
 
@@ -49,13 +50,14 @@ describe("biometricUnlock", () => {
     expect(service.setting()).toBe("off");
   });
 
-  it("opens the stored wallet with the released key, end to end", async () => {
-    const { service } = await setup();
-    await service.turnOn(STRONG_PASSWORD, "p");
-    expect(isUnlocked()).toBe(false);
-    expect(await service.unlock("p")).toEqual({ kind: "unlocked" });
-    expect(isUnlocked()).toBe(true);
-  });
+  it("opens the stored wallet with the released key, end to end", () =>
+    withRealKeyDerivation(async () => {
+      const { service } = await setup();
+      await service.turnOn(STRONG_PASSWORD, "p");
+      expect(isUnlocked()).toBe(false);
+      expect(await service.unlock("p")).toEqual({ kind: "unlocked" });
+      expect(isUnlocked()).toBe(true);
+    }));
 
   it("refuses a key that does not open the wallet, in the store's words", async () => {
     const { service, keystore } = await setup();
@@ -98,22 +100,23 @@ describe("biometricUnlock", () => {
   });
 
   describe("changing the password", () => {
-    it("hands the keystore the new key, which then opens the wallet", async () => {
-      const { service, keystore } = await setup();
-      await service.turnOn(STRONG_PASSWORD, "p");
-      const before = keystore.stored!.slice();
-      expect(await service.changePassword(STRONG_PASSWORD, NEXT_PASSWORD, "p")).toEqual({
-        outcome: "changed",
-        notice: null,
-      });
-      expect(keystore.stored).toHaveLength(32);
-      expect(keystore.stored).not.toEqual(before);
-      lock();
-      expect(await service.unlock("p")).toEqual({ kind: "unlocked" });
-      lock();
-      expect(await unlock(STRONG_PASSWORD)).toBe(walletCopy.store.wrongPassword);
-      expect(await unlock(NEXT_PASSWORD)).toBeNull();
-    });
+    it("hands the keystore the new key, which then opens the wallet", () =>
+      withRealKeyDerivation(async () => {
+        const { service, keystore } = await setup();
+        await service.turnOn(STRONG_PASSWORD, "p");
+        const before = keystore.stored!.slice();
+        expect(await service.changePassword(STRONG_PASSWORD, NEXT_PASSWORD, "p")).toEqual({
+          outcome: "changed",
+          notice: null,
+        });
+        expect(keystore.stored).toHaveLength(32);
+        expect(keystore.stored).not.toEqual(before);
+        lock();
+        expect(await service.unlock("p")).toEqual({ kind: "unlocked" });
+        lock();
+        expect(await unlock(STRONG_PASSWORD)).toBe(walletCopy.store.wrongPassword);
+        expect(await unlock(NEXT_PASSWORD)).toBeNull();
+      }));
 
     it("undoes the change when the keystore does not take the new key", async () => {
       const { service, keystore } = await setup();

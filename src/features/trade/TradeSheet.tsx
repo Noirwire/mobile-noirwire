@@ -12,7 +12,7 @@ import {
   tradeCopy as copy,
 } from "@noirwire/shared/copy";
 import { resolvePortfolioIcon, type NetworkCost, type Side } from "@noirwire/shared/domain";
-import { networkLabel, type TradePlan } from "@noirwire/shared/infrastructure";
+import { type TradePlan } from "@noirwire/shared/infrastructure";
 import { getPlatform } from "@noirwire/shared/platform";
 import {
   amountFloor,
@@ -49,7 +49,8 @@ import {
 import { errorHaptic, heavyHaptic, successHaptic, warningHaptic } from "@/ui/haptics";
 import { fonts, layout } from "@/ui/theme";
 import type { MoneyTarget } from "@/navigation/moneyRoutes";
-import { useLivePrices, useWalletSnapshot } from "../markets/useMarketData";
+import { useLivePrices } from "../markets/useMarketData";
+import { useWalletSnapshot } from "../network/useWalletSnapshot";
 import { ActionOverdue } from "../network/ActionOverdue";
 import { assetDecimals } from "../network/decimals";
 import { PendingNote } from "../network/PendingNote";
@@ -86,7 +87,7 @@ export function TradeSheet({
   const service = useTrading();
   const online = useServices().useOnline();
   const wallet = useWalletSnapshot();
-  const updatedAt = useLivePrices();
+  const { updatedAt } = useLivePrices();
   const choices = wallet ? portfolioChoices(screenReads, wallet, side, initialSymbol) : [];
   const preselected = initialPortfolio ?? (choices.length === 1 ? choices[0].id : null);
   // A pie is steered toward its mix, so one whose mix leaves this tracker out
@@ -388,9 +389,7 @@ export function TradeSheet({
     body = (
       <>
         {header}
-        {!tradable && (
-          <Notice tone="warning">{commonCopy.tradingUnavailableOn(networkLabel())}</Notice>
-        )}
+        {!tradable && <Notice tone="warning">{commonCopy.tradingUnavailableOn}</Notice>}
         <Segmented
           label={copy.amountIn}
           options={form.denominations.map((option) => option.label)}
@@ -470,7 +469,16 @@ export function TradeSheet({
       relayerDown,
     });
     if (step === "risks") {
-      body = <RiskSections />;
+      body = (
+        <>
+          {model.risks.lines.map((line) => (
+            <Text key={line} tone="dim">
+              {line}
+            </Text>
+          ))}
+          <RiskSections />
+        </>
+      );
     } else {
       body = (
         <>

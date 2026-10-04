@@ -56,9 +56,6 @@ describe("ConfirmScreen", () => {
     await fireEvent.press(screen.getByRole("button", { name: "abuse" }));
     await fireEvent.press(screen.getByRole("button", { name: "absurd" }));
     await fireEvent.press(screen.getByRole("button", { name: "accident" }));
-    expect(
-      screen.getByText("Let's start again with different words. Look at your paper first."),
-    ).toBeOnTheScreen();
     await fireEvent.press(screen.getByRole("button", { name: "Show phrase again" }));
     expect(onShowPhrase).toHaveBeenCalledTimes(1);
     await fireEvent.press(screen.getByRole("button", { name: "Try again" }));
@@ -77,11 +74,7 @@ describe("ConfirmScreen", () => {
   it("shows no word to choose from when the screen cannot be kept out of captures", async () => {
     (preventScreenCaptureAsync as jest.Mock).mockRejectedValueOnce(new Error("no"));
     await render(<Harness />);
-    expect(
-      await screen.findByText(
-        "This can't be shown safely right now, so it is kept hidden. Try again.",
-      ),
-    ).toBeOnTheScreen();
+    await screen.findByRole("button", { name: "Try again" });
     for (const word of QUIZ.choices) expect(screen.queryByText(word)).toBeNull();
     await fireEvent.press(screen.getByRole("button", { name: "Try again" }));
     expect(await screen.findByText(QUIZ.choices[0])).toBeOnTheScreen();

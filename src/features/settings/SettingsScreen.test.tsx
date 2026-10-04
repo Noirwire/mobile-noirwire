@@ -100,11 +100,8 @@ describe("SettingsScreen", () => {
     const services = await testServices({ keystore: touchId() });
     await services.preferences.setBiometric("changed");
     await renderWith(services, <SettingsScreen onOpen={jest.fn()} appVersion="1" />);
-    expect(
-      await screen.findByText(
-        "Touch ID settings changed on this phone, so this was turned off. Turn it on again to keep using it.",
-      ),
-    ).toBeOnTheScreen();
+    expect(await screen.findByText(/settings changed on this phone/)).toBeOnTheScreen();
+    expect(screen.getByRole("switch", { name: "Unlock with Touch ID" })).not.toBeChecked();
   });
 
   it("says when changes are not being saved on this phone", async () => {

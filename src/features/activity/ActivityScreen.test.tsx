@@ -27,12 +27,8 @@ async function show(entries: (id: string) => Parameters<typeof activity>[0][], i
 }
 
 describe("ActivityScreen", () => {
-  it("says history is kept on this phone when nothing has moved", async () => {
+  it("offers no filters when nothing has moved", async () => {
     await show(() => []);
-    expect(
-      screen.getByText("Your buys, sells and money moves will appear here."),
-    ).toBeOnTheScreen();
-    expect(screen.getByText(/History is kept on this phone only/)).toBeOnTheScreen();
     expect(screen.queryByRole("button", { name: "Trades" })).toBeNull();
   });
 
@@ -116,9 +112,8 @@ describe("ActivityScreen", () => {
     expect(screen.queryByText("Arrived")).toBeNull();
   });
 
-  describe("on an imported wallet", () => {
-    const note =
-      "This wallet was imported on this phone. Activity from before the import, made on another device, is not shown here. Your balances are complete.";
+  describe("on a restored wallet", () => {
+    const note = /^This wallet was restored on this phone\..*Your balances are complete\.$/;
     const funded = (id: string) => [
       { portfolioId: id, kind: "fund" as const, at: NOW, usd: 100, amount: 100 },
     ];
@@ -128,13 +123,13 @@ describe("ActivityScreen", () => {
       expect(screen.getByText(note)).toBeOnTheScreen();
     });
 
-    it("says so under the entries made since the import", async () => {
+    it("says so under the entries made since", async () => {
       await show(funded, true);
       expect(screen.getByText("Money arrived")).toBeOnTheScreen();
       expect(screen.getByText(note)).toBeOnTheScreen();
     });
 
-    it("says nothing of an import on a wallet created here", async () => {
+    it("says nothing of it on a wallet created here", async () => {
       await show(funded);
       expect(screen.queryByText(note)).toBeNull();
     });

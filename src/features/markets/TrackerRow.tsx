@@ -1,6 +1,6 @@
 import type { TrackerRowView } from "@noirwire/shared/presentation";
 import { StarIcon } from "phosphor-react-native/src/icons/Star";
-import { Pressable, StyleSheet, useWindowDimensions, View } from "react-native";
+import { Pressable, StyleSheet, useWindowDimensions, View, type ViewStyle } from "react-native";
 import { Chart, IconButton, Text } from "@/ui";
 import { selectionHaptic } from "@/ui/haptics";
 import { colors, layout, opacity, radius, size } from "@/ui/theme";
@@ -38,7 +38,7 @@ function Star({ row, onStar }: Pick<RowProps, "row" | "onStar">) {
 
 /** Drawn only beside a live price: without one there is no direction to tint it with. */
 function Sparkline({ symbol, live }: { symbol: string; live: boolean }) {
-  const history = usePriceHistory(symbol, "1D", live);
+  const { history } = usePriceHistory(symbol, "1D", live);
   if (!live || history.status !== "ready") return <View style={styles.spark} />;
   return (
     <View
@@ -52,16 +52,16 @@ function Sparkline({ symbol, live }: { symbol: string; live: boolean }) {
   );
 }
 
-function PriceColumn({ row }: { row: TrackerRowView }) {
+function PriceColumn({ row, style = styles.price }: { row: TrackerRowView; style?: ViewStyle }) {
   return (
-    <View style={styles.price}>
-      <Text style={styles.figure}>{row.price}</Text>
-      {row.change ? (
+    <View style={style}>
+      <Text variant={row.live ? "body" : "faint"} style={styles.figure}>
+        {row.price}
+      </Text>
+      {row.change && (
         <Text variant="faint" tone={row.change.tone} style={styles.figure}>
           {row.change.text}
         </Text>
-      ) : (
-        <Text variant="faint">{row.noLivePrice}</Text>
       )}
     </View>
   );
@@ -110,16 +110,7 @@ export function TrackerCard({ row, onOpen }: Omit<RowProps, "onStar">) {
           {row.symbol}
         </Text>
       </View>
-      <View>
-        <Text style={styles.figure}>{row.price}</Text>
-        {row.change ? (
-          <Text variant="faint" tone={row.change.tone} style={styles.figure}>
-            {row.change.text}
-          </Text>
-        ) : (
-          <Text variant="faint">{row.noLivePrice}</Text>
-        )}
-      </View>
+      <PriceColumn row={row} style={styles.cardPrice} />
     </Pressable>
   );
 }
@@ -130,7 +121,8 @@ const styles = StyleSheet.create({
   pressed: { opacity: opacity.pressed },
   names: { flex: 1, minWidth: 0 },
   spark: { width: 56, height: 28 },
-  price: { alignItems: "flex-end", flexShrink: 0 },
+  price: { alignItems: "flex-end", flexShrink: 1, maxWidth: "40%" },
+  cardPrice: { alignItems: "flex-start" },
   figure: { fontVariant: ["tabular-nums"] },
   card: {
     width: 152,

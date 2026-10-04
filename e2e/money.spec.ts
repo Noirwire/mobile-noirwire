@@ -53,7 +53,7 @@ test("Earn deposit reaches its review from a chosen portfolio", async ({ page })
   await expect(page.getByText("Current variable rate")).toBeVisible();
   await expect(page.getByText("4.16%").first()).toBeVisible();
 
-  await page.getByRole("button", { name: "Deposit" }).first().click();
+  await page.getByRole("button", { name: "Add to Earn" }).first().click();
   const sheet = page.getByRole("dialog");
   await sheet.getByRole("radio", { name: "Investing, $457.33 ready to invest" }).click();
   await sheet.getByRole("button", { name: "Continue" }).click();
@@ -63,5 +63,5 @@ test("Earn deposit reaches its review from a chosen portfolio", async ({ page })
   await expect(sheet.getByRole("heading", { name: "Review" })).toBeVisible();
   await expect(sheet).toContainText(/Leaves Investing\s*100\.00 USDC/);
   await expect(sheet).toContainText(/Goes into Earn\s*100\.00 USDC/);
-  await expect(sheet.getByRole("button", { name: "Deposit 100.00 USDC" })).toBeVisible();
+  await expect(sheet.getByRole("button", { name: "Add 100.00 USDC to Earn" })).toBeVisible();
 });

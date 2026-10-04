@@ -36,6 +36,7 @@ import { ActivityRow } from "../activity/ActivityRow";
 import { usePortfolioEarn } from "../earn/useEarnScreen";
 import { useServices } from "../services";
 import { useMoney } from "../network/money";
+import { useInView } from "../network/useInView";
 import { FadeLayer } from "./FadeLayer";
 import { IdentityLine } from "./IdentityLine";
 import { mediumHaptic } from "./mediumHaptic";
@@ -44,7 +45,8 @@ import { PortfolioSettingsSheet } from "./PortfolioSettingsSheet";
 import { PublicView, PublicViewExit } from "./PublicView";
 import { TrackerMark } from "@/ui/TrackerMark";
 import { useBalanceRefresh } from "./useBalanceRefresh";
-import { useIsUnlocked, useLivePrices, useWalletSnapshot } from "./useWalletSnapshot";
+import { useLivePrices } from "../markets/useMarketData";
+import { useIsUnlocked, useWalletSnapshot } from "../network/useWalletSnapshot";
 
 const copy = {
   detail: { ...portfolioCopy.detail, ...mobilePortfolioCopy.detail },
@@ -62,6 +64,8 @@ type PortfolioScreenProps = {
   initialPublic?: boolean;
   /** When prices were last read; the live feed by default, a fixed value in tests. */
   pricesUpdatedAt?: number | null;
+  /** Whether the screen has the focus: balances are re-read only while it does. */
+  focused?: boolean;
 };
 
 /** How public view was entered: by its button, or by holding the mark (released, it leaves). */
@@ -71,7 +75,7 @@ type PublicMode = "off" | "button" | "held";
 export function PortfolioScreen(props: PortfolioScreenProps) {
   const wallet = useWalletSnapshot();
   const unlocked = useIsUnlocked();
-  const live = useLivePrices();
+  const { updatedAt: live } = useLivePrices();
   const updatedAt = props.pricesUpdatedAt === undefined ? live : props.pricesUpdatedAt;
   const { useOnline } = useServices();
   const online = useOnline();
@@ -81,7 +85,7 @@ export function PortfolioScreen(props: PortfolioScreenProps) {
     async () => (await balances.portfolioBalances(id)) !== undefined,
     [balances, id],
   );
-  const refresh = useBalanceRefresh(read, online);
+  const refresh = useBalanceRefresh(read, online, useInView(props.focused ?? true));
   const inEarn = usePortfolioEarn(id);
   const [publicMode, setPublicMode] = useState<PublicMode>(props.initialPublic ? "button" : "off");
   const [settings, setSettings] = useState(false);

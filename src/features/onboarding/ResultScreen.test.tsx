@@ -55,10 +55,7 @@ describe("ResultScreen", () => {
   it("says what was found and shows the funding address only when asked, in groups of four", async () => {
     const { onContinue, onOtherSet, view } = show();
     await view;
-    expect(screen.getByText("Wallet reunited with its funds.")).toBeOnTheScreen();
-    expect(
-      screen.getByText("Found 1 portfolio this phrase already had on chain."),
-    ).toBeOnTheScreen();
+    expect(screen.getByText(/^Found 1 portfolio/)).toBeOnTheScreen();
     expect(screen.queryByText(/5aqY/)).toBeNull();
     await fireEvent.press(screen.getByRole("button", { name: "Show my funding wallet address" }));
     expect(screen.getByText(/^5aqY NsJs mRua/)).toBeOnTheScreen();
@@ -68,14 +65,6 @@ describe("ResultScreen", () => {
     await fireEvent.press(screen.getByRole("button", { name: "Continue" }));
     expect(onOtherSet).toHaveBeenCalledTimes(1);
     expect(onContinue).toHaveBeenCalledTimes(1);
-  });
-
-  it("says plainly when nothing was found", async () => {
-    await show({ activity: FOUND_NOTHING }).view;
-    expect(screen.getByText("Wallet imported.")).toBeOnTheScreen();
-    expect(
-      screen.getByText("Nothing found yet. This phrase will open a new, empty wallet."),
-    ).toBeOnTheScreen();
   });
 
   it("offers no other set when there was no choice of addresses to make", async () => {

@@ -1,24 +1,25 @@
+import { noirwireFeeBps } from "@noirwire/shared/infrastructure";
 import { addMoneyView, type AddMoneyAddress } from "@noirwire/shared/presentation";
+import { useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { Button, Panel, Sheet, Text } from "@/ui";
 import { fonts, layout } from "@/ui/theme";
 import { noteAddressCopied } from "../portfolio/portfolioActions";
-import { useWalletSnapshot } from "../portfolio/useWalletSnapshot";
+import { useWalletSnapshot } from "../network/useWalletSnapshot";
 import { useCopied } from "../receive/useCopied";
 
-type AddMoneySheetProps = {
-  onClose: () => void;
-  onOpenCosts: () => void;
-};
+type AddMoneySheetProps = { onClose: () => void };
 
 /**
  * Bringing money in from outside, as three steps. The person's own funding
  * wallet address sits inside the second, already shown. It is what they give
  * to another service, so this sheet alone may be captured in a screenshot.
+ * What it costs opens in place, under the steps, so the address stays on screen.
  */
-export function AddMoneySheet({ onClose, onOpenCosts }: AddMoneySheetProps) {
+export function AddMoneySheet({ onClose }: AddMoneySheetProps) {
   const wallet = useWalletSnapshot();
-  const view = wallet ? addMoneyView(wallet) : null;
+  const view = wallet ? addMoneyView(wallet, { tradeFeeBps: noirwireFeeBps() }) : null;
+  const [costsOpen, setCostsOpen] = useState<boolean>(view?.costs.expandedByDefault ?? false);
 
   return (
     <Sheet open={view !== null} onClose={onClose} title={view?.title ?? ""}>
@@ -36,7 +37,18 @@ export function AddMoneySheet({ onClose, onOpenCosts }: AddMoneySheetProps) {
               </View>
             </View>
           ))}
-          <Button variant="quiet" label={view.footer.label} onPress={onOpenCosts} />
+          <Button
+            variant="quiet"
+            label={view.costs.label}
+            aria-expanded={costsOpen}
+            onPress={() => setCostsOpen(!costsOpen)}
+          />
+          {costsOpen &&
+            view.costs.lines.map((line) => (
+              <Text key={line} variant="note">
+                {line}
+              </Text>
+            ))}
         </>
       )}
     </Sheet>

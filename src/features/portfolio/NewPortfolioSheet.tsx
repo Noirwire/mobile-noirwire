@@ -24,7 +24,7 @@ import { layout } from "@/ui/theme";
 import { PieMixEditor } from "../pie/PieBuilderSheet";
 import { IconPicker } from "./IconPicker";
 import { addPortfolio, noteSheetOpened } from "./portfolioActions";
-import { useWalletSnapshot } from "./useWalletSnapshot";
+import { useWalletSnapshot } from "../network/useWalletSnapshot";
 
 type NewPortfolioSheetProps = {
   onClose: () => void;

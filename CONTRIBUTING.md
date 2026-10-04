@@ -18,6 +18,14 @@ npm run test:e2e
 
 A change to a screen keeps its journeys passing in both UI suites: `e2e/` (Playwright on the web export, run in CI) and `.maestro/` (Maestro on a native build, run on a device). Select elements by role and accessible label, the way a person using a screen reader finds them, and add a `testID` only where no label can tell an element apart. A new API route the app calls needs a fixture in `e2e/support/api.ts`, in the shape the API documents; the suite fails on any request it does not answer.
 
+## Testing
+
+- Give each test one failure it uniquely catches; repeat across layers only where the boundary changes.
+- Assert money, keys, authorization, accessibility or an observable decision; never exact prose or an input echoed back.
+- Keep one real crypto round trip per boundary; seed fixtures elsewhere and use controlled clocks, not sleeps.
+
+Every Jest file derives a wallet's key in one round (`jest/keyDerivation.ts`). The test that proves a boundary end to end wraps itself in `withRealKeyDerivation`.
+
 ## Commits
 
 - Keep the subject under 50 characters.

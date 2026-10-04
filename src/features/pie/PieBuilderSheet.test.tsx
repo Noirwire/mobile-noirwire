@@ -33,16 +33,9 @@ async function open(
 describe("PieBuilderSheet", () => {
   it("shows the mix, its total and a Stepper per tracker, and saves without placing anything", async () => {
     const { id, onClose } = await open();
-    expect(
-      screen.getByText(
-        "Changing the mix places no orders. Invest and Rebalance then steer toward it, and anything you drop stays held until you sell it.",
-      ),
-    ).toBeOnTheScreen();
     expect(screen.getByText("100%")).toBeOnTheScreen();
-    expect(screen.getByText("Fully allocated")).toBeOnTheScreen();
     await fireEvent.press(screen.getByRole("button", { name: "Increase NVDAx share in percent" }));
     expect(screen.getByText("105%")).toBeOnTheScreen();
-    expect(screen.getByText("The mix adds up to 105%. It needs to be 100%.")).toBeOnTheScreen();
     expect(screen.getByRole("button", { name: "Save mix" })).toBeDisabled();
     await fireEvent.press(screen.getByRole("button", { name: "Split evenly" }));
     expect(screen.getByText("100%")).toBeOnTheScreen();
@@ -82,10 +75,6 @@ describe("PieBuilderSheet", () => {
       </SafeAreaProvider>,
     );
     await fireEvent.press(screen.getByRole("button", { name: "Save mix" }));
-    expect(
-      await screen.findByText(
-        "The mix could not be saved on this phone. Nothing was changed. Try again.",
-      ),
-    ).toBeOnTheScreen();
+    expect(await screen.findByRole("alert")).toHaveTextContent(/Nothing was changed/);
   });
 });

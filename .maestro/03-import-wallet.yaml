@@ -3,7 +3,7 @@ env:
   PASSWORD: harbor-velvet-orbit-canyon-meadow
   # Made for tests alone. It has never held anything and must never be funded.
   TEST_PHRASE: style report excuse fitness region hour enroll honey broccoli already surge leisure
-name: Import a wallet from a recovery phrase
+name: Restore a wallet from a recovery phrase
 tags:
   - onboarding
 ---

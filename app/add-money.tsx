@@ -7,14 +7,7 @@ export default function AddMoney() {
   return (
     <>
       <SheetRoute />
-      <AddMoneySheet
-        onClose={() => router.back()}
-        onOpenCosts={() => {
-          // The sheet closes first, and Costs opens with Settings beneath it, so Back has somewhere to go.
-          router.back();
-          router.push("/settings/costs", { withAnchor: true });
-        }}
-      />
+      <AddMoneySheet onClose={() => router.back()} />
     </>
   );
 }

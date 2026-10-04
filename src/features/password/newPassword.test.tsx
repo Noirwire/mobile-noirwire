@@ -1,4 +1,3 @@
-import { mobileWalletCopy } from "@noirwire/shared/copy";
 import { assessPassword } from "@noirwire/shared/wallet";
 import { act, renderHook } from "@testing-library/react-native";
 import { STRENGTH_DELAY_MS, useNewPassword } from "./newPassword";
@@ -23,24 +22,21 @@ describe("useNewPassword", () => {
     const { result } = await renderHook(() => useNewPassword());
     await act(async () => result.current.setPassword("harbor-velvet-orbit-canyon"));
     await settle();
-    expect(result.current.strength).toEqual({
-      text: "Could not check this password. Type it again.",
-      tone: "danger",
-    });
-    expect(mobileWalletCopy.newPassword.checkFailed).not.toMatch(/connection|network|online/i);
+    expect(result.current.strength).toMatchObject({ tone: "danger" });
     expect(result.current.ready).toBe(false);
 
     await act(async () => result.current.setPassword("harbor-velvet-orbit-canyon-meadow"));
     await settle();
-    expect(result.current.strength).toEqual({ text: "Strong password.", tone: "safe" });
+    expect(result.current.strength).toMatchObject({ tone: "safe" });
     await act(async () => result.current.setConfirm("harbor-velvet-orbit-canyon-meadow"));
     expect(result.current.ready).toBe(true);
   });
 
-  it("says it is checking while the verdict is on its way", async () => {
+  it("is not ready while the verdict is on its way", async () => {
     assess.mockReturnValue(new Promise(() => undefined));
     const { result } = await renderHook(() => useNewPassword());
     await act(async () => result.current.setPassword("harbor-velvet-orbit-canyon"));
-    expect(result.current.strength).toEqual({ text: "Checking strength...", tone: "faint" });
+    expect(result.current.strength).toMatchObject({ tone: "faint" });
+    expect(result.current.ready).toBe(false);
   });
 });

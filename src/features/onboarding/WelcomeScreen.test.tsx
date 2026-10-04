@@ -7,29 +7,6 @@ import { WelcomeScreen } from "./WelcomeScreen";
 const globals = globalThis as { __DEV__?: boolean };
 
 describe("WelcomeScreen", () => {
-  it("says what NoirWire is for, in the decided words", async () => {
-    await render(<WelcomeScreen onAction={jest.fn()} />);
-    expect(
-      screen.getByRole("header", { name: "Invest in US stock trackers. Privately." }),
-    ).toBeOnTheScreen();
-    expect(
-      screen.getByText(
-        "Trackers follow share prices like Apple, Tesla or the S&P 500. You do not own the shares.",
-      ),
-    ).toBeOnTheScreen();
-    expect(
-      screen.getByText(
-        "Each portfolio is separate from your funding wallet. Trades themselves are public.",
-      ),
-    ).toBeOnTheScreen();
-    expect(
-      screen.getByText(
-        "No account and no ID check. Only your recovery words can restore your wallet.",
-      ),
-    ).toBeOnTheScreen();
-    expect(screen.queryByText(/server|on chain|private route/i)).toBeNull();
-  });
-
   it("offers exactly three ways in, and each leads where it says", async () => {
     const onAction = jest.fn();
     await render(<WelcomeScreen onAction={onAction} />);

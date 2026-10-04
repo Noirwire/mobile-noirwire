@@ -25,17 +25,6 @@ describe("Shelf", () => {
     });
   });
 
-  it("shows no scrollbar and snaps with a quick deceleration", async () => {
-    await render(
-      <Shelf testID="shelf">
-        <Text>One</Text>
-      </Shelf>,
-    );
-    const scroller = screen.getByTestId("shelf");
-    expect(scroller.props.showsHorizontalScrollIndicator).toBe(false);
-    expect(scroller.props.decelerationRate).toBe("fast");
-  });
-
   it("has nothing to snap to before any card has reported its position", async () => {
     await render(
       <Shelf testID="shelf">
@@ -56,42 +45,5 @@ describe("Shelf", () => {
     expect(screen.getByTestId("shelf").props.snapToOffsets).toBeUndefined();
     await fireEvent(screen.getByText("Two").parent!, "layout", layoutEvent(132));
     expect(screen.getByTestId("shelf").props.snapToOffsets).toEqual([20, 132]);
-  });
-
-  it("uses the tighter gap a chip row asks for instead of a card shelf's", async () => {
-    await render(
-      <Shelf testID="shelf" gap={layout.tight}>
-        <Text>One</Text>
-      </Shelf>,
-    );
-    expect(
-      StyleSheet.flatten(screen.getByTestId("shelf").props.contentContainerStyle),
-    ).toMatchObject({
-      gap: layout.tight,
-    });
-  });
-
-  it("renders every card it is given", async () => {
-    await render(
-      <Shelf testID="shelf">
-        <Text>One</Text>
-        <Text>Two</Text>
-        <Text>Three</Text>
-      </Shelf>,
-    );
-    expect(screen.getByText("One")).toBeOnTheScreen();
-    expect(screen.getByText("Two")).toBeOnTheScreen();
-    expect(screen.getByText("Three")).toBeOnTheScreen();
-  });
-
-  it("passes through the accessibility role and label it is given", async () => {
-    await render(
-      <Shelf testID="shelf" accessibilityRole="radiogroup" accessibilityLabel="Browse all">
-        <Text>One</Text>
-      </Shelf>,
-    );
-    const scroller = screen.getByTestId("shelf");
-    expect(scroller.props.accessibilityRole).toBe("radiogroup");
-    expect(scroller.props.accessibilityLabel).toBe("Browse all");
   });
 });

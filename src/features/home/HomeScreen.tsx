@@ -29,11 +29,13 @@ import { ActivityDetailSheet } from "../activity/ActivityDetailSheet";
 import { ActivityRow } from "../activity/ActivityRow";
 import { useHomeEarn } from "../earn/useEarnScreen";
 import { useMoney } from "../network/money";
+import { useInView, useScreenClock } from "../network/useInView";
 import { setArchived } from "../portfolio/portfolioActions";
 import { PortfolioRow } from "../portfolio/PortfolioRow";
 import { TrackerMark } from "@/ui/TrackerMark";
 import { useBalanceRefresh } from "../portfolio/useBalanceRefresh";
-import { useLivePrices, useWalletSnapshot } from "../portfolio/useWalletSnapshot";
+import { useLivePrices } from "../markets/useMarketData";
+import { useWalletSnapshot } from "../network/useWalletSnapshot";
 import { useServices } from "../services";
 import { TextToggle } from "./TextToggle";
 
@@ -51,29 +53,33 @@ type HomeScreenProps = {
   /** Opens the Earn tab, from the row that says what is in Earn. */
   onOpenEarn: () => void;
   onLock: () => void;
-  /** When prices were last read; the live feed by default, a fixed value in tests. */
-  pricesUpdatedAt?: number | null;
+  /** Whether the tab has the focus: balances are re-read only while it does. */
+  focused?: boolean;
 };
 
 /** Spec 2.12: everything in one place, while each portfolio visibly stands on its own. */
 export function HomeScreen(props: HomeScreenProps) {
   const wallet = useWalletSnapshot();
-  const live = useLivePrices();
-  const updatedAt = props.pricesUpdatedAt === undefined ? live : props.pricesUpdatedAt;
+  const prices = useLivePrices();
   const { useOnline } = useServices();
   const online = useOnline();
-  const refresh = useBalanceRefresh(useMoney().refresh.everything, online);
+  const inView = useInView(props.focused ?? true);
+  const now = useScreenClock(inView);
+  const refresh = useBalanceRefresh(useMoney().refresh.everything, online, inView);
   const { total: earnTotal, archivedHeld } = useHomeEarn();
   const [opened, setOpened] = useState<string | null>(null);
-  const firstRead = refresh.reading && !refresh.settled;
-  const waiting = useWaiting(firstRead, "content");
+  const waiting = useWaiting(refresh.reading && !refresh.settled, "content");
   useTopLoader(refresh.reading);
 
   if (!wallet) return null;
-  const view = homeView(screenReads, wallet, updatedAt, earnTotal, archivedHeld);
+  const view = homeView(screenReads, wallet, prices.updatedAt, earnTotal, archivedHeld, {
+    now,
+    balances: refresh.freshness,
+    prices: prices.freshness,
+  });
   const storedNothing =
     view.empty && wallet.activity.length === 0 && view.archived.rows.length === 0;
-  const loading = firstRead && storedNothing;
+  const loading = view.loading && refresh.reading && storedNothing;
 
   return (
     <RefreshScreen refreshing={refresh.refreshing} onRefresh={refresh.pull}>
@@ -92,7 +98,6 @@ export function HomeScreen(props: HomeScreenProps) {
       ) : (
         <Balance
           view={view}
-          failed={refresh.failed}
           onRetry={online ? refresh.retry : undefined}
           onOpenEarn={props.onOpenEarn}
         />
@@ -186,12 +191,10 @@ export function HomeScreen(props: HomeScreenProps) {
 
 function Balance({
   view,
-  failed,
   onRetry,
   onOpenEarn,
 }: {
   view: HomeView;
-  failed: boolean;
   /** Absent while offline: the banner says why nothing can be read. */
   onRetry?: () => void;
   onOpenEarn: () => void;
@@ -215,10 +218,10 @@ function Balance({
         />
         {explained && <Text variant="faint">{copy.togetherExplained}</Text>}
       </View>
-      {failed && (
+      {view.stale && (
         <View style={styles.together}>
           <Text variant="faint" accessibilityLiveRegion="polite">
-            {copy.refreshFailed}
+            {view.stale}
           </Text>
           {onRetry && (
             <Button

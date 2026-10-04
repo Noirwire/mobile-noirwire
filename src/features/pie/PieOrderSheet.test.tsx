@@ -67,10 +67,6 @@ describe("PieOrderSheet", () => {
     expect(screen.getByText("$40.00")).toBeOnTheScreen();
     await press("Review orders");
     expect(await screen.findByRole("button", { name: "Place 2 orders" })).toBeEnabled();
-    expect(
-      screen.getByText("These are trackers, not shares, and their issuer keeps control over them."),
-    ).toBeOnTheScreen();
-    expect(screen.getByText("This portfolio's trades and holdings are public.")).toBeOnTheScreen();
     await press("Place 2 orders");
     expect(await screen.findByText("All 2 orders placed")).toBeOnTheScreen();
     expect(placed(chain)).toEqual(["NVDAx", "SPYx"]);

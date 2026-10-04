@@ -5,7 +5,7 @@ import { Pressable, StyleSheet, View } from "react-native";
 import { IdentityMark, Row, Sheet, Text } from "@/ui";
 import { layout, opacity } from "@/ui/theme";
 import { AddressReveal } from "../receive/AddressReveal";
-import { useWalletSnapshot } from "../portfolio/useWalletSnapshot";
+import { useWalletSnapshot } from "../network/useWalletSnapshot";
 
 const copy = { ...activityCopy.detail, ...mobileActivityCopy.detail };
 

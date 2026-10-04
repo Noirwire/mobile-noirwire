@@ -14,6 +14,7 @@ import {
 import { NetworkGate } from "../network/NetworkGate";
 import { selectAll } from "@/ui/selectAll";
 import { UnlockScreen } from "./UnlockScreen";
+import { withRealKeyDerivation } from "../../../jest/keyDerivation";
 
 jest.mock("@/ui/selectAll", () => ({ selectAll: jest.fn() }));
 
@@ -26,7 +27,6 @@ describe("UnlockScreen", () => {
     installTestPlatform();
     await storedLockedWallet();
     await renderWith(await testServices(), <UnlockScreen onReset={jest.fn()} />);
-    expect(screen.getByRole("header", { name: "Unlock NoirWire" })).toBeOnTheScreen();
     expect(screen.getByRole("button", { name: "Unlock" })).toBeDisabled();
     expect(screen.queryByText(/Investing|Portfolio|\$/)).toBeNull();
     expect(screen.queryByRole("button", { name: /Face ID/ })).toBeNull();
@@ -45,15 +45,16 @@ describe("UnlockScreen", () => {
     expect(events).toContainEqual({ event: "unlock_failed" });
   });
 
-  it("unlocks with the right password and counts it", async () => {
-    const { events } = installTestPlatform();
-    await storedLockedWallet();
-    await renderWith(await testServices(), <UnlockScreen onReset={jest.fn()} />);
-    await fireEvent.changeText(passwordField(), STRONG_PASSWORD);
-    await fireEvent.press(screen.getByRole("button", { name: "Unlock" }));
-    await waitFor(() => expect(isUnlocked()).toBe(true));
-    expect(events.map((entry) => entry.event)).toContain("wallet_unlocked");
-  });
+  it("unlocks with the right password and counts it", () =>
+    withRealKeyDerivation(async () => {
+      const { events } = installTestPlatform();
+      await storedLockedWallet();
+      await renderWith(await testServices(), <UnlockScreen onReset={jest.fn()} />);
+      await fireEvent.changeText(passwordField(), STRONG_PASSWORD);
+      await fireEvent.press(screen.getByRole("button", { name: "Unlock" }));
+      await waitFor(() => expect(isUnlocked()).toBe(true));
+      expect(events.map((entry) => entry.event)).toContain("wallet_unlocked");
+    }));
 
   it("opens nothing from a tampered record, which reads as a password that does not match", async () => {
     const { vault } = installTestPlatform();
@@ -87,12 +88,11 @@ describe("UnlockScreen", () => {
     await waitFor(() => expect(isUnlocked()).toBe(true));
   });
 
-  it("leads to Reset with the forgotten-password guidance", async () => {
+  it("leads to Reset", async () => {
     installTestPlatform();
     await storedLockedWallet();
     const onReset = jest.fn();
     await renderWith(await testServices(), <UnlockScreen onReset={onReset} />);
-    expect(screen.getByText(/It cannot be recovered. It never left this phone./)).toBeOnTheScreen();
     await fireEvent.press(screen.getByRole("button", { name: "Reset this wallet" }));
     expect(onReset).toHaveBeenCalledTimes(1);
   });

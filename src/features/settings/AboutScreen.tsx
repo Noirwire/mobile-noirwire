@@ -1,5 +1,8 @@
 import { appCopy, mobileSettingsCopy } from "@noirwire/shared/copy";
+import { networkLabel } from "@noirwire/shared/infrastructure";
+import { aboutView } from "@noirwire/shared/presentation";
 import * as Clipboard from "expo-clipboard";
+import * as Linking from "expo-linking";
 import { useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { ListRow, Mark, Panel, Screen, Text } from "@/ui";
@@ -18,6 +21,7 @@ const COPIED_MS = 2_000;
 /** Spec 2.33: what version this is. A long press on Version copies the version and build for support. */
 export function AboutScreen({ version, build, onOpenRisks }: AboutScreenProps) {
   const [copied, setCopied] = useState(false);
+  const view = aboutView();
 
   function copyVersion() {
     void Clipboard.setStringAsync(`${version} (${build})`);
@@ -39,9 +43,16 @@ export function AboutScreen({ version, build, onOpenRisks }: AboutScreenProps) {
           onLongPress={copyVersion}
         />
         <ListRow label={copy.build} value={build} />
-        <ListRow label={copy.network} value={copy.networkValue} />
-        <ListRow label={copy.help} value={copy.helpContact} />
-        <ListRow label={copy.website} value={copy.websiteValue} />
+        <ListRow label={copy.network} value={networkLabel()} />
+        {[view.help, view.website].map((link) => (
+          <ListRow
+            key={link.action.kind}
+            label={link.label}
+            value={link.value}
+            link
+            onPress={() => void Linking.openURL(link.action.url).catch(() => undefined)}
+          />
+        ))}
         <ListRow label={copy.risks} onPress={onOpenRisks} />
       </Panel>
     </Screen>

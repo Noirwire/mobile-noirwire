@@ -9,7 +9,7 @@ jest.mock("@/ui/secretClipboard", () => ({ copySecret: jest.fn(() => Promise.res
 afterEach(() => forgetWallet());
 
 describe("ReceiveSheet", () => {
-  it("shows a portfolio's address at once, with its own warning, and copies it", async () => {
+  it("shows a portfolio's address as a named code at once, and copies it", async () => {
     const { events } = installTestPlatform();
     const wallet = await unlockedWallet((w) => ({
       ...w,
@@ -20,8 +20,6 @@ describe("ReceiveSheet", () => {
       await testServices(),
       <ReceiveSheet portfolioId={wallet.portfolios[0].id} onClose={onClose} />,
     );
-    expect(screen.getByText("Receive in Investing")).toBeOnTheScreen();
-    expect(screen.getByText(/ties the sender to this portfolio/)).toBeOnTheScreen();
     expect(screen.getByRole("image", { name: "QR code of Investing's address" })).toBeOnTheScreen();
     expect(screen.queryByRole("button", { name: /Share/ })).toBeNull();
     await fireEvent.press(screen.getByRole("button", { name: "Copy address" }));

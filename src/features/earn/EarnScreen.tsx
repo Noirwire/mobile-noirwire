@@ -7,7 +7,6 @@ import {
   Button,
   EmptyState,
   IdentityMark,
-  Notice,
   Skeleton,
   Text,
   useTopLoader,
@@ -25,18 +24,19 @@ import type { EarnOpening } from "./useEarnFlow";
 import { useEarnScreen } from "./useEarnScreen";
 
 type EarnScreenProps = {
-  onReadRisks: () => void;
   onNewPortfolio: () => void;
   /** Opens fund for a portfolio whose cash cannot cover a deposit's network cost. */
   onMoveMoney: (portfolioId: string) => void;
 };
 
 /** Spec 2.26: today's lending rate, and how much of each portfolio's cash is earning it. */
-export function EarnScreen({ onReadRisks, onNewPortfolio, onMoveMoney }: EarnScreenProps) {
+export function EarnScreen({ onNewPortfolio, onMoveMoney }: EarnScreenProps) {
   const state = useEarnScreen();
   const [opening, setOpening] = useState<EarnOpening | null>(null);
+  const [risksOpen, setRisksOpen] = useState(false);
   const view = earnScreenView({ ...state, platform: "mobile" });
-  const reading = view.rate === null || view.rows.some((row) => row.inEarn === null);
+  const reading =
+    view.notHere === null && (view.rate === null || view.rows.some((row) => row.inEarn === null));
   const waiting = useWaiting(reading, "content");
   useTopLoader(reading);
   /** A rate or a position that could not be read: said, with a way to ask again. */
@@ -62,12 +62,11 @@ export function EarnScreen({ onReadRisks, onNewPortfolio, onMoveMoney }: EarnScr
           />
         }
       >
-        <View style={styles.bar}>
-          <Text variant="h1">{view.title}</Text>
-          <Text variant="faint">{view.venue}</Text>
-        </View>
+        <Text variant="h1">{view.title}</Text>
 
-        {view.empty ? (
+        {view.notHere ? (
+          <Text tone="dim">{view.notHere}</Text>
+        ) : view.empty ? (
           <EmptyState
             title={view.empty.title}
             detail={view.empty.detail}
@@ -103,15 +102,15 @@ export function EarnScreen({ onReadRisks, onNewPortfolio, onMoveMoney }: EarnScr
               )}
             </View>
 
-            {view.mainnetOnly && <Notice tone="warning">{view.mainnetOnly}</Notice>}
-
             <View style={styles.actions}>
-              <Button
-                label={view.deposit.label}
-                disabled={view.deposit.disabled}
-                onPress={() => open("deposit", null)}
-              />
-              {view.deposit.reason && <Text variant="note">{view.deposit.reason}</Text>}
+              {view.deposit && (
+                <Button
+                  label={view.deposit.label}
+                  disabled={view.deposit.disabled}
+                  onPress={() => open("deposit", null)}
+                />
+              )}
+              {view.deposit?.reason && <Text variant="note">{view.deposit.reason}</Text>}
               {view.withdraw && (
                 <Button
                   label={view.withdraw.label}
@@ -140,7 +139,18 @@ export function EarnScreen({ onReadRisks, onNewPortfolio, onMoveMoney }: EarnScr
 
             <View style={styles.risk}>
               <Text variant="note">{view.riskLine}</Text>
-              <Button label={view.readRisks} variant="quiet" onPress={onReadRisks} />
+              <Button
+                label={view.risks.title}
+                variant="quiet"
+                aria-expanded={risksOpen}
+                onPress={() => setRisksOpen(!risksOpen)}
+              />
+              {risksOpen &&
+                view.risks.lines.map((line) => (
+                  <Text key={line} tone="dim">
+                    {line}
+                  </Text>
+                ))}
             </View>
           </>
         )}
@@ -152,7 +162,6 @@ export function EarnScreen({ onReadRisks, onNewPortfolio, onMoveMoney }: EarnScr
           portfolios={state.portfolios}
           icons={state.icons}
           positionOf={state.positionOf}
-          venue={state.venue}
           apy={state.rate?.apy}
           onClose={() => {
             setOpening(null);
@@ -231,7 +240,6 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.base },
   scroll: { flex: 1 },
   content: { flexGrow: 1, padding: layout.gutter, gap: layout.section },
-  bar: { flexDirection: "row", alignItems: "baseline", justifyContent: "space-between" },
   hero: { gap: layout.tight },
   actions: { gap: layout.tight },
   section: { gap: layout.tight },

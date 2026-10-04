@@ -2,7 +2,7 @@ import { commonCopy } from "@noirwire/shared/copy";
 import { MinusIcon } from "phosphor-react-native/src/icons/Minus";
 import { PlusIcon } from "phosphor-react-native/src/icons/Plus";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Pressable, StyleSheet, TextInput, View } from "react-native";
+import { Platform, Pressable, StyleSheet, TextInput, View } from "react-native";
 import { readAsOne } from "./accessibility";
 import { selectionHaptic } from "./haptics";
 import { clampWhole, parseTyped, type StepperBounds } from "./stepperValue";
@@ -105,7 +105,7 @@ export function Stepper({ label, value, onChange, min = 0, max = 100, step = 5 }
           maxLength={3}
           maxFontSizeMultiplier={maxFontScale.body}
           selectionColor={colors.ink}
-          style={styles.input}
+          style={[styles.input, Platform.OS === "web" && styles.webInput]}
         />
         <Text variant="note" aria-hidden>
           %
@@ -191,4 +191,6 @@ const styles = StyleSheet.create({
     fontVariant: ["tabular-nums"],
     color: colors.ink,
   },
+  // A browser's input is as wide as twenty characters unless told otherwise, which squeezes whatever shares its row.
+  webInput: { width: 2 * controlText.fontSize!, flexShrink: 0 },
 });

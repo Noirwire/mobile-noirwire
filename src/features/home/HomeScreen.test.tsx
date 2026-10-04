@@ -3,8 +3,14 @@ import {
   WAITING_DELAY_MS,
   WAIT_LIMIT_MS,
 } from "@noirwire/shared/presentation";
+import { NEVER_READ, recordRead, REFRESH_INTERVAL_MS } from "@noirwire/shared/domain";
 import { getSnapshot } from "@noirwire/shared/wallet";
-import { act, fireEvent, screen, waitFor, within } from "@testing-library/react-native";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react-native";
+import { SafeAreaProvider } from "react-native-safe-area-context";
+import * as marketData from "../markets/useMarketData";
+import { MoneyProvider } from "../network/money";
+import { PHONE_METRICS } from "../network/testMoney";
+import { ServicesProvider } from "../services";
 import {
   activity,
   fakeBalances,
@@ -19,15 +25,19 @@ import { SIGNATURE_ARC_TEST_ID } from "@/ui/SignatureArc";
 import { HomeScreen, RESTORED_MS } from "./HomeScreen";
 
 const HIDDEN = { includeHiddenElements: true };
+/** The quiet notice: what is shown may be out of date. */
+const STALE = /out of date/;
 
-let updatedAt: number;
+let seeded = false;
 
 beforeEach(async () => {
   installTestPlatform();
-  updatedAt ??= await seedLivePrices();
+  if (!seeded) await seedLivePrices();
+  seeded = true;
 });
 afterEach(() => {
   jest.useRealTimers();
+  jest.restoreAllMocks();
   return forgetWallet();
 });
 
@@ -65,21 +75,16 @@ describe("HomeScreen", () => {
     await populated();
     const on = handlers();
     const balances = fakeBalances();
-    await renderScreen(
-      await testServices(),
-      <HomeScreen {...on} pricesUpdatedAt={updatedAt} />,
-      balances,
-    );
+    await renderScreen(await testServices(), <HomeScreen {...on} />, balances);
     expect(
       screen.getByLabelText("Total value, $968.08, +$10.22 (2.0%) held trackers · 24h approximate"),
     ).toBeOnTheScreen();
-    expect(screen.getByText("Ready to invest")).toBeOnTheScreen();
     expect(screen.getByTestId(SIGNATURE_ARC_TEST_ID, HIDDEN)).toBeOnTheScreen();
     expect(screen.getByRole("button", { name: "Find trackers" })).toBeOnTheScreen();
     expect(screen.getByRole("button", { name: "Add money" })).toBeOnTheScreen();
     await fireEvent.press(
       screen.getByRole("button", {
-        name: /^Investing, \$457\.33 to invest · 1 holding, \$968\.08/,
+        name: /^Investing, \$457\.33 .*1 holding, \$968\.08/,
       }),
     );
     expect(on.onOpenPortfolio).toHaveBeenCalledWith(getSnapshot()!.portfolios[0].id);
@@ -106,11 +111,7 @@ describe("HomeScreen", () => {
       hasReceiptAccount: true,
       lamports: 0,
     });
-    await renderScreen(
-      await testServices(),
-      <HomeScreen {...on} pricesUpdatedAt={updatedAt} />,
-      balances,
-    );
+    await renderScreen(await testServices(), <HomeScreen {...on} />, balances);
     await fireEvent.press(await screen.findByRole("button", { name: "Earning, $120.50" }));
     expect(on.onOpenEarn).toHaveBeenCalled();
   });
@@ -121,11 +122,7 @@ describe("HomeScreen", () => {
     balances.money.earnVenue.position = async () => {
       throw new Error("unreadable");
     };
-    await renderScreen(
-      await testServices(),
-      <HomeScreen {...handlers()} pricesUpdatedAt={updatedAt} />,
-      balances,
-    );
+    await renderScreen(await testServices(), <HomeScreen {...handlers()} />, balances);
     expect(await screen.findByRole("button", { name: "Earning, Unavailable" })).toBeOnTheScreen();
   });
 
@@ -134,7 +131,7 @@ describe("HomeScreen", () => {
     const balances = fakeBalances();
     const { unmount } = await renderScreen(
       await testServices(),
-      <HomeScreen {...handlers()} pricesUpdatedAt={updatedAt} />,
+      <HomeScreen {...handlers()} />,
       balances,
     );
     await act(async () => undefined);
@@ -145,27 +142,17 @@ describe("HomeScreen", () => {
     balances.money.earnVenue.position = async () => {
       throw new Error("Earn is not offered here.");
     };
-    await renderScreen(
-      await testServices(),
-      <HomeScreen {...handlers()} pricesUpdatedAt={updatedAt} />,
-      balances,
-    );
+    await renderScreen(await testServices(), <HomeScreen {...handlers()} />, balances);
     await act(async () => undefined);
     expect(screen.queryByText("Earning")).toBeNull();
   });
 
-  it("leads an empty wallet with one Add money button, the line under it, and no arc", async () => {
+  it("leads an empty wallet with one Add money button and no arc", async () => {
     await unlockedWallet();
     const on = handlers();
-    await renderScreen(await testServices(), <HomeScreen {...on} pricesUpdatedAt={updatedAt} />);
+    await renderScreen(await testServices(), <HomeScreen {...on} />);
     expect(screen.getByLabelText("Total value, $0.00")).toBeOnTheScreen();
-    expect(screen.getByText("Ready to invest")).toBeOnTheScreen();
     expect(screen.getAllByRole("button", { name: /Add money|funding/i })).toHaveLength(1);
-    expect(
-      screen.getByText(
-        "Your money arrives in your funding wallet. Then you move it into a portfolio.",
-      ),
-    ).toBeOnTheScreen();
     expect(screen.queryByRole("button", { name: "Find trackers" })).toBeNull();
     expect(screen.queryByTestId(SIGNATURE_ARC_TEST_ID, HIDDEN)).toBeNull();
     await fireEvent.press(screen.getByRole("button", { name: "Add money" }));
@@ -176,49 +163,73 @@ describe("HomeScreen", () => {
 
   it("explains the combined total on request", async () => {
     await unlockedWallet();
-    await renderScreen(
-      await testServices(),
-      <HomeScreen {...handlers()} pricesUpdatedAt={updatedAt} />,
-    );
-    await fireEvent.press(screen.getByRole("button", { name: "Only you see this total" }));
-    expect(screen.getByText(/This total is added up on this phone/)).toBeOnTheScreen();
+    await renderScreen(await testServices(), <HomeScreen {...handlers()} />);
+    const explainer = screen.getByRole("button", { name: "Only you see this total" });
+    expect(explainer).toBeCollapsed();
+    await fireEvent.press(explainer);
+    expect(screen.getByRole("button", { name: "Only you see this total" })).toBeExpanded();
   });
 
   it("shows no number while prices are missing", async () => {
     await populated();
-    await renderScreen(await testServices(), <HomeScreen {...handlers()} pricesUpdatedAt={null} />);
-    expect(
-      screen.getByLabelText(
-        "Total value, Value unavailable, Waiting for current balances or market prices",
-      ),
-    ).toBeOnTheScreen();
-    expect(screen.getByText("Price unavailable")).toBeOnTheScreen();
-    expect(screen.queryByText("$968.08")).toBeNull();
+    jest
+      .spyOn(marketData, "useLivePrices")
+      .mockReturnValue({ updatedAt: null, freshness: recordRead(NEVER_READ, false, Date.now()) });
+    await renderScreen(await testServices(), <HomeScreen {...handlers()} />);
+    expect(screen.getByLabelText(/^Total value, Value unavailable/)).toBeOnTheScreen();
+    expect(screen.queryByText(/\$968\.08|\$510\.75/)).toBeNull();
+    expect(screen.getByText(STALE)).toBeOnTheScreen();
   });
 
   it("says when balances could not be refreshed, and keeps the last values", async () => {
     await populated();
-    await renderScreen(
-      await testServices(),
-      <HomeScreen {...handlers()} pricesUpdatedAt={updatedAt} />,
-      fakeBalances(false),
-    );
-    expect(
-      await screen.findByText(
-        "We couldn't update your balances. What you see may be out of date. Pull down to try again.",
-      ),
-    ).toBeOnTheScreen();
+    await renderScreen(await testServices(), <HomeScreen {...handlers()} />, fakeBalances(false));
+    expect(await screen.findByText(STALE)).toBeOnTheScreen();
     expect(screen.getByText("$457.33")).toBeOnTheScreen();
+  });
+
+  it("drops the notice on the next read that comes back whole", async () => {
+    await populated();
+    const balances = fakeBalances();
+    let whole = false;
+    balances.money.refresh.everything = async () => whole;
+    await renderScreen(await testServices(), <HomeScreen {...handlers()} />, balances);
+    const retry = await screen.findByRole("button", { name: "Try again" });
+    whole = true;
+    await fireEvent.press(retry);
+    await waitFor(() => expect(screen.queryByText(STALE)).toBeNull());
+  });
+
+  it("reads balances again every refresh interval while in view, on coming back into view, and not while out of it", async () => {
+    await populated();
+    jest.useFakeTimers();
+    const balances = fakeBalances();
+    const services = await testServices();
+    const home = (focused: boolean) => (
+      <ServicesProvider services={services}>
+        <MoneyProvider money={balances.money}>
+          <SafeAreaProvider initialMetrics={PHONE_METRICS}>
+            <HomeScreen {...handlers()} focused={focused} />
+          </SafeAreaProvider>
+        </MoneyProvider>
+      </ServicesProvider>
+    );
+    const view = await render(home(true));
+    await act(() => jest.advanceTimersByTimeAsync(REFRESH_INTERVAL_MS));
+    expect(balances.calls).toHaveLength(2);
+    await view.rerender(home(false));
+    await act(() => jest.advanceTimersByTimeAsync(3 * REFRESH_INTERVAL_MS));
+    expect(balances.calls).toHaveLength(2);
+    await view.rerender(home(true));
+    await act(() => jest.advanceTimersByTimeAsync(0));
+    expect(balances.calls).toHaveLength(3);
+    expect(screen.queryByText(STALE)).toBeNull();
   });
 
   it("offers a plain retry after a failed read, which asks again", async () => {
     await populated();
     const balances = fakeBalances(false);
-    await renderScreen(
-      await testServices(),
-      <HomeScreen {...handlers()} pricesUpdatedAt={updatedAt} />,
-      balances,
-    );
+    await renderScreen(await testServices(), <HomeScreen {...handlers()} />, balances);
     await fireEvent.press(await screen.findByRole("button", { name: "Try again" }));
     await waitFor(() => expect(balances.calls).toEqual(["everything", "everything"]));
   });
@@ -228,11 +239,7 @@ describe("HomeScreen", () => {
     jest.useFakeTimers();
     const never = fakeBalances();
     never.money.refresh.everything = () => new Promise<boolean>(() => undefined);
-    await renderScreen(
-      await testServices(),
-      <HomeScreen {...handlers()} pricesUpdatedAt={updatedAt} />,
-      never,
-    );
+    await renderScreen(await testServices(), <HomeScreen {...handlers()} />, never);
     expect(screen.queryAllByLabelText("Loading")).toHaveLength(0);
     expect(screen.queryByText("Total value")).toBeNull();
     await act(() => jest.advanceTimersByTimeAsync(WAITING_DELAY_MS));
@@ -241,11 +248,7 @@ describe("HomeScreen", () => {
     expect(screen.getByText("Still loading. This is taking longer than usual.")).toBeOnTheScreen();
     await act(() => jest.advanceTimersByTimeAsync(WAIT_LIMIT_MS.content));
     expect(screen.queryAllByLabelText("Loading")).toHaveLength(0);
-    expect(
-      screen.getByText(
-        "We couldn't update your balances. What you see may be out of date. Pull down to try again.",
-      ),
-    ).toBeOnTheScreen();
+    expect(screen.getByText(STALE)).toBeOnTheScreen();
     expect(screen.getByRole("button", { name: "Try again" })).toBeEnabled();
     // Twenty seconds of the placeholder's animation frames pass under the fake clock.
   }, 20_000);
@@ -255,7 +258,7 @@ describe("HomeScreen", () => {
     const balances = fakeBalances();
     await renderScreen(
       await testServices({ useOnline: () => false }),
-      <HomeScreen {...handlers()} pricesUpdatedAt={updatedAt} />,
+      <HomeScreen {...handlers()} />,
       balances,
     );
     await act(async () => undefined);
@@ -269,7 +272,7 @@ describe("HomeScreen", () => {
       funding: { ...w.funding, tokens: { ...w.funding.tokens, USDC: 250 } },
     }));
     const on = handlers();
-    await renderScreen(await testServices(), <HomeScreen {...on} pricesUpdatedAt={updatedAt} />);
+    await renderScreen(await testServices(), <HomeScreen {...on} />);
     expect(screen.getByText(/250\.00 USDC has arrived in your funding wallet/)).toBeOnTheScreen();
     await fireEvent.press(screen.getByRole("button", { name: "Move to Investing" }));
     expect(on.onNavigate).toHaveBeenCalledWith({
@@ -285,10 +288,7 @@ describe("HomeScreen", () => {
       ...w,
       portfolios: w.portfolios.map((p) => ({ ...p, label: "Old", archivedAt: 1 })),
     }));
-    await renderScreen(
-      await testServices(),
-      <HomeScreen {...handlers()} pricesUpdatedAt={updatedAt} />,
-    );
+    await renderScreen(await testServices(), <HomeScreen {...handlers()} />);
     expect(screen.getByText("Create a portfolio to start investing.")).toBeOnTheScreen();
     await fireEvent.press(screen.getByRole("button", { name: "Archived portfolios (1)" }));
     jest.useFakeTimers();
@@ -304,7 +304,7 @@ describe("HomeScreen", () => {
   it("opens New portfolio, and locks from the top bar", async () => {
     await unlockedWallet();
     const on = handlers();
-    await renderScreen(await testServices(), <HomeScreen {...on} pricesUpdatedAt={updatedAt} />);
+    await renderScreen(await testServices(), <HomeScreen {...on} />);
     await fireEvent.press(screen.getByRole("button", { name: "New portfolio" }));
     expect(on.onNewPortfolio).toHaveBeenCalled();
     await fireEvent.press(screen.getByRole("button", { name: "Lock wallet" }));
@@ -313,10 +313,7 @@ describe("HomeScreen", () => {
 
   it("opens an activity entry's detail from Recent activity", async () => {
     await populated();
-    await renderScreen(
-      await testServices(),
-      <HomeScreen {...handlers()} pricesUpdatedAt={updatedAt} />,
-    );
+    await renderScreen(await testServices(), <HomeScreen {...handlers()} />);
     await fireEvent.press(screen.getByRole("button", { name: /^Bought NVIDIA tracker/ }));
     const detail = await screen.findByText("Value at the time");
     expect(detail).toBeOnTheScreen();

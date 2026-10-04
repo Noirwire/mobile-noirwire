@@ -23,16 +23,16 @@ function faceId(stores: boolean) {
 }
 
 describe("BiometricOfferScreen", () => {
-  it("offers the device's method by name, without claiming it replaces the password", async () => {
+  it("moves on at Not now, leaving it off", async () => {
     const onDone = jest.fn();
+    const services = await testServices({ keystore: faceId(true) });
     await renderWith(
-      await testServices({ keystore: faceId(true) }),
+      services,
       <BiometricOfferScreen method="Face ID" password={STRONG_PASSWORD} onDone={onDone} />,
     );
-    expect(screen.getByRole("header", { name: "Unlock with Face ID?" })).toBeOnTheScreen();
-    expect(screen.getByText(/Your password is still needed/)).toBeOnTheScreen();
     await fireEvent.press(screen.getByRole("button", { name: "Not now" }));
     expect(onDone).toHaveBeenCalledTimes(1);
+    expect(services.preferences.biometric()).not.toBe("on");
   });
 
   it("turns it on and moves on", async () => {
@@ -54,9 +54,7 @@ describe("BiometricOfferScreen", () => {
       <BiometricOfferScreen method="Face ID" password={STRONG_PASSWORD} onDone={onDone} />,
     );
     await fireEvent.press(screen.getByRole("button", { name: "Use Face ID" }));
-    expect(
-      await screen.findByText("Face ID was not turned on. You can turn it on later in Settings."),
-    ).toBeOnTheScreen();
+    expect(await screen.findByText(/was not turned on/)).toBeOnTheScreen();
     expect(onDone).not.toHaveBeenCalled();
   });
 });

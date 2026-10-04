@@ -1,3 +1,5 @@
+import { REFRESH_INTERVAL_MS } from "@noirwire/shared/domain";
+import { fakeApi } from "@noirwire/shared/testing";
 import { getSnapshot } from "@noirwire/shared/wallet";
 import { act, fireEvent, screen } from "@testing-library/react-native";
 import { forgetWallet, installTestPlatform, renderWith, testServices } from "../testServices";
@@ -5,7 +7,11 @@ import { portfoliosWith as walletWith } from "../network/testMoney";
 import { installFakePrices } from "../trade/testDoubles";
 import { MarketsScreen } from "./MarketsScreen";
 
+/** The quiet notice: what is shown may be out of date. */
+const STALE = /out of date/;
+
 afterEach(async () => {
+  jest.useRealTimers();
   jest.restoreAllMocks();
   await forgetWallet();
 });
@@ -39,9 +45,7 @@ describe("MarketsScreen", () => {
     installFakePrices();
     await walletWith([{ label: "Investing" }]);
     const { onOpen } = await show();
-    expect(await screen.findByText("Top movers")).toBeOnTheScreen();
-    expect(screen.getByText("24h change")).toBeOnTheScreen();
-    expect(screen.getByRole("header", { name: "Funds and ETFs" })).toBeOnTheScreen();
+    await screen.findByText("Top movers");
     const nvidia = screen.getAllByRole("button", {
       name: /^NVIDIA, NVDAx, \$235\.91, up 2\.21 percent today$/,
     });
@@ -49,24 +53,32 @@ describe("MarketsScreen", () => {
     expect(onOpen).toHaveBeenCalledWith("NVDAx");
   });
 
-  it("shows no number and no change without a live price", async () => {
+  it("lists the trackers with no number, and says so at once, when the first prices fail", async () => {
     installTestPlatform();
     installFakePrices({ prices: null });
     await walletWith([{ label: "Investing" }]);
     await show();
-    // The list's place is held for a moment first, in case the prices are only late.
-    expect(
-      await screen.findByText("Top movers appear when current prices load.", undefined, {
-        timeout: 8_000,
-      }),
-    ).toBeOnTheScreen();
-    expect(
-      screen.getByText("We couldn't update prices. What you see may be out of date."),
-    ).toBeOnTheScreen();
-    expect(screen.getAllByText("At review").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("No live price").length).toBeGreaterThan(0);
-    expect(screen.queryByText("$235.91")).toBeNull();
-  }, 15_000);
+    expect(await screen.findByText(STALE)).toBeOnTheScreen();
+    expect(screen.getAllByRole("button", { name: /^NVIDIA, NVDAx/ }).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/\$\d/)).toBeNull();
+  });
+
+  it("says prices may be out of date the moment a later poll fails, over the prices still drawn", async () => {
+    installTestPlatform();
+    installFakePrices();
+    await walletWith([{ label: "Investing" }]);
+    jest.useFakeTimers({ doNotFake: ["Date"] });
+    await show();
+    await act(() => jest.advanceTimersByTimeAsync(0));
+    expect(screen.queryByText(STALE)).toBeNull();
+    fakeApi({
+      "GET /v1/prices": () =>
+        new Response(JSON.stringify({ code: "not_found", error: "Not here." }), { status: 404 }),
+    });
+    await act(() => jest.advanceTimersByTimeAsync(REFRESH_INTERVAL_MS));
+    expect(screen.getByText(STALE)).toBeOnTheScreen();
+    expect(screen.getAllByText("$235.91").length).toBeGreaterThan(0);
+  });
 
   it("searches by ticker without its trailing x, by name, and says when nothing matches", async () => {
     installTestPlatform();
@@ -94,8 +106,7 @@ describe("MarketsScreen", () => {
     await show();
     await screen.findByText("Top movers");
     await fireEvent.press(screen.getByRole("button", { name: "My watchlist" }));
-    expect(screen.getByText("Your watchlist is empty.")).toBeOnTheScreen();
-    expect(screen.getByText("Tap the star on a tracker to save it here.")).toBeOnTheScreen();
+    expect(screen.queryByRole("button", { name: /to watchlist$/ })).toBeNull();
     await fireEvent.press(screen.getByRole("button", { name: "All" }));
     await fireEvent.press(screen.getAllByRole("button", { name: "Add TSLAx to watchlist" })[0]);
     expect(getSnapshot()?.watchlist).toEqual(["TSLAx"]);

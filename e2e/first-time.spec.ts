@@ -7,20 +7,14 @@ import { expect, expectNothingTechnical, test } from "./support/test";
  * nothing to invest, and opening the app while NoirWire cannot be reached.
  */
 
-const STEP_TITLES = ["Get USDC", "Send it to your funding wallet", "Move it into a portfolio"];
-const CANNOT_REACH = "Can't reach NoirWire. Check your connection and try again.";
+const CANNOT_REACH = /Can't reach NoirWire/;
+const AN_ADDRESS_IN_GROUPS = /^([1-9A-HJ-NP-Za-km-z]{1,4} ){5}[1-9A-HJ-NP-Za-km-z]{1,4}\n/;
 const A_PRICE_AND_A_DATE = /^\$\d[\d,]*\.\d\d · .+\d/;
 
 test("a new user goes from Welcome to the add-money sheet, with the funding wallet address already shown", async ({
   page,
 }) => {
   await page.goto("/");
-  await expect(
-    page.getByRole("heading", { name: "Invest in US stock trackers. Privately.", exact: true }),
-  ).toBeVisible();
-  await expect(
-    page.getByText("No account and no ID check. Only your recovery words can restore your wallet."),
-  ).toBeVisible();
   await expect(page.getByRole("button")).toHaveText([
     "Create a wallet",
     "Restore a wallet",
@@ -30,40 +24,32 @@ test("a new user goes from Welcome to the add-money sheet, with the funding wall
   await expect(page.getByText(/UI kit/)).toHaveCount(0);
 
   await createWallet(page);
-  await expect(page.getByText("Ready to invest")).toBeVisible();
-  await expect(
-    page.getByText("Your money arrives in your funding wallet. Then you move it into a portfolio."),
-  ).toBeVisible();
   // One button brings money in, and nothing else on Home offers an address.
   await expect(page.getByRole("button", { name: /add money|funding|address/i })).toHaveCount(1);
 
   await page.getByRole("button", { name: "Add money", exact: true }).click();
   const sheet = page.getByRole("dialog");
-  await expect(sheet.getByRole("heading", { name: "Add digital dollars" })).toBeVisible();
-  for (const title of STEP_TITLES) {
-    await expect(sheet.getByRole("heading", { name: title, exact: true })).toBeVisible();
-  }
+  // The sheet's own title, then one heading for each of the three steps.
+  await expect(sheet.getByRole("heading")).toHaveCount(4);
   // The product never volunteers a limitation in the main path.
   const sheetText = (await sheet.textContent()) ?? "";
   expect(sheetText).not.toMatch(/cannot/i);
   expect(sheetText).not.toMatch(/\byet\b/i);
   // The address is on the sheet as it opens: two lines of groups of four, with nothing to tap first.
-  await expect(
-    sheet.getByText(/^([1-9A-HJ-NP-Za-km-z]{1,4} ){5}[1-9A-HJ-NP-Za-km-z]{1,4}\n/),
-  ).toBeVisible();
-  await expect(sheet.getByText("Network: Solana")).toBeVisible();
+  await expect(sheet.getByText(AN_ADDRESS_IN_GROUPS)).toBeVisible();
   await expect(sheet.getByRole("button", { name: "Copy funding wallet address" })).toBeVisible();
   await expect(sheet.getByRole("button", { name: /show/i })).toHaveCount(0);
 
-  await sheet.getByRole("button", { name: "What does it cost?" }).click();
-  // Costs opens with Settings beneath it, which the router notes in the address.
-  await expect(page).toHaveURL(/\/settings\/costs(\?initial=false)?$/);
-  await expect(
-    page.getByText(/^Moving money into a portfolio privately: 0\.1% \+ \$0\.20\./),
-  ).toBeVisible();
-  await expect(
-    page.getByText("The exact amount is always shown before you confirm."),
-  ).toBeVisible();
+  // What it costs opens in place: closed at first, and the address stays on screen beside it.
+  const costs = sheet.getByRole("button", { name: "What does it cost?" });
+  const opened = page.url();
+  await expect(costs).toHaveAttribute("aria-expanded", "false");
+  await expect(sheet.getByText(/0\.1% \+ \$0\.20\.$/)).toHaveCount(0);
+  await costs.click();
+  await expect(costs).toHaveAttribute("aria-expanded", "true");
+  await expect(sheet.getByText(/privately: 0\.1% \+ \$0\.20/)).toBeVisible();
+  await expect(sheet.getByText(AN_ADDRESS_IN_GROUPS)).toBeVisible();
+  expect(page.url()).toBe(opened);
 });
 
 test("a stored wallet unlocks while NoirWire cannot be reached, and is told about the connection", async ({
@@ -101,17 +87,11 @@ test("a tracker's page leads with what it is, and its chart reads out the point 
     .click();
 
   await expect(page.getByRole("heading", { name: "NVIDIA", exact: true })).toBeVisible();
-  await expect(page.getByText("NVIDIA tracker · NVDAx")).toBeVisible();
-  await expect(
-    page.getByText("Follows NVIDIA's share price. You do not own a share."),
-  ).toBeVisible();
-  await expect(page.getByText("Approximate price")).toBeVisible();
-  await expect(page.getByText("The final price is shown before you buy.")).toBeVisible();
-  await expect(page.getByText(/^The smallest order is about \$\d+\.$/)).toBeVisible();
   await expect(page.getByText(/^High \$\d/)).toBeVisible();
   await expect(page.getByText(/^Low \$\d/)).toBeVisible();
-  await expect(page.getByText(/indicative|multiplier|burn|jupiter/i)).toHaveCount(0);
-  await expect(page.getByText(/freeze or remove/)).toHaveCount(0);
+  // The issuer's powers and its own page sit behind "Read the risks", never in the main column.
+  await expect(page.getByText(/multiplier|burn|jupiter|freeze or remove/i)).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /issuer/i })).toHaveCount(0);
 
   const chart = page.getByRole("slider", { name: /^1 day price chart\./ });
   await expect(chart).not.toHaveAttribute("aria-valuetext", /./);
@@ -125,10 +105,55 @@ test("a tracker's page leads with what it is, and its chart reads out the point 
   await page.mouse.up();
   await expect(chart).not.toHaveAttribute("aria-valuetext", /./);
 
-  await page.getByRole("button", { name: "Read the risks" }).click();
+  const risks = page.getByRole("button", { name: "Read the risks" });
+  await risks.click();
+  await expect(risks).toHaveAttribute("aria-expanded", "true");
+  await expect(page.getByText(/freeze or remove/)).toBeVisible();
+  await expect(page.getByRole("button", { name: /issuer/i })).toBeVisible();
+});
+
+test("a cold open with no wallet and no answer from NoirWire says so within the check's limit", async ({
+  page,
+  api,
+}) => {
+  api.silent("/v1/rpc");
+  await page.goto("/");
+  await expect(page.getByRole("alert")).toHaveText(CANNOT_REACH, { timeout: 12_000 });
+  await expect(page.getByText(/balances/)).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Try again" })).toBeEnabled();
+});
+
+test("a new pie keeps each tracker's name beside its share, and asks before throwing the mix away", async ({
+  page,
+}) => {
+  await createWallet(page);
+  await page.getByRole("button", { name: "New portfolio" }).click();
+  const sheet = page.getByRole("dialog");
+  await sheet.getByRole("radio", { name: "Pie" }).click();
+  await sheet.getByRole("textbox", { name: /tracker/i }).fill("nvda");
+  await sheet.getByRole("button", { name: "NVIDIA, NVDAx" }).click();
+
+  // At a phone's width the name keeps its own room on one line, and the whole stepper sits beside it.
+  const name = await sheet.getByText("NVIDIA", { exact: true }).boundingBox();
+  const share = await sheet.getByRole("textbox", { name: "NVDAx share in percent" }).boundingBox();
+  if (!name || !share) throw new Error("The tracker's row has no place in the sheet.");
+  expect(name.width).toBeGreaterThan(48);
+  expect(name.height).toBeLessThan(30);
+  expect(share.x).toBeGreaterThan(name.x + name.width);
   await expect(
-    page.getByText("The company that issues this tracker can freeze or remove it."),
+    sheet.getByRole("button", { name: "Decrease NVDAx share in percent" }),
   ).toBeVisible();
+
+  // Leaving with a mix typed in asks first, and says what would be lost.
+  const asked = new Promise<string>((resolve) =>
+    page.once("dialog", (dialog) => {
+      resolve(dialog.message());
+      void dialog.dismiss();
+    }),
+  );
+  await sheet.getByRole("button", { name: /^Close New/ }).click();
+  expect((await asked).split("\n\n")).toHaveLength(2);
+  await expect(sheet.getByText("NVIDIA", { exact: true })).toBeVisible();
 });
 
 test("buying with nothing to invest says so on the first step, with the way to add money", async ({

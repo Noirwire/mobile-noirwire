@@ -1,10 +1,11 @@
+import { checkNetwork, type NetworkCheck } from "@noirwire/shared/application";
 import { connection, expectedGenesisHash, networkLabel } from "@noirwire/shared/infrastructure";
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { AccessibilityInfo, StyleSheet, View } from "react-native";
 import { Button, Mark, StillWorking, Text, useTopLoader, useWaiting } from "@/ui";
 import { colors, layout } from "@/ui/theme";
 import { useUnlocked, useWalletExists } from "../wallet/useWallet";
-import { checkNetwork, networkGateView, type GateState, type NetworkCheck } from "./gateCheck";
+import { networkGateView, type GateState } from "./gateCheck";
 
 type NetworkGateProps = {
   children: ReactNode;
@@ -29,9 +30,10 @@ const deviceCheck = () => checkNetwork(() => connection.getGenesisHash(), expect
 
 /**
  * Spec 2.0: nothing that reads the chain opens until the RPC has proved which
- * network it serves. Once it has, the gate stays open for the rest of the
- * run. The check waits by the waiting standard: quiet at first, then what it
- * is doing, then that it is still at it; one that never answers ends as
+ * network it serves: a URL is only a claim, and the genesis hash cannot lie.
+ * Once it has, the gate stays open for the rest of the run. The check waits
+ * by the waiting standard, quiet at first and then saying what it is doing,
+ * and answers within its own limit: one that gets no answer ends as
  * unreachable, with "Try again".
  *
  * Unlocking reads only what the device stores, so a stored, locked wallet is
@@ -61,9 +63,6 @@ export function NetworkGate({
       current = false;
     };
   }, [check, attempt]);
-
-  // A check that has not answered within its limit is the same as no answer.
-  if (state === "checking" && waiting.overdue) setState("unreachable");
 
   // Which words an unreachable network gets depends on what the device stores, so they wait for the vault's answer.
   const shown = state === "unreachable" && exists === undefined ? "checking" : state;

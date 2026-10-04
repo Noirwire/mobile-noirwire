@@ -5,7 +5,7 @@ import { StyleSheet, View } from "react-native";
 import { Button, Notice, QRCode, Sheet, Text } from "@/ui";
 import { layout } from "@/ui/theme";
 import { noteAddressCopied, noteSheetOpened } from "../portfolio/portfolioActions";
-import { useWalletSnapshot } from "../portfolio/useWalletSnapshot";
+import { useWalletSnapshot } from "../network/useWalletSnapshot";
 import { useCopied } from "./useCopied";
 
 type ReceiveSheetProps = {

@@ -56,7 +56,8 @@ import {
 import { errorHaptic, heavyHaptic, lightHaptic, successHaptic, warningHaptic } from "@/ui/haptics";
 import { colors, fonts, layout } from "@/ui/theme";
 import type { MoneyTarget } from "@/navigation/moneyRoutes";
-import { useLivePrices, useWalletSnapshot } from "../markets/useMarketData";
+import { useLivePrices } from "../markets/useMarketData";
+import { useWalletSnapshot } from "../network/useWalletSnapshot";
 import { ActionOverdue } from "../network/ActionOverdue";
 import { PendingNote } from "../network/PendingNote";
 import { usePendingBlock } from "../network/usePendingBlock";
@@ -98,7 +99,7 @@ export function PieOrderSheet({ portfolioId, mode, onClose, onNoMoney }: PieOrde
   const service = useTrading();
   const online = useServices().useOnline();
   const wallet = useWalletSnapshot();
-  const updatedAt = useLivePrices();
+  const { updatedAt } = useLivePrices();
   const pending = usePendingBlock(portfolioId);
   const portfolio = wallet?.portfolios.find((entry) => entry.id === portfolioId) ?? null;
 

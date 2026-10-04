@@ -15,6 +15,9 @@ import { TrackerScreen } from "./TrackerScreen";
 type HoldEvent = (event: { x: number }, success?: boolean) => void;
 type HoldHandlers = { onStart: HoldEvent; onUpdate: HoldEvent; onFinalize: HoldEvent };
 
+/** The quiet notice: what is shown may be out of date. */
+const STALE = /out of date/;
+
 afterEach(async () => {
   jest.restoreAllMocks();
   await forgetWallet();
@@ -38,21 +41,14 @@ describe("TrackerScreen", () => {
     const onIntent = await show();
     expect(await screen.findByText("$235.91")).toBeOnTheScreen();
     expect(screen.getByRole("header", { name: "NVIDIA" })).toBeOnTheScreen();
-    expect(screen.getByText("NVIDIA tracker · NVDAx")).toBeOnTheScreen();
-    expect(
-      screen.getByText("Follows NVIDIA's share price. You do not own a share."),
-    ).toBeOnTheScreen();
-    expect(screen.getByText("Approximate price")).toBeOnTheScreen();
-    expect(screen.getByText("The smallest order is about $12.")).toBeOnTheScreen();
-    expect(screen.queryByText(/out of date/)).toBeNull();
+    expect(screen.getByText(/\$12\b/)).toBeOnTheScreen();
+    expect(screen.queryByText(STALE)).toBeNull();
     expect(screen.getByText("+2.21%")).toBeOnTheScreen();
-    expect(screen.getByText("The final price is shown before you buy.")).toBeOnTheScreen();
     expect(
       await screen.findByRole("adjustable", {
         name: "1 day price chart. Started at 230 dollars 70 cents, now 235 dollars 89 cents, up 2.25 percent.",
       }),
     ).toBeOnTheScreen();
-    expect(screen.getByText("Historical prices")).toBeOnTheScreen();
     expect(screen.getByText("High $235.89")).toBeOnTheScreen();
     expect(screen.getByText("Low $229.90")).toBeOnTheScreen();
     expect(screen.getByText("5.1075 NVDAx")).toBeOnTheScreen();
@@ -64,12 +60,11 @@ describe("TrackerScreen", () => {
     await fireEvent.press(screen.getByRole("button", { name: "Buy" }));
     expect(onIntent).toHaveBeenLastCalledWith({ kind: "buy" });
     expect(screen.queryByText(/freeze or remove/)).toBeNull();
-    expect(screen.queryByText(/multiplier|burn|Jupiter/i)).toBeNull();
+    expect(screen.queryByRole("button", { name: /issuer/i })).toBeNull();
     await fireEvent.press(screen.getByRole("button", { name: "Read the risks" }));
-    expect(
-      screen.getByText("The company that issues this tracker can freeze or remove it."),
-    ).toBeOnTheScreen();
-    expect(screen.getByText("What a tracker is")).toBeOnTheScreen();
+    expect(screen.getByText(/freeze or remove/)).toBeOnTheScreen();
+    await fireEvent.press(screen.getByRole("button", { name: /issuer/i }));
+    expect(onIntent).toHaveBeenLastCalledWith({ kind: "issuer" });
   });
 
   it("reads out the price and date under a finger held on the chart, and says it", async () => {
@@ -120,15 +115,16 @@ describe("TrackerScreen", () => {
     expect(screen.queryByRole("button", { name: "Sell" })).toBeNull();
   });
 
-  it("draws no chart without real history, and says it is unavailable", async () => {
+  it("draws no chart without real history, and says what is shown may be out of date", async () => {
     installTestPlatform();
     installFakePrices({ history: null });
     await walletWith([{ label: "Investing" }]);
     await show();
-    expect(await screen.findByText("Chart unavailable right now.")).toBeOnTheScreen();
+    expect(await screen.findByText(STALE)).toBeOnTheScreen();
     await fireEvent.press(screen.getByRole("radio", { name: "1W" }));
-    expect(await screen.findByText("Chart unavailable right now.")).toBeOnTheScreen();
+    expect(await screen.findByText(STALE)).toBeOnTheScreen();
     expect(screen.queryByRole("adjustable")).toBeNull();
+    expect(screen.getByText("$235.91")).toBeOnTheScreen();
   });
 
   it("shows no number when the price is unavailable, and keeps Buy and Sell enabled", async () => {
@@ -136,15 +132,10 @@ describe("TrackerScreen", () => {
     installFakePrices({ prices: null });
     await walletWith([{ label: "Investing", holdings: { NVDAx: 2 } }]);
     await show();
-    expect(await screen.findByText("Current price unavailable")).toBeOnTheScreen();
-    expect(screen.getByText("At review")).toBeOnTheScreen();
-    expect(screen.getByText("The final price is shown before you buy.")).toBeOnTheScreen();
-    expect(
-      screen.getByText("We couldn't update prices. What you see may be out of date."),
-    ).toBeOnTheScreen();
-    expect(screen.getByText("Value available when a current price loads")).toBeOnTheScreen();
-    expect(screen.queryByText("Approximate price")).toBeNull();
+    expect(await screen.findByText(STALE)).toBeOnTheScreen();
+    expect(screen.queryByText("$235.91")).toBeNull();
     expect(screen.getByRole("button", { name: "Buy" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Sell" })).toBeEnabled();
   });
 
   it("disables Buy and Sell while offline", async () => {
@@ -184,9 +175,8 @@ describe("TrackerScreen", () => {
     expect(screen.queryByText("Your holding")).toBeNull();
     expect(screen.queryByRole("button", { name: "Buy" })).toBeNull();
     expect(screen.queryByRole("button", { name: /watchlist/ })).toBeNull();
-    expect(screen.getByText("The smallest order is about $12.")).toBeOnTheScreen();
     await fireEvent.press(screen.getByRole("button", { name: "Read the risks" }));
-    expect(screen.getByText("What a tracker is")).toBeOnTheScreen();
+    expect(screen.getByRole("header", { name: "What a tracker is" })).toBeOnTheScreen();
     await fireEvent.press(screen.getByRole("button", { name: "Create a wallet to invest" }));
     expect(onIntent).toHaveBeenCalledWith({ kind: "createWallet" });
   });

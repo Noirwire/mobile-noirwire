@@ -15,7 +15,7 @@ import { Button, IconButton, Notice, PieRing, Sheet, Stepper, Text } from "@/ui"
 import { selectionHaptic, successHaptic } from "@/ui/haptics";
 import { colors, fonts, layout, size } from "@/ui/theme";
 import { TrackerMark } from "@/ui/TrackerMark";
-import { useWalletSnapshot } from "../markets/useMarketData";
+import { useWalletSnapshot } from "../network/useWalletSnapshot";
 import { IdentityLine, TrackerChooser } from "../trade/parts";
 import { savePieMix } from "./pieActions";
 

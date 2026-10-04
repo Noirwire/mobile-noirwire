@@ -17,12 +17,11 @@ function appStateListener() {
 describe("PhraseScreen", () => {
   afterEach(() => jest.restoreAllMocks());
 
-  it("conceals the words until Reveal and keeps Continue quiet and disabled with its reason", async () => {
+  it("conceals the words until Reveal and keeps Continue disabled, with nothing to copy", async () => {
     await render(<PhraseScreen words={WORDS} onContinue={jest.fn()} />);
     expect(screen.queryByText("abandon")).toBeNull();
     expect(screen.getByLabelText("Recovery phrase, hidden")).toBeOnTheScreen();
     expect(screen.getByRole("button", { name: "Continue" })).toBeDisabled();
-    expect(screen.getByText("Reveal the words and confirm you have saved them.")).toBeOnTheScreen();
     expect(screen.queryByRole("button", { name: /copy/i })).toBeNull();
   });
 

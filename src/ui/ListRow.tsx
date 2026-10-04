@@ -15,6 +15,8 @@ type ListRowProps = {
   danger?: boolean;
   /** Whether a chevron says the row leads to another screen; by default, when it can be pressed. */
   chevron?: boolean;
+  /** The row opens something outside the app, such as a mail or a website. */
+  link?: boolean;
 };
 
 /**
@@ -30,10 +32,11 @@ export function ListRow({
   onLongPress,
   danger = false,
   chevron = onPress !== undefined,
+  link = false,
 }: ListRowProps) {
   return (
     <Pressable
-      accessibilityRole={onPress ? "button" : "text"}
+      accessibilityRole={link ? "link" : onPress ? "button" : "text"}
       accessibilityLabel={value ? `${label}, ${value}` : label}
       accessibilityHint={caption}
       disabled={!onPress && !onLongPress}

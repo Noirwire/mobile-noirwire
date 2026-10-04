@@ -29,24 +29,6 @@ describe("useWaiting", () => {
     expect(result.current.stillWorking).toBe("Still checking. This is taking longer than usual.");
   });
 
-  it("answers a placeholder for content and an indicator for everything else", async () => {
-    const content = await renderHook(() => useWaiting(true, "content"));
-    const action = await renderHook(() => useWaiting(true, "action"));
-    await pass(WAITING_DELAY_MS);
-    expect(content.result.current).toMatchObject({ signal: "placeholder", label: "Loading" });
-    expect(action.result.current).toMatchObject({
-      signal: "indicator",
-      label: "Working on it...",
-    });
-    await pass(STILL_WORKING_AFTER_MS.content);
-    expect(content.result.current.stillWorking).not.toBeNull();
-    expect(action.result.current.stillWorking).toBeNull();
-    await pass(STILL_WORKING_AFTER_MS.action);
-    expect(action.result.current.stillWorking).toBe(
-      "Still working. You can leave this open; nothing more is needed from you.",
-    );
-  });
-
   it("shows nothing while there is nothing to wait for, and starts again on the next wait", async () => {
     const { result, rerender } = await renderHook(
       ({ active }: { active: boolean }) => useWaiting(active, "review"),

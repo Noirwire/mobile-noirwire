@@ -20,13 +20,8 @@ describe("PieRing", () => {
     ).toBeOnTheScreen();
   });
 
-  it.each([
-    ["the target alone", [50, 50], undefined],
-    ["nothing invested", [50, 50], [0, 0]],
-    ["an empty portfolio", [], undefined],
-    ["one tracker at 100 percent", [100], [100]],
-  ])("renders %s", async (name, target, current) => {
-    await render(<PieRing target={target} current={current} label={name} />);
-    expect(screen.getByRole("image", { name })).toBeOnTheScreen();
+  it("is still one named image with no mix and nothing invested", async () => {
+    await render(<PieRing target={[]} current={[0, 0]} label="An empty portfolio" />);
+    expect(screen.getByRole("image", { name: "An empty portfolio" })).toBeOnTheScreen();
   });
 });

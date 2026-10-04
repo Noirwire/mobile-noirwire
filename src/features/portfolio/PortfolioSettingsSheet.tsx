@@ -17,7 +17,7 @@ import { fonts, layout } from "@/ui/theme";
 import { IconPicker } from "./IconPicker";
 import { IdentityLine } from "./IdentityLine";
 import { savePortfolioSettings, setArchived } from "./portfolioActions";
-import { useWalletSnapshot } from "./useWalletSnapshot";
+import { useWalletSnapshot } from "../network/useWalletSnapshot";
 
 type PortfolioSettingsSheetProps = {
   portfolioId: string;

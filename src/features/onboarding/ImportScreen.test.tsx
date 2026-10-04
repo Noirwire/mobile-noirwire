@@ -1,3 +1,4 @@
+import { mobileOnboardingCopy, onboardingCopy } from "@noirwire/shared/copy";
 import type { ImportResolution } from "@noirwire/shared/infrastructure";
 import { STILL_WORKING_AFTER_MS } from "@noirwire/shared/presentation";
 import { act, fireEvent, screen } from "@testing-library/react-native";
@@ -11,8 +12,8 @@ import { IMPORT_LIMIT_MS, ImportScreen } from "./ImportScreen";
 const PHRASE =
   "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
 const RESOLUTION = { scheme: null } as ImportResolution;
-const FAILED =
-  "We couldn't finish importing your wallet. Nothing was saved on this phone. Try again.";
+/** A failed lookup says what it means for the wallet, and nothing technical. */
+const FAILED = /Nothing was saved on this phone\. Try again\.$/;
 
 beforeEach(() => {
   installTestPlatform();
@@ -131,7 +132,7 @@ describe("ImportScreen", () => {
     );
     await fireEvent.changeText(field(), PHRASE);
     await pressContinue();
-    expect(screen.getByRole("header", { name: "Import an existing wallet." })).toBeOnTheScreen();
+    expect(screen.getByRole("header", { name: onboardingCopy.import.title })).toBeOnTheScreen();
     expect(field()).toBeOnTheScreen();
     expect(field().props.value).toBe(PHRASE);
     expect(field().props.editable).toBe(false);
@@ -182,11 +183,7 @@ describe("ImportScreen", () => {
     await act(async () => goOffline());
     expect(screen.getByRole("alert")).toHaveTextContent(FAILED);
     expect(screen.getByRole("button", { name: "Continue" })).toBeDisabled();
-    expect(
-      screen.getByText(
-        "You're offline. Nothing was saved on this phone. Go back online to import your wallet.",
-      ),
-    ).toBeOnTheScreen();
+    expect(screen.getByText(mobileOnboardingCopy.import.offline)).toBeOnTheScreen();
     expect(resolveImport).toHaveBeenCalledTimes(1);
   });
 

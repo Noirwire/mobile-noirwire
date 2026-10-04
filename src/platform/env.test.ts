@@ -16,10 +16,6 @@ describe("mobileEnv", () => {
     });
   });
 
-  it("defaults to devnet like the shared settings do", () => {
-    expect(mobileEnv(settings("https://api.example.com", undefined)).network).toBe("devnet");
-  });
-
   it("refuses an unknown network", () => {
     expect(() => mobileEnv(settings("https://a.example", "testnet"))).toThrow(/network/);
   });

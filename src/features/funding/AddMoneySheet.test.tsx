@@ -10,49 +10,45 @@ jest.mock("@/ui/secretClipboard", () => ({ copySecret: jest.fn(() => Promise.res
 
 afterEach(() => forgetWallet());
 
+const costs = () => screen.getByRole("button", { name: "What does it cost?" });
+
 describe("AddMoneySheet", () => {
-  it("says the three steps, with the funding wallet address already shown inside the second", async () => {
+  it("shows the funding wallet address at once, with nothing to tap first, and copies it", async () => {
     const { events } = installTestPlatform();
     const wallet = await unlockedWallet();
-    const on = { onClose: jest.fn(), onOpenCosts: jest.fn() };
-    await renderScreen(await testServices(), <AddMoneySheet {...on} />);
-    expect(screen.getByText("Add digital dollars")).toBeOnTheScreen();
-    expect(screen.getAllByRole("header").map((header) => header.props.children)).toEqual([
-      "Add digital dollars",
-      "Get USDC",
-      "Send it to your funding wallet",
-      "Move it into a portfolio",
-    ]);
-    expect(
-      screen.getByText(
-        "USDC is a digital dollar: 1 USDC = $1. Send it from any app or wallet that supports USDC on the Solana network. You do not need an account with us.",
-      ),
-    ).toBeOnTheScreen();
-    expect(
-      screen.getByText(/A private move is not linked.*It costs 0\.1% \+ \$0\.20\./),
-    ).toBeOnTheScreen();
+    await renderScreen(await testServices(), <AddMoneySheet onClose={jest.fn()} />);
     expect(screen.getByText(addressLines(wallet.funding.address).join("\n"))).toBeOnTheScreen();
-    expect(screen.getByText("Network: Solana")).toBeOnTheScreen();
     expect(screen.queryByRole("button", { name: /Show/ })).toBeNull();
     await fireEvent.press(screen.getByRole("button", { name: "Copy funding wallet address" }));
     expect(copySecret).toHaveBeenCalledWith(wallet.funding.address);
-    expect(await screen.findByRole("button", { name: "Copied" })).toBeOnTheScreen();
     await waitFor(() =>
       expect(events).toContainEqual({ event: "address_copied", props: { what: "funding" } }),
     );
-    await fireEvent.press(screen.getByRole("button", { name: "What does it cost?" }));
-    expect(on.onOpenCosts).toHaveBeenCalledTimes(1);
+  });
+
+  it("opens what it costs in place, closed at first, with the address still on screen", async () => {
+    installTestPlatform();
+    const wallet = await unlockedWallet();
+    const onClose = jest.fn();
+    await renderScreen(await testServices(), <AddMoneySheet onClose={onClose} />);
+    const address = addressLines(wallet.funding.address).join("\n");
+    expect(costs()).toBeCollapsed();
+    expect(screen.queryByText(/^Network cost:/)).toBeNull();
+    await fireEvent.press(costs());
+    expect(costs()).toBeExpanded();
+    expect(
+      screen.getByText(/^Moving money into a portfolio privately: 0\.1% \+ \$0\.20/),
+    ).toBeOnTheScreen();
+    expect(screen.getByText(address)).toBeOnTheScreen();
+    expect(onClose).not.toHaveBeenCalled();
   });
 
   it("may be captured in a screenshot: it asks for no capture protection", async () => {
     installTestPlatform();
-    await unlockedWallet();
+    const wallet = await unlockedWallet();
     jest.mocked(preventScreenCaptureAsync).mockClear();
-    await renderScreen(
-      await testServices(),
-      <AddMoneySheet onClose={jest.fn()} onOpenCosts={jest.fn()} />,
-    );
-    expect(screen.getByText("Network: Solana")).toBeOnTheScreen();
+    await renderScreen(await testServices(), <AddMoneySheet onClose={jest.fn()} />);
+    expect(screen.getByText(addressLines(wallet.funding.address).join("\n"))).toBeOnTheScreen();
     expect(preventScreenCaptureAsync).not.toHaveBeenCalled();
   });
 });

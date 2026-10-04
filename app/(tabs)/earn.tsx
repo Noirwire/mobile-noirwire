@@ -6,7 +6,6 @@ export default function Earn() {
   const router = useRouter();
   return (
     <EarnScreen
-      onReadRisks={() => router.push("/settings/risks")}
       onNewPortfolio={() => router.push("/new-portfolio")}
       onMoveMoney={(id) => router.push({ pathname: "/fund", params: portfolioParams(id) })}
     />

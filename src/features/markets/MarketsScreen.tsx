@@ -1,7 +1,6 @@
 import { MARKET_PAGE_SIZE as PAGE, type MarketCategory } from "@noirwire/shared/application";
 import { marketsCopy } from "@noirwire/shared/copy";
-import { livePricesVersion } from "@noirwire/shared/infrastructure";
-import { marketsView, STILL_WORKING_AFTER_MS } from "@noirwire/shared/presentation";
+import { marketsView } from "@noirwire/shared/presentation";
 import { screenReads } from "@noirwire/shared/wallet";
 import { MagnifyingGlassIcon } from "phosphor-react-native/src/icons/MagnifyingGlass";
 import { XCircleIcon } from "phosphor-react-native/src/icons/XCircle";
@@ -26,11 +25,15 @@ import { selectionHaptic } from "@/ui/haptics";
 import { colors, fonts, layout, radius, size } from "@/ui/theme";
 import { controlText, maxFontScale } from "@/ui/typography";
 import { TrackerCard, TrackerRow } from "./TrackerRow";
-import { useLivePrices, useWalletSnapshot } from "./useMarketData";
+import { useInView, useScreenClock } from "../network/useInView";
+import { useLivePrices } from "./useMarketData";
+import { useWalletSnapshot } from "../network/useWalletSnapshot";
 import { toggleWatch } from "./watchlist";
 
 type MarketsScreenProps = {
   onOpen: (symbol: string) => void;
+  /** Whether the screen has the focus: its clock stands still while it does not. */
+  focused?: boolean;
   /** A link from outside named a tracker that does not exist: Markets says so. */
   unknownTracker?: boolean;
   /** Set for a visitor without a wallet: no watchlist, and one way forward. */
@@ -40,32 +43,31 @@ type MarketsScreenProps = {
 const SKELETON_ROWS = 8;
 
 /** Spec 2.18, and 2.2 in visitor mode: find a tracker. */
-export function MarketsScreen({ onOpen, unknownTracker = false, visitor }: MarketsScreenProps) {
+export function MarketsScreen({
+  onOpen,
+  focused = true,
+  unknownTracker = false,
+  visitor,
+}: MarketsScreenProps) {
   const wallet = useWalletSnapshot();
-  const updatedAt = useLivePrices();
+  const { updatedAt, freshness } = useLivePrices();
+  const now = useScreenClock(useInView(focused));
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<MarketCategory>("all");
   const [shown, setShown] = useState(PAGE);
-  const waiting = useWaiting(updatedAt === null, "content");
-  useTopLoader(updatedAt === null);
-  // With no live price the list's place is held: until the limit while nothing
-  // at all has answered, and only for a moment once something has, since that
-  // may have been the prices failing. After that the trackers are listed
-  // without prices, and the screen says the prices are missing.
-  const firstLoad =
-    updatedAt === null &&
-    (livePricesVersion() === 0
-      ? !waiting.overdue
-      : waiting.elapsedMs < STILL_WORKING_AFTER_MS.content);
   const view = marketsView(screenReads, {
     query,
     category,
     shown,
     watchlist: visitor ? null : (wallet?.watchlist ?? []),
     updatedAt,
-    loading: firstLoad,
+    freshness: { now, prices: freshness },
     platform: "mobile",
   });
+  // The list's place is held while no price has answered and none has failed.
+  const firstLoad = view.loading;
+  const waiting = useWaiting(firstLoad, "content");
+  useTopLoader(firstLoad);
 
   function choose(next: MarketCategory) {
     if (next === category) return;

@@ -11,6 +11,7 @@ import {
   testServices,
 } from "../testServices";
 import { PasswordScreen } from "./PasswordScreen";
+import { withRealKeyDerivation } from "../../../jest/keyDerivation";
 
 afterEach(() => forgetWallet());
 
@@ -28,7 +29,7 @@ async function setup(keystore?: BiometricKeystore) {
 }
 
 async function fillNewPassword() {
-  await fireEvent.press(screen.getByRole("button", { name: "Suggest a passphrase" }));
+  await fireEvent.press(screen.getByRole("button", { name: "Suggest a password" }));
   await screen.findByText("Strong password.");
   return screen.getByLabelText("New password").props.value as string;
 }
@@ -58,17 +59,18 @@ describe("PasswordScreen", () => {
     expect(await unlock(STRONG_PASSWORD)).toBeNull();
   });
 
-  it("re-encrypts under the new password, says so and clears the fields", async () => {
-    const { events } = await setup();
-    const next = await fillNewPassword();
-    await submit();
-    expect(await screen.findByText(/^Password changed\./)).toBeOnTheScreen();
-    expect(screen.getByLabelText("Current password").props.value).toBe("");
-    expect(events).toContainEqual({ event: "password_changed" });
-    lock();
-    expect(await unlock(STRONG_PASSWORD)).not.toBeNull();
-    expect(await unlock(next)).toBeNull();
-  });
+  it("re-encrypts under the new password, says so and clears the fields", () =>
+    withRealKeyDerivation(async () => {
+      const { events } = await setup();
+      const next = await fillNewPassword();
+      await submit();
+      expect(await screen.findByText(/^Password changed\./)).toBeOnTheScreen();
+      expect(screen.getByLabelText("Current password").props.value).toBe("");
+      expect(events).toContainEqual({ event: "password_changed" });
+      lock();
+      expect(await unlock(STRONG_PASSWORD)).not.toBeNull();
+      expect(await unlock(next)).toBeNull();
+    }));
 
   it("says why nothing changed when the new record could not be stored", async () => {
     const { vault, events } = await setup();

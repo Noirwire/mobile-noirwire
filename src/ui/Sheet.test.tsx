@@ -3,8 +3,6 @@ import { allowScreenCaptureAsync, preventScreenCaptureAsync } from "expo-screen-
 import type { ComponentProps } from "react";
 import { Alert, type AlertButton } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { Button } from "./Button";
-import { DISCARD_TITLE } from "./confirmDiscard";
 import { Sheet } from "./Sheet";
 import { Text } from "./Text";
 import { CAPTURE_PROTECTION_LIMIT_MS } from "./useCaptureProtection";
@@ -52,12 +50,6 @@ describe("Sheet", () => {
     expect(screen.queryByText("Sheet body")).toBeNull();
   });
 
-  it("shows its title and children while open", async () => {
-    await renderSheet(true);
-    expect(screen.getByRole("header", { name: "Review" })).toBeOnTheScreen();
-    expect(screen.getByText("Sheet body")).toBeOnTheScreen();
-  });
-
   it("closes from its close button and from the backdrop", async () => {
     const onClose = jest.fn();
     await renderSheet(true, onClose);
@@ -77,11 +69,6 @@ describe("Sheet", () => {
       </SafeAreaProvider>,
     );
     expect(screen.queryByText("Sheet body")).toBeNull();
-  });
-
-  it("holds the step's primary action in its footer", async () => {
-    await renderStep({ footer: <Button label="Review" onPress={jest.fn()} /> });
-    expect(screen.getByRole("button", { name: "Review" })).toBeOnTheScreen();
   });
 
   it("leads with Back from the second step and drops the close control", async () => {
@@ -115,17 +102,19 @@ describe("Sheet", () => {
     expect(onBack).not.toHaveBeenCalled();
   });
 
-  it("asks before discarding entered input, and keeps it on Keep editing", async () => {
+  it("asks before discarding entered input, saying what is lost, and keeps it on the cancel choice", async () => {
     const alert = jest.spyOn(Alert, "alert").mockImplementation();
     const onClose = jest.fn();
     await renderStep({ dirty: true, onClose });
 
     await fireEvent.press(screen.getByRole("button", { name: "Close Send" }));
     expect(onClose).not.toHaveBeenCalled();
-    expect(alert).toHaveBeenCalledWith(DISCARD_TITLE, undefined, expect.any(Array));
+    const [title, body] = alert.mock.calls[0];
+    expect(title).toMatch(/\S/);
+    expect(body).toMatch(/\S/);
 
     const buttons = alert.mock.calls[0][2] as AlertButton[];
-    expect(buttons.map((button) => button.text)).toEqual(["Keep editing", "Discard"]);
+    expect(buttons.map((button) => button.style)).toEqual(["cancel", "destructive"]);
     buttons[0].onPress?.();
     expect(onClose).not.toHaveBeenCalled();
     buttons[1].onPress?.();

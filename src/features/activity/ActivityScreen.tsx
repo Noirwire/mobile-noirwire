@@ -11,7 +11,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Chip, EmptyState, Shelf, Text } from "@/ui";
 import { selectionHaptic } from "@/ui/haptics";
 import { colors, layout } from "@/ui/theme";
-import { useWalletSnapshot } from "../portfolio/useWalletSnapshot";
+import { useWalletSnapshot } from "../network/useWalletSnapshot";
 import { ActivityDetailSheet } from "./ActivityDetailSheet";
 import { ActivityRow } from "./ActivityRow";
 

@@ -1,4 +1,4 @@
-import { fireEvent, screen } from "@testing-library/react-native";
+import { fireEvent, screen, waitFor } from "@testing-library/react-native";
 import { fakeChain, renderWithMoney, testMoney, walletWith } from "../network/testMoney";
 import { SettingsScreen } from "../settings/SettingsScreen";
 import { forgetWallet, installTestPlatform, testServices } from "../testServices";
@@ -19,9 +19,6 @@ describe("FundingWalletScreen", () => {
       <FundingWalletScreen onMove={onMove} onAddMoney={onAddMoney} />,
     );
     expect(await screen.findByLabelText("250.00 USDC waiting to be moved")).toBeOnTheScreen();
-    expect(
-      screen.getByText("Money sent here must be moved into a portfolio before you can invest."),
-    ).toBeOnTheScreen();
     expect(screen.queryByText(wallet.funding.address)).toBeNull();
     await fireEvent.press(screen.getByRole("button", { name: "Move to portfolio" }));
     await fireEvent.press(screen.getByRole("button", { name: "Add money" }));
@@ -38,10 +35,9 @@ describe("FundingWalletScreen", () => {
       testMoney(chain),
       <FundingWalletScreen onMove={jest.fn()} onAddMoney={jest.fn()} />,
     );
-    expect(
-      await screen.findByText("Nothing is waiting. Add money to your funding wallet first."),
-    ).toBeOnTheScreen();
-    expect(screen.getByRole("button", { name: "Move to portfolio" })).toBeDisabled();
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Move to portfolio" })).toBeDisabled(),
+    );
   });
 
   it("is reached from Settings by a row carrying the funding wallet's cash", async () => {
@@ -54,7 +50,6 @@ describe("FundingWalletScreen", () => {
       testMoney(chain),
       <SettingsScreen onOpen={onOpen} appVersion="1.0.0" />,
     );
-    expect(screen.getByText("Wallet")).toBeOnTheScreen();
     await fireEvent.press(screen.getByRole("button", { name: "Funding wallet, 250.00 USDC" }));
     expect(onOpen).toHaveBeenCalledWith("funding-wallet");
   });

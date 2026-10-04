@@ -1,4 +1,4 @@
-import { mobileMarketsCopy, mobileSettingsCopy } from "@noirwire/shared/copy";
+import { mobileMarketsCopy } from "@noirwire/shared/copy";
 import { PRICE_RANGES, type PriceRange } from "@noirwire/shared/domain";
 import { chartReadout, trackerView, type TrackerAction } from "@noirwire/shared/presentation";
 import { screenReads } from "@noirwire/shared/wallet";
@@ -25,8 +25,11 @@ import { selectionHaptic } from "@/ui/haptics";
 import { colors, fonts, layout, size } from "@/ui/theme";
 import { TrackerMark } from "@/ui/TrackerMark";
 import { useMoney } from "../network/money";
+import { useInView, useScreenClock } from "../network/useInView";
 import { useServices } from "../services";
-import { useLivePrices, usePriceHistory, useWalletSnapshot } from "./useMarketData";
+import { RiskSections } from "../trade/parts";
+import { useLivePrices, usePriceHistory } from "./useMarketData";
+import { useWalletSnapshot } from "../network/useWalletSnapshot";
 import { toggleWatch } from "./watchlist";
 
 export type TrackerIntent =
@@ -41,6 +44,8 @@ type TrackerScreenProps = {
   symbol: string;
   /** A visitor without a wallet sees no holding and no trade buttons. */
   visitor?: boolean;
+  /** Whether the screen has the focus: its clock stands still while it does not. */
+  focused?: boolean;
   onIntent: (intent: TrackerIntent) => void;
 };
 
@@ -49,31 +54,37 @@ const CHART_HEIGHT = 220;
 const STACK_FONT_SCALE = 1.3;
 
 /** Spec 2.19, and 2.2 in visitor mode: one tracker's price, and what is held of it. */
-export function TrackerScreen({ symbol, visitor = false, onIntent }: TrackerScreenProps) {
+export function TrackerScreen({
+  symbol,
+  visitor = false,
+  focused = true,
+  onIntent,
+}: TrackerScreenProps) {
   const { useOnline } = useServices();
   const online = useOnline();
   const wallet = useWalletSnapshot();
-  const updatedAt = useLivePrices();
+  const prices = useLivePrices();
+  const now = useScreenClock(useInView(focused));
   const [range, setRange] = useState<PriceRange>("1D");
   const [risksOpen, setRisksOpen] = useState(false);
-  const history = usePriceHistory(symbol, range);
+  const { history, freshness: chart } = usePriceHistory(symbol, range, true, now);
   const { fontScale } = useWindowDimensions();
   const smallestOrderUsd = useMoney().tradeChain.gaslessFromUsd;
-  const priceWaiting = useWaiting(updatedAt === null && history.status === "loading", "content");
-  const chartWaiting = useWaiting(history.status === "loading", "check");
-  useTopLoader(updatedAt === null || history.status === "loading");
-  const loading = updatedAt === null && history.status === "loading" && !priceWaiting.overdue;
   const view = trackerView(screenReads, {
     symbol,
     wallet: visitor ? null : wallet,
-    updatedAt,
+    updatedAt: prices.updatedAt,
     online,
     range,
     history,
     smallestOrderUsd,
-    loading,
+    freshness: { now, prices: prices.freshness, chart },
     platform: "mobile",
   });
+  const loading = view.kind === "tracker" && view.loading;
+  const priceWaiting = useWaiting(loading, "content");
+  const chartWaiting = useWaiting(history.status === "loading", "check");
+  useTopLoader(loading);
   const readout = useCallback(
     (x: number) =>
       history.status === "ready"
@@ -138,7 +149,7 @@ export function TrackerScreen({ symbol, visitor = false, onIntent }: TrackerScre
         <Text tone="dim">{view.follows}</Text>
 
         <View style={styles.hero}>
-          {loading && view.price.live === false ? (
+          {loading && !view.price.live ? (
             <WaitingPlaceholder waiting={priceWaiting}>
               <Skeleton width={180} height={42} />
             </WaitingPlaceholder>
@@ -150,10 +161,7 @@ export function TrackerScreen({ symbol, visitor = false, onIntent }: TrackerScre
               <Text variant="faint">{view.price.tag}</Text>
             </View>
           ) : (
-            <View>
-              <Text>{view.price.figure}</Text>
-              <Text variant="faint">{view.price.note}</Text>
-            </View>
+            <Text>{view.price.figure}</Text>
           )}
           {view.change && (
             <View style={styles.priceLine}>
@@ -237,7 +245,6 @@ export function TrackerScreen({ symbol, visitor = false, onIntent }: TrackerScre
               {line}
             </Text>
           ))}
-          <Text variant="faint">{view.about.notOffered}</Text>
           <Divider />
           <View style={styles.links}>
             <Button
@@ -253,32 +260,20 @@ export function TrackerScreen({ symbol, visitor = false, onIntent }: TrackerScre
                     {line}
                   </Text>
                 ))}
-                <RisksText />
+                <Button
+                  variant="quiet"
+                  label={view.risks.details}
+                  onPress={() => onIntent({ kind: "issuer" })}
+                />
+                <RiskSections />
               </>
             )}
-            <Button
-              variant="quiet"
-              label={view.about.issuerDetails}
-              onPress={() => onIntent({ kind: "issuer" })}
-            />
           </View>
         </View>
       </ScrollView>
       <SafeAreaView edges={["bottom"]}>{bar}</SafeAreaView>
     </SafeAreaView>
   );
-}
-
-/** The Risks screen's text, opened in place: a visitor has no Settings to read it in. */
-function RisksText() {
-  return mobileSettingsCopy.risks.sections.map((section) => (
-    <View key={section.title} style={styles.risk}>
-      <Text accessibilityRole="header" style={styles.heading}>
-        {section.title}
-      </Text>
-      <Text tone="dim">{section.body}</Text>
-    </View>
-  ));
 }
 
 function ActionButton({
@@ -325,7 +320,6 @@ const styles = StyleSheet.create({
   section: { gap: layout.inset },
   heading: { fontFamily: fonts.medium },
   links: { alignItems: "flex-start", gap: layout.tight },
-  risk: { gap: layout.hairline },
   bar: {
     gap: layout.tight,
     paddingHorizontal: layout.gutter,

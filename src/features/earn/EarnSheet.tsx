@@ -39,7 +39,6 @@ type EarnSheetProps = {
   portfolios: readonly EarnPortfolio[];
   icons: Record<string, PortfolioIcon | undefined>;
   positionOf: (id: string) => EarnPosition | null;
-  venue: string;
   apy: number | undefined;
   onClose: () => void;
   /** Closes the sheet and opens fund for this portfolio. */
@@ -80,7 +79,6 @@ export function EarnSheet(props: EarnSheetProps) {
       amount: flow.draft.amount,
       portfolioLabel: label,
       cost: flow.cost,
-      venue: props.venue,
       pending: flow.pending,
       online: flow.online,
       failure: flow.failure,

@@ -1,8 +1,9 @@
 import {
-  STILL_WORKING_AFTER_MS,
-  WAITING_DELAY_MS,
-  WAIT_LIMIT_MS,
-} from "@noirwire/shared/presentation";
+  checkNetwork,
+  NETWORK_CHECK_LIMIT_MS,
+  type NetworkCheck,
+} from "@noirwire/shared/application";
+import { STILL_WORKING_AFTER_MS, WAITING_DELAY_MS } from "@noirwire/shared/presentation";
 import { act, fireEvent, render, screen } from "@testing-library/react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { Text } from "@/ui";
@@ -15,23 +16,11 @@ import {
   testServices,
 } from "../testServices";
 import { unlockWithPassword } from "../wallet/walletActions";
-import { checkNetwork } from "./gateCheck";
 import { NetworkGate, RECHECK_MS, useUnreachable } from "./NetworkGate";
 import { OfflineBanner } from "./OfflineBanner";
 
 const MAINNET = "5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d";
-const DEVNET = "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG";
 const network = () => "Solana mainnet";
-
-describe("checkNetwork", () => {
-  it("passes only the chain whose genesis hash is the expected one", async () => {
-    expect(await checkNetwork(async () => MAINNET, MAINNET)).toBe("ok");
-    expect(await checkNetwork(async () => DEVNET, MAINNET)).toBe("wrongNetwork");
-    expect(await checkNetwork(() => Promise.reject(new Error("offline")), MAINNET)).toBe(
-      "unreachable",
-    );
-  });
-});
 
 const CANNOT_REACH = "Can't reach NoirWire. Check your connection and try again.";
 
@@ -57,15 +46,11 @@ describe("NetworkGate", () => {
 
   it("refuses to run against another network, with no way past it", async () => {
     await render(
-      <NetworkGate check={() => checkNetwork(async () => DEVNET, MAINNET)} network={network}>
+      <NetworkGate check={async () => "wrongNetwork"} network={network}>
         <Text>The wallet</Text>
       </NetworkGate>,
     );
-    expect(
-      await screen.findByText(
-        "NoirWire is not connected to Solana mainnet as it should be. Your money has not moved, and nothing can be sent until this is fixed. Try again later.",
-      ),
-    ).toBeOnTheScreen();
+    expect(await screen.findByRole("alert")).toHaveTextContent(/Solana mainnet/);
     expect(screen.queryByText("The wallet")).toBeNull();
     expect(screen.queryByRole("button")).toBeNull();
   });
@@ -167,19 +152,19 @@ describe("NetworkGate", () => {
     }
   });
 
-  it("never waits for ever: a check that does not answer ends with Try again", async () => {
+  it("never waits for ever: a read that does not answer ends, within the check's limit, with Try again", async () => {
     jest.useFakeTimers();
     try {
       const check = jest
-        .fn<Promise<"ok">, []>()
-        .mockReturnValueOnce(new Promise(() => undefined))
+        .fn<Promise<NetworkCheck>, []>()
+        .mockImplementationOnce(() => checkNetwork(() => new Promise(() => undefined), MAINNET))
         .mockResolvedValueOnce("ok");
       await render(
         <NetworkGate check={check} network={network}>
           <Text>The wallet</Text>
         </NetworkGate>,
       );
-      await act(() => jest.advanceTimersByTimeAsync(WAIT_LIMIT_MS.check));
+      await act(() => jest.advanceTimersByTimeAsync(NETWORK_CHECK_LIMIT_MS));
       expect(screen.getByText(CANNOT_REACH)).toBeOnTheScreen();
       await fireEvent.press(screen.getByRole("button", { name: "Try again" }));
       await act(() => jest.advanceTimersByTimeAsync(0));

@@ -177,13 +177,10 @@ describe("TradeSheet", () => {
     expect(screen.getByText(/^Receive at least 0\.42/)).toBeOnTheScreen();
     expect(screen.getByText("Included in the fee")).toBeOnTheScreen();
     expect(screen.getByText(/^Price held for \d+ seconds?\.$/)).toBeOnTheScreen();
-    expect(
-      screen.getByText("NVDAx is a tracker, not a share, and its issuer keeps control over it."),
-    ).toBeOnTheScreen();
-    expect(screen.getByText("This portfolio's trades and holdings are public.")).toBeOnTheScreen();
     expect(screen.queryByText(/gas|SOL\b|swap|slippage/i)).toBeNull();
     await press("Read the risks");
-    expect(screen.getByText("What a tracker is")).toBeOnTheScreen();
+    expect(screen.getByRole("header", { name: "What a tracker is" })).toBeOnTheScreen();
+    expect(screen.queryByRole("button", { name: "Confirm buy" })).toBeNull();
     await press("Back");
     await press("Confirm buy");
     expect(await screen.findByText(/^Bought 0\.42/)).toBeOnTheScreen();

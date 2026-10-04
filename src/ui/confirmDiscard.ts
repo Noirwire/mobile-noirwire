@@ -1,7 +1,5 @@
-import { commonCopy } from "@noirwire/shared/copy";
+import { discardPromptView } from "@noirwire/shared/presentation";
 import { Alert, Platform } from "react-native";
-
-export const DISCARD_TITLE = commonCopy.discardThis;
 
 /**
  * Asks before throwing away what someone has entered in a sheet. This and the
@@ -9,12 +7,13 @@ export const DISCARD_TITLE = commonCopy.discardThis;
  * has no native alert, so it asks with the browser's own dialog.
  */
 export function confirmDiscard(onDiscard: () => void) {
+  const prompt = discardPromptView();
   if (Platform.OS === "web") {
-    if (globalThis.confirm?.(DISCARD_TITLE)) onDiscard();
+    if (globalThis.confirm?.(`${prompt.title}\n\n${prompt.body}`)) onDiscard();
     return;
   }
-  Alert.alert(DISCARD_TITLE, undefined, [
-    { text: commonCopy.keepEditing, style: "cancel" },
-    { text: commonCopy.discard, style: "destructive", onPress: onDiscard },
+  Alert.alert(prompt.title, prompt.body, [
+    { text: prompt.keep, style: "cancel" },
+    { text: prompt.discard, style: "destructive", onPress: onDiscard },
   ]);
 }

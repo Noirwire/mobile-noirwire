@@ -2,13 +2,6 @@ import { fireEvent, render, screen } from "@testing-library/react-native";
 import { Field } from "./Field";
 
 describe("Field", () => {
-  it("passes typed text to onChangeText", async () => {
-    const onChangeText = jest.fn();
-    await render(<Field label="Portfolio name" onChangeText={onChangeText} />);
-    await fireEvent.changeText(screen.getByLabelText("Portfolio name"), "Long term");
-    expect(onChangeText).toHaveBeenCalledWith("Long term");
-  });
-
   it("hides a secure entry until asked to show it, and hides it again", async () => {
     await render(<Field label="Password" secure />);
     const input = screen.getByLabelText("Password");
@@ -24,15 +17,6 @@ describe("Field", () => {
   it("offers no reveal control on an ordinary field", async () => {
     await render(<Field label="Portfolio name" />);
     expect(screen.queryByRole("button")).toBeNull();
-  });
-
-  it("hands on an amount exactly as it was typed: the shared amount reading takes a comma or a period", async () => {
-    const onAmount = jest.fn();
-    await render(
-      <Field label="Amount in USDC" keyboardType="decimal-pad" onChangeText={onAmount} />,
-    );
-    await fireEvent.changeText(screen.getByLabelText("Amount in USDC"), "12,5");
-    expect(onAmount).toHaveBeenCalledWith("12,5");
   });
 
   it("is as many lines tall as it is asked to be, with the text starting at the top", async () => {

@@ -1,26 +1,8 @@
+import type { NetworkCheck } from "@noirwire/shared/application";
 import { appCopy, mobileAppCopy } from "@noirwire/shared/copy";
 import { unreachableView } from "@noirwire/shared/presentation";
 
-export type NetworkCheck = "ok" | "wrongNetwork" | "unreachable";
-
 export type GateState = "checking" | NetworkCheck;
-
-/**
- * Which chain the RPC serves, by its genesis hash. A URL is only a claim;
- * the genesis hash cannot lie, so a build pointed at another network never
- * gets as far as showing a balance or a signing button. Anything that stops
- * the answer is the same as no answer.
- */
-export async function checkNetwork(
-  genesisHash: () => Promise<string>,
-  expected: string,
-): Promise<NetworkCheck> {
-  try {
-    return (await genesisHash()) === expected ? "ok" : "wrongNetwork";
-  } catch {
-    return "unreachable";
-  }
-}
 
 type GateView = {
   /** Null while checking: the splash shows only the mark. */
