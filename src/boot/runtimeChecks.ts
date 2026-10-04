@@ -1,3 +1,5 @@
+import { mnemonicToSeedSync } from "@/platform/phraseSeed";
+
 /**
  * What the wallet needs from the JavaScript runtime before it may run. Each
  * check is a small known-answer test, so a polyfill that exists but computes
@@ -9,9 +11,11 @@ type Runtime = Pick<
   "crypto" | "TextEncoder" | "TextDecoder" | "URL" | "atob" | "btoa"
 >;
 
+type SeedOf = (phrase: string) => Uint8Array;
+
 type RuntimeCheck = {
   name: string;
-  passes: (runtime: Runtime) => boolean | Promise<boolean>;
+  passes: (runtime: Runtime, seedOf: SeedOf) => boolean | Promise<boolean>;
 };
 
 const KDF_ITERATIONS = 1000;
@@ -87,6 +91,16 @@ function normalizesNfkc() {
   return "ﬁ".normalize("NFKC") === "fi" && "Å".normalize("NFKC") === "Å";
 }
 
+const KNOWN_PHRASE =
+  "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
+const KNOWN_SEED =
+  "5eb00bbddcf069084889a8ab9155568165f5c453ccb85e70811aaed6f6da5fc19a5ac40b389cd370d086206dec8aa6c43daea6690f20ad3d8d48b2d2ce9e38e4";
+
+/** Every key comes from the phrase's seed: a seed worked out wrongly opens somebody else's addresses. */
+function phraseDerivesItsSeed(_runtime: Runtime, seedOf: SeedOf) {
+  return hex(seedOf(KNOWN_PHRASE)) === KNOWN_SEED;
+}
+
 const CHECKS: RuntimeCheck[] = [
   { name: "crypto.getRandomValues", passes: randomValuesAreRandom },
   { name: "crypto.subtle", passes: subtleSealsAndOpens },
@@ -95,14 +109,18 @@ const CHECKS: RuntimeCheck[] = [
   { name: "URL", passes: urlParses },
   { name: "atob and btoa", passes: base64RoundTrips },
   { name: "String.prototype.normalize", passes: normalizesNfkc },
+  { name: "Recovery phrase seed", passes: phraseDerivesItsSeed },
 ];
 
 /** The names of the checks that failed. A check that throws has failed. */
-export async function failedRuntimeChecks(runtime: Runtime = globalThis): Promise<string[]> {
+export async function failedRuntimeChecks(
+  runtime: Runtime = globalThis,
+  seedOf: SeedOf = mnemonicToSeedSync,
+): Promise<string[]> {
   const results = await Promise.all(
     CHECKS.map(async ({ name, passes }) => {
       try {
-        return (await passes(runtime)) ? null : name;
+        return (await passes(runtime, seedOf)) ? null : name;
       } catch {
         return name;
       }

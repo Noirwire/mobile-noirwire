@@ -78,4 +78,10 @@ describe("failedRuntimeChecks", () => {
     expect(await failedRuntimeChecks(working)).toEqual(["String.prototype.normalize"]);
     normalize.mockRestore();
   });
+
+  it("names a recovery phrase seed that is worked out wrongly", async () => {
+    expect(await failedRuntimeChecks(working, () => new Uint8Array(64))).toEqual([
+      "Recovery phrase seed",
+    ]);
+  });
 });
