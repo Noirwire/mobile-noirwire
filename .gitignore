@@ -20,11 +20,21 @@ expo-env.d.ts
 *.key
 *.mobileprovision
 *.keystore
+*.pem
+credentials/
+google-services.json
+GoogleService-Info.plist
 
 # Environment
 .env
 .env.*
 !.env.example
+
+# Build output
+/build/
+*.apk
+*.aab
+*.ipa
 
 # Tooling
 coverage/
@@ -33,3 +43,5 @@ playwright-report/
 *.tsbuildinfo
 npm-debug.*
 .DS_Store
+*.log
+.idea/
