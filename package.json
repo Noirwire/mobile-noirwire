@@ -21,7 +21,8 @@
     "test": "jest",
     "test:coverage": "jest --ci --coverage --coverageReporters=text-summary --coverageReporters=json-summary",
     "test:e2e": "playwright test",
-    "doctor": "npx --yes expo-doctor"
+    "doctor": "npx --yes expo-doctor",
+    "android:ports": "bash scripts/forward-ports.sh"
   },
   "dependencies": {
     "@expo-google-fonts/figtree": "^0.4.1",

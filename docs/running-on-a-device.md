@@ -78,6 +78,20 @@ adb reverse tcp:8081 tcp:8081
 
 Then open the dev build against `http://localhost:8081` instead of the LAN address Metro printed.
 
+### The app worked, and now shows a white screen or "can't show your balances"
+
+**Symptom.** A dev build that was working opens to a blank white screen, or opens but says it cannot show balances, or an import cannot finish.
+
+**Cause.** The port forwards are gone. `adb reverse` forwards last only while the device stays connected: unplugging the cable, restarting the phone or the emulator, or adb restarting drops them silently. Without port 8081 the dev build cannot load the app (white screen); without port 3000 it cannot reach a local relay (no balances, no import).
+
+**Fix.**
+
+```bash
+npm run android:ports   # forwards 8081 and 3000 to every connected device
+```
+
+Then reopen the app. `adb reverse --list` shows what is forwarded right now; with a phone and an emulator both attached, add `-s <serial>`.
+
 ### "NoirWire cannot run safely on this device: App configuration"
 
 Symptom: the app installs and opens, but immediately shows this failure screen with no further detail (in a production build).

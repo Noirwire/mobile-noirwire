@@ -149,6 +149,8 @@ Every `EXPO_PUBLIC_` value is compiled into the app and readable by anyone who h
 
 **`npm run android:debug` fails with "cannot write to emulator" or similar.** With no device attached, it cold-starts an emulator and tries to install the app before the emulator has finished booting. Run the command again once the emulator is up. With a phone and an emulator both attached, pick one explicitly: `npm run android:debug -- --device`.
 
+**It worked, and now the screen is white or balances will not load.** The `adb reverse` forwards are lost whenever the phone is unplugged or restarted. Run `npm run android:ports` and reopen the app.
+
 **Dev build on a phone can't reach Metro** ("Failed to connect to /192.168.x.x:8081"). macOS's firewall blocks the phone's incoming connection to Metro on the Mac. With the phone on USB: `adb reverse tcp:8081 tcp:8081`, then open the dev build against `http://localhost:8081` instead of the LAN address Metro printed.
 
 **The app shows "NoirWire cannot run safely on this device: App configuration" with no further detail.** This means `.env` is missing (the `cp .env.example .env` step above is easy to miss) or carries a value the app rejects, such as the placeholder `https://relay.example.com` left unedited. Create or fix `.env` as described in step 3 above, then restart Metro with `npm start -- --clear` - changes to `.env` are not picked up by a running Metro. A development build also prints the specific error under "App configuration" on that screen and to the console, so a missing or wrong setting names itself.
