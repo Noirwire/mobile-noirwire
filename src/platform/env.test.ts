@@ -3,6 +3,8 @@ import { mobileEnv } from "./env";
 const settings = (apiUrl: string | undefined, network: string | undefined = "devnet") => ({
   network,
   apiUrl,
+  referralAccount: undefined,
+  feeBps: undefined,
   development: false,
 });
 
@@ -14,6 +16,46 @@ describe("mobileEnv", () => {
       feeBps: 0,
       apiBaseUrl: "https://api.noirwire.com",
     });
+  });
+
+  it("reads the referral account and fee when both are set", () => {
+    const result = mobileEnv({
+      ...settings("https://api.noirwire.com"),
+      referralAccount: "Fps2W6upBuMTgZpBsjgHbsjVVBthkaMfgaWfTXeKhrZw",
+      feeBps: "50",
+    });
+    expect(result.referralAccount).toBe("Fps2W6upBuMTgZpBsjgHbsjVVBthkaMfgaWfTXeKhrZw");
+    expect(result.feeBps).toBe(50);
+  });
+
+  it("refuses a referral account with no fee", () => {
+    expect(() =>
+      mobileEnv({
+        ...settings("https://api.noirwire.com"),
+        referralAccount: "Fps2W6upBuMTgZpBsjgHbsjVVBthkaMfgaWfTXeKhrZw",
+        feeBps: undefined,
+      }),
+    ).toThrow(/Set both the Jupiter referral account and the NoirWire fee, or neither/);
+  });
+
+  it("refuses a fee with no referral account", () => {
+    expect(() =>
+      mobileEnv({
+        ...settings("https://api.noirwire.com"),
+        referralAccount: undefined,
+        feeBps: "50",
+      }),
+    ).toThrow(/Set both the Jupiter referral account and the NoirWire fee, or neither/);
+  });
+
+  it("names the fee variables in the hint when a fee setting is refused", () => {
+    expect(() =>
+      mobileEnv({
+        ...settings("https://api.noirwire.com"),
+        referralAccount: undefined,
+        feeBps: "50",
+      }),
+    ).toThrow(/EXPO_PUBLIC_JUPITER_REFERRAL_ACCOUNT and EXPO_PUBLIC_NOIRWIRE_FEE_BPS/);
   });
 
   it("refuses an unknown network", () => {
@@ -28,7 +70,12 @@ describe("mobileEnv", () => {
   });
 
   it("allows plain http to a development machine in a development build only", () => {
-    const local = { network: "devnet", apiUrl: "http://localhost:4000" };
+    const local = {
+      network: "devnet",
+      apiUrl: "http://localhost:4000",
+      referralAccount: undefined,
+      feeBps: undefined,
+    };
     expect(mobileEnv({ ...local, development: true }).apiBaseUrl).toBe("http://localhost:4000");
     expect(() => mobileEnv({ ...local, development: false })).toThrow(/https/);
   });

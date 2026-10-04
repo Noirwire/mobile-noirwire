@@ -92,10 +92,11 @@ npm ci
 cp .env.example .env
 ```
 
-Fill in the two values (both are explained inline in `.env.example`):
+Fill in the values (all are explained inline in `.env.example`):
 
 - `EXPO_PUBLIC_API_URL`: the NoirWire API the app talks to. Either the deployed API over https (`https://api.noirwire.com`), or the API running locally (`http://localhost:4000`, with `adb reverse tcp:4000 tcp:4000` on Android) - see the comments in `.env.example` for the local setup.
 - `EXPO_PUBLIC_SOLANA_NETWORK`: `mainnet` or `devnet`, matching whichever API you pointed at.
+- `EXPO_PUBLIC_JUPITER_REFERRAL_ACCOUNT` and `EXPO_PUBLIC_NOIRWIRE_FEE_BPS`: NoirWire's trading fee, collected through Jupiter's referral program. Both or neither - a fee with nowhere to go is refused. These must match the web app's own values, since the Costs screen on each states the same percentage.
 
 **4. Build and install a dev build**
 
@@ -138,12 +139,14 @@ npm run web            # the app in a browser, for a quick look
 
 ### Environment
 
-| Variable                     | Purpose                                                         |
-| ---------------------------- | --------------------------------------------------------------- |
-| `EXPO_PUBLIC_API_URL`        | Origin of the NoirWire API, such as `https://api.noirwire.com`. |
-| `EXPO_PUBLIC_SOLANA_NETWORK` | `mainnet` or `devnet`.                                          |
+| Variable                               | Purpose                                                                                              |
+| -------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `EXPO_PUBLIC_API_URL`                  | Origin of the NoirWire API, such as `https://api.noirwire.com`.                                      |
+| `EXPO_PUBLIC_SOLANA_NETWORK`           | `mainnet` or `devnet`.                                                                               |
+| `EXPO_PUBLIC_JUPITER_REFERRAL_ACCOUNT` | The Jupiter referral account NoirWire's trading fee is paid to. Both this and the fee, or neither.   |
+| `EXPO_PUBLIC_NOIRWIRE_FEE_BPS`         | NoirWire's trading fee in basis points (50 = 0.5%), 50-255. Must match the referral account's setup. |
 
-Every `EXPO_PUBLIC_` value is compiled into the app and readable by anyone who has it, so nothing secret belongs in them. Both are checked at start (`src/platform/env.ts`, by the shared package's rules): the API must be an https origin with no path (plain http only in a development build, and only to `localhost`, `127.0.0.1` or the Android emulator's `10.0.2.2`). A bad value, or a missing `.env`, stops the app on the runtime failure screen - in a development build, that screen also names the underlying error.
+Every `EXPO_PUBLIC_` value is compiled into the app and readable by anyone who has it, so nothing secret belongs in them. All are checked at start (`src/platform/env.ts`, by the shared package's rules): the API must be an https origin with no path (plain http only in a development build, and only to `localhost`, `127.0.0.1` or the Android emulator's `10.0.2.2`); the referral account and the fee must both be set or both unset. A bad value, or a missing `.env`, stops the app on the runtime failure screen - in a development build, that screen also names the underlying error.
 
 ### Troubleshooting
 

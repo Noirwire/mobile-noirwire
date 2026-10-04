@@ -1,4 +1,6 @@
 import { errorsCopy } from "@noirwire/shared/copy";
+import { jupiterReferralAccount, noirwireFeeBps } from "@noirwire/shared/infrastructure";
+import type { Env } from "@noirwire/shared/platform";
 import { getSnapshot } from "@noirwire/shared/wallet";
 import { act, fireEvent, screen, waitFor } from "@testing-library/react-native";
 import {
@@ -28,10 +30,12 @@ type Setup = {
   /** Changes the venue, the relayer or the chain before the sheet opens. */
   chain?: (chain: FakeChain) => void;
   online?: boolean;
+  /** Overrides the installed test env, e.g. to switch NoirWire's trade fee on. */
+  env?: Partial<Env>;
 };
 
 async function open(setup: Setup = {}) {
-  installTestPlatform();
+  installTestPlatform(undefined, setup.env);
   installFakePrices();
   const chain = fakeChain();
   setup.chain?.(chain);
@@ -190,6 +194,26 @@ describe("TradeSheet", () => {
     expect(getSnapshot()!.portfolios[0].pendingAction).toBeUndefined();
     await press("Done");
     expect(onClose).toHaveBeenCalled();
+  });
+
+  it("states NoirWire's fee on the review line and wires the order to the configured referral account", async () => {
+    const referralAccount = "Fps2W6upBuMTgZpBsjgHbsjVVBthkaMfgaWfTXeKhrZw";
+    await open({ env: { referralAccount, feeBps: 50 } });
+    await toReview();
+    expect(screen.getByText("Of which NoirWire")).toBeOnTheScreen();
+    expect(screen.getByText("0.50%")).toBeOnTheScreen();
+    // What the order-building code in the shared package reads to attach the
+    // fee to the Jupiter order: proving these resolve to the configured
+    // values is proving the order carries them, without sending anything.
+    expect(jupiterReferralAccount()).toBe(referralAccount);
+    expect(noirwireFeeBps()).toBe(50);
+  });
+
+  it("shows no NoirWire fee line on the review when the fee is unset", async () => {
+    await open();
+    await toReview();
+    expect(screen.queryByText("Of which NoirWire")).toBeNull();
+    expect(noirwireFeeBps()).toBe(0);
   });
 
   it("opens the holding on a first buy under the one confirmation, and says that cost is paid", async () => {

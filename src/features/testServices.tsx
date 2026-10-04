@@ -1,7 +1,9 @@
+import type { Env } from "@noirwire/shared/platform";
 import {
   installTestPlatform as installSharedTestPlatform,
   memoryVault,
   recordingTrack,
+  testEnv,
   type MemoryVault,
 } from "@noirwire/shared/testing";
 import { createWallet, lock, resetWallet, storeNewWallet } from "@noirwire/shared/wallet";
@@ -18,11 +20,16 @@ export const STRONG_PASSWORD = "harbor-velvet-orbit-canyon-meadow";
 
 /**
  * The shared test platform (every port in memory, a session that asks
- * nobody) over a vault the test can inspect, with every event recorded.
+ * nobody) over a vault the test can inspect, with every event recorded. An
+ * `env` override (e.g. a trading fee) replaces the default test env.
  */
-export function installTestPlatform(vault: MemoryVault = memoryVault()) {
+export function installTestPlatform(vault: MemoryVault = memoryVault(), env?: Partial<Env>) {
   const recorded = recordingTrack();
-  installSharedTestPlatform({ vault, track: recorded.track });
+  installSharedTestPlatform({
+    vault,
+    track: recorded.track,
+    ...(env ? { env: testEnv(env) } : {}),
+  });
   return { vault, events: recorded.events };
 }
 

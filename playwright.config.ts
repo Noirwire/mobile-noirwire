@@ -40,6 +40,8 @@ export default defineConfig({
     env: {
       EXPO_PUBLIC_API_URL: "https://api.noirwire.com",
       EXPO_PUBLIC_SOLANA_NETWORK: "mainnet",
+      EXPO_PUBLIC_JUPITER_REFERRAL_ACCOUNT: "Fps2W6upBuMTgZpBsjgHbsjVVBthkaMfgaWfTXeKhrZw",
+      EXPO_PUBLIC_NOIRWIRE_FEE_BPS: "50",
     },
     url: BASE_URL,
     reuseExistingServer: false,
