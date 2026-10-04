@@ -1,4 +1,9 @@
-import { settingsCopy, walletCopy } from "@noirwire/shared/copy";
+import {
+  mobileSettingsCopy,
+  mobileWalletCopy,
+  settingsCopy,
+  walletCopy,
+} from "@noirwire/shared/copy";
 import { useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { Button, Field, Notice, Screen } from "@/ui";
@@ -7,9 +12,7 @@ import { layout } from "@/ui/theme";
 import { NewPasswordFields } from "../password/NewPasswordFields";
 import { useNewPassword } from "../password/newPassword";
 import { useServices } from "../services";
-import { mobileUnlockCopy } from "../unlock/copy";
 import { updatePassword } from "../wallet/walletActions";
-import { mobileSettingsCopy } from "./copy";
 
 const copy = settingsCopy.password;
 
@@ -40,7 +43,7 @@ export function PasswordScreen() {
       biometric,
       current,
       model.password,
-      mobileUnlockCopy.prompt,
+      mobileWalletCopy.unlock.prompt,
     );
     setBusy(false);
     if (result.outcome === "changed") {

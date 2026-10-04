@@ -1,5 +1,5 @@
-import { runLegs, type LegOutcome } from "@noirwire/shared/application";
-import { commonCopy, mobilePieCopy, pieCopy } from "@noirwire/shared/copy";
+import { runLegs, type Attempt, type LegOutcome } from "@noirwire/shared/application";
+import { commonCopy, errorsCopy, mobilePieCopy, pieCopy } from "@noirwire/shared/copy";
 import {
   investFloor,
   planInvest,
@@ -36,10 +36,25 @@ import {
 } from "@noirwire/shared/wallet";
 import { useState } from "react";
 import { StyleSheet, View } from "react-native";
-import { Button, EmptyState, Notice, Panel, Row, Sheet, StepList, Text } from "@/ui";
+import {
+  Button,
+  EmptyState,
+  Notice,
+  Panel,
+  Row,
+  Sheet,
+  StepList,
+  StillWorking,
+  Text,
+  useWaiting,
+  WaitingLine,
+  withinLimit,
+  WAITING_LIMIT_MS,
+} from "@/ui";
 import { errorHaptic, heavyHaptic, lightHaptic, successHaptic, warningHaptic } from "@/ui/haptics";
 import { colors, fonts, layout } from "@/ui/theme";
 import { useLivePrices, useWalletSnapshot } from "../markets/useMarketData";
+import { ActionOverdue } from "../network/ActionOverdue";
 import { PendingNote } from "../network/PendingNote";
 import { usePendingBlock } from "../network/usePendingBlock";
 import { useServices } from "../services";
@@ -93,6 +108,11 @@ export function PieOrderSheet({ portfolioId, mode, onClose, onAddMoney }: PieOrd
   const [approval, setApproval] = useState<Approval | null>(null);
   const [runningSide, setRunningSide] = useState<Side>(mode === "invest" ? "buy" : "sell");
   const [closing, setClosing] = useState<string | null>(null);
+  const pricing = useWaiting(step === "pricing", "review");
+  // Each order gets the action's limit, and a question waiting for an answer is not a wait.
+  const working = useWaiting(step === "progress" && approval === null, "action", {
+    limitMs: WAITING_LIMIT_MS.action * Math.max(outcomes.length, 1),
+  });
 
   const title = portfolio
     ? mode === "invest"
@@ -126,7 +146,10 @@ export function PieOrderSheet({ portfolioId, mode, onClose, onAddMoney }: PieOrd
     setStep("pricing");
     const orders: TradePlan[] = [];
     for (const leg of legs) {
-      const quoted = await service.quote(portfolioId, side, leg.symbol, leg.amount);
+      const quoted = await withinLimit(
+        service.quote(portfolioId, side, leg.symbol, leg.amount),
+        WAITING_LIMIT_MS.review,
+      ).catch(() => ({ error: errorsCopy.trade.noPrice }));
       if ("error" in quoted) {
         setNotice(copy.legFailed(leg.symbol, quoted.error));
         return setStep("input");
@@ -134,7 +157,10 @@ export function PieOrderSheet({ portfolioId, mode, onClose, onAddMoney }: PieOrd
       orders.push(quoted.plan);
     }
     try {
-      const reviewed = await service.reviewCost(portfolioId, orders, false);
+      const reviewed = await withinLimit(
+        service.reviewCost(portfolioId, orders, false),
+        WAITING_LIMIT_MS.review,
+      );
       const spent = side === "buy" ? legs.reduce((sum, leg) => sum + leg.usd, 0) : 0;
       setPriced({
         side,
@@ -153,7 +179,10 @@ export function PieOrderSheet({ portfolioId, mode, onClose, onAddMoney }: PieOrd
   async function submit(
     plan: TradePlan,
   ): Promise<{ ok: true; unconfirmed?: boolean } | { error: string }> {
-    const result = await service.place(portfolioId, plan, {});
+    const result = await service
+      .place(portfolioId, plan, {})
+      // Thrown past the use case's own answers: whether it was placed is not known.
+      .catch((): Attempt<TradePlan> => ({ kind: "unknown", completed: [] }));
     if (result.kind === "confirmed") {
       lightHaptic();
       return result.settlement === "balancesEstimated"
@@ -183,7 +212,12 @@ export function PieOrderSheet({ portfolioId, mode, onClose, onAddMoney }: PieOrd
     if (opening) {
       setCovering(true);
       const symbols = legs.filter((leg) => leg.side === "buy").map((leg) => leg.symbol);
-      const result = await service.openHoldings(portfolioId, symbols, cost.feeRaw);
+      const result = await service
+        .openHoldings(portfolioId, symbols, cost.feeRaw)
+        .catch((): Awaited<ReturnType<typeof service.openHoldings>> => ({
+          kind: "unknown",
+          completed: [],
+        }));
       setCovering(false);
       if (result.kind !== "confirmed") {
         errorHaptic();
@@ -235,7 +269,10 @@ export function PieOrderSheet({ portfolioId, mode, onClose, onAddMoney }: PieOrd
     }
     // The sells landed: the buys are planned from the cash they really returned, read from the chain.
     const cashBefore = cash;
-    if (!(await service.refresh(portfolioId))) return finish(final, copy.proceedsUnread);
+    const reread = await withinLimit(service.refresh(portfolioId), WAITING_LIMIT_MS.content).catch(
+      () => false,
+    );
+    if (!reread) return finish(final, copy.proceedsUnread);
     const after = currentPortfolio(portfolioId);
     if (!after) return finish(final, copy.proceedsUnread);
     const proceeds = Math.max(cashOf(after) - cashBefore, 0);
@@ -245,7 +282,7 @@ export function PieOrderSheet({ portfolioId, mode, onClose, onAddMoney }: PieOrd
     await price("buy", buys, proceeds);
   }
 
-  const busy = step === "pricing" || step === "progress";
+  const busy = step === "pricing" || (step === "progress" && !working.overdue);
   const dirty = amountText !== "" && step !== "result";
   const back =
     step === "review"
@@ -343,9 +380,9 @@ export function PieOrderSheet({ portfolioId, mode, onClose, onAddMoney }: PieOrd
     );
   } else if (step === "pricing") {
     body = (
-      <Text tone="dim" style={styles.centred}>
-        {copy.pricing}
-      </Text>
+      <View style={styles.centred}>
+        <WaitingLine waiting={{ ...pricing, label: copy.pricing }} />
+      </View>
     );
   } else if (step === "risks") {
     body = <RiskSections />;
@@ -454,9 +491,16 @@ export function PieOrderSheet({ portfolioId, mode, onClose, onAddMoney }: PieOrd
         )}
         <StepList steps={pieLegSteps(outcomes, nameOf)} />
         {step === "result" && closing && <Text variant="faint">{closing}</Text>}
+        {step === "progress" && !working.overdue && <StillWorking waiting={working} />}
+        {step === "progress" && <ActionOverdue waiting={working} />}
       </>
     );
-    footer = step === "result" ? <Button label={commonCopy.done} onPress={onClose} /> : undefined;
+    footer =
+      step === "result" ? (
+        <Button label={commonCopy.done} onPress={onClose} />
+      ) : working.overdue ? (
+        <Button variant="quiet" label={commonCopy.close} onPress={onClose} />
+      ) : undefined;
   }
 
   return (
@@ -486,7 +530,7 @@ const styles = StyleSheet.create({
   medium: { fontFamily: fonts.medium },
   tabular: { fontVariant: ["tabular-nums"] },
   link: { alignSelf: "flex-start", paddingHorizontal: 0 },
-  centred: { textAlign: "center", paddingVertical: layout.section },
+  centred: { alignItems: "center", paddingVertical: layout.section },
   order: { gap: layout.hairline, paddingVertical: layout.tight },
   ruled: { borderTopWidth: 1, borderTopColor: colors["line-subtle"] },
   orderHead: { flexDirection: "row", gap: layout.tight },

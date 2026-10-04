@@ -1,4 +1,10 @@
-import { costAgreed, reviewSend, send, sendDraft } from "@noirwire/shared/application";
+import {
+  balancesUnread,
+  costAgreed,
+  reviewSend,
+  send,
+  sendDraft,
+} from "@noirwire/shared/application";
 import { sendCopy } from "@noirwire/shared/copy";
 import {
   classifyRecipient,
@@ -14,8 +20,11 @@ import {
 import { describeFailure, sendAssets, type SendStage } from "@noirwire/shared/presentation";
 import { isLivePrice, isPosition, price, unitsPerHeld } from "@noirwire/shared/wallet";
 import { useEffect, useRef, useState } from "react";
+import { useWaiting, WAITING_LIMIT_MS, withinLimit } from "@/ui/useWaiting";
+import { phoneCopy } from "../phoneCopy";
 import { useServices } from "../services";
 import { phoneCost } from "../network/cost";
+import { assetDecimals } from "../network/decimals";
 import { useMoney } from "../network/money";
 import { usePendingBlock } from "../network/usePendingBlock";
 import { useWalletSnapshot } from "../network/useWalletSnapshot";
@@ -59,9 +68,15 @@ export function useSendFlow(portfolioId: string) {
     lastFour: "",
   });
   const [stage, setStage] = useState<SendStage>("checking");
-  const [outcome, setOutcome] = useState<{ kind: "landed" | "unknown"; amount: number } | null>(
-    null,
-  );
+  const [outcome, setOutcome] = useState<{
+    kind: "landed" | "unknown";
+    amount: number;
+    /** It landed, and the new balance could not be read back yet. */
+    balancesUnread: boolean;
+  } | null>(null);
+  /** Why a review could not be prepared, said on the form. */
+  const [prepareFailure, setPrepareFailure] = useState<string | null>(null);
+  const working = useWaiting(step === "progress", "action");
   const live = useRef(true);
   useEffect(
     () => () => {
@@ -72,6 +87,7 @@ export function useSendFlow(portfolioId: string) {
 
   const heldRaw = portfolio?.holdings.find((holding) => holding.symbol === symbol)?.amount ?? 0;
   const units = unitsPerHeld(symbol);
+  const decimals = assetDecimals(symbol);
   const destination = recipient.trim();
   const offCurve = isOffCurveAddress(destination);
   const ownAddress = portfolio?.address ?? "";
@@ -79,6 +95,7 @@ export function useSendFlow(portfolioId: string) {
     heldRaw,
     unitsPerHeld: units,
     amountText,
+    decimals,
     destination,
     isAddress: isRecipientAddress(destination),
     offCurve,
@@ -144,18 +161,26 @@ export function useSendFlow(portfolioId: string) {
     setAmountTouched(true);
     setPreparing(true);
     setFailure(null);
+    setPrepareFailure(null);
     setReviewNotice(null);
     setChecks({ checkedAddress: false, acceptedLink: false, lastFour: "" });
-    const read = await readRecipient();
-    if (read !== "ok") {
+    // The recipient is read and the cost worked out within the review's
+    // limit: one that does not answer ends here, with the form usable again.
+    try {
+      const next = await withinLimit(
+        readRecipient().then((read) => (read === "ok" ? priced() : null)),
+        WAITING_LIMIT_MS.review,
+      );
+      if (!live.current) return;
       setPreparing(false);
-      return;
+      if (!next) return;
+      setReview(next);
+      setStep("review");
+    } catch {
+      if (!live.current) return;
+      setPreparing(false);
+      setPrepareFailure(phoneCopy.overdue.review);
     }
-    const next = await priced();
-    if (!live.current) return;
-    setPreparing(false);
-    setReview(next);
-    setStep("review");
   }
 
   /**
@@ -177,7 +202,16 @@ export function useSendFlow(portfolioId: string) {
     setReviewNotice(null);
     setStage("checking");
     setStep("progress");
-    const changed = await recheck(review);
+    let changed: Awaited<ReturnType<typeof recheck>>;
+    try {
+      changed = await withinLimit(recheck(review), WAITING_LIMIT_MS.review);
+    } catch {
+      // Nothing has been signed yet: the review comes back and says so.
+      if (!live.current) return;
+      setFailure(phoneCopy.overdue.review);
+      setStep("review");
+      return;
+    }
     if (!live.current) return;
     if (changed === "refused") {
       setStep("details");
@@ -197,18 +231,27 @@ export function useSendFlow(portfolioId: string) {
         send: { ...sendInput, amount: review.amount },
         network: costAgreed(review.cost),
       },
-    );
+      // Thrown past the use case's own answers: whether it was sent is not known.
+    ).catch((): Awaited<ReturnType<typeof send>> => ({ kind: "unknown", completed: [] }));
     if (!live.current) return;
     if (result.kind === "confirmed" || result.kind === "unknown") {
       setOutcome({
         kind: result.kind === "confirmed" ? "landed" : "unknown",
         amount: review.amount,
+        balancesUnread: balancesUnread(result),
       });
       setStep("result");
       return;
     }
     const failed = describeFailure(result, "mobile");
-    if (failed.reviewAgain) setReview(await priced(failed.reviewAgain === "other"));
+    if (failed.reviewAgain) {
+      const again = await withinLimit(
+        priced(failed.reviewAgain === "other"),
+        WAITING_LIMIT_MS.review,
+      ).catch(() => null);
+      if (!live.current) return;
+      if (again) setReview(again);
+    }
     setFailure(failed.error);
     setStep("review");
   }
@@ -243,6 +286,7 @@ export function useSendFlow(portfolioId: string) {
     preparing,
     heldRaw,
     units,
+    decimals,
     destination,
     offCurve,
     ownAddress,
@@ -254,6 +298,9 @@ export function useSendFlow(portfolioId: string) {
     setChecks,
     stage,
     outcome,
+    prepareFailure,
+    /** The progress step's wait: its calm line, and whether it has run past its limit. */
+    working,
     classification: classifyRecipient(destination, wallet),
     pricePerHeld: isLivePrice(symbol) ? price(symbol) : null,
     paste,

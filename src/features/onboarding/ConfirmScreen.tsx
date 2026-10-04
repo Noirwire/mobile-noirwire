@@ -4,6 +4,7 @@ import { AccessibilityInfo, StyleSheet, View } from "react-native";
 import { Button, Notice, Screen, Text } from "@/ui";
 import { errorHaptic, lightHaptic, successHaptic } from "@/ui/haptics";
 import { layout } from "@/ui/theme";
+import { ProtectionRefused } from "@/ui/ProtectionRefused";
 import { useCaptureProtection } from "@/ui/useCaptureProtection";
 import { QuizChoice } from "./QuizChoice";
 import {
@@ -32,7 +33,7 @@ export function ConfirmScreen({
   onPassed,
   onShowPhrase,
 }: ConfirmScreenProps) {
-  useCaptureProtection(true);
+  const protection = useCaptureProtection(true);
   const position = quiz.positions[quiz.step] + 1;
   const question = copy.whichWord(position);
 
@@ -58,7 +59,9 @@ export function ConfirmScreen({
         </Text>
         <Text tone="dim">{mobile.intro}</Text>
       </View>
-      {quiz.restarted ? (
+      {!protection.ready ? (
+        <ProtectionRefused protection={protection} />
+      ) : quiz.restarted ? (
         <View style={styles.group}>
           <Notice tone="warning">{mobile.restart}</Notice>
           <Button label={mobile.showAgain} onPress={onShowPhrase} />

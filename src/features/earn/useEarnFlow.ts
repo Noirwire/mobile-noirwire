@@ -1,4 +1,5 @@
 import {
+  balancesUnread,
   costAgreed,
   earn,
   earnDraft,
@@ -10,6 +11,7 @@ import type { NetworkCost } from "@noirwire/shared/domain";
 import type { EarnPosition } from "@noirwire/shared/infrastructure";
 import { describeFailure, type EarnPortfolio } from "@noirwire/shared/presentation";
 import { useEffect, useRef, useState } from "react";
+import { useWaiting, WAITING_LIMIT_MS, withinLimit } from "@/ui/useWaiting";
 import { useServices } from "../services";
 import { phoneCost } from "../network/cost";
 import { useMoney } from "../network/money";
@@ -43,7 +45,10 @@ export function useEarnFlow(
     outcome: "landed" | "unknown";
     amount: number;
     fee: number;
+    /** It landed, and the new balances could not be read back yet. */
+    balancesUnread: boolean;
   } | null>(null);
+  const working = useWaiting(step === "progress", "action");
   const pending = usePendingBlock(chosen);
   const live = useRef(true);
   useEffect(
@@ -78,7 +83,11 @@ export function useEarnFlow(
     if (!ready) return;
     let current = true;
     const id = chosen;
-    void priceCost().then((next) => current && setPriced({ for: id, cost: next }));
+    // A cost that cannot be worked out within the limit is unavailable, which
+    // the review says, instead of a Max button that never enables.
+    void withinLimit(priceCost(), WAITING_LIMIT_MS.review)
+      .catch((): NetworkCost => ({ kind: "unavailable" }))
+      .then((next) => current && setPriced({ for: id, cost: next }));
     return () => {
       current = false;
     };
@@ -98,16 +107,27 @@ export function useEarnFlow(
     const answer = await earn(
       { ...money.deps, chain: money.earnChain, refresh: money.refresh },
       { portfolioId: chosen, action, amount, network: costAgreed(cost) },
-    );
+      // Thrown past the use case's own answers: whether it was sent is not known.
+    ).catch((): Awaited<ReturnType<typeof earn>> => ({ kind: "unknown", completed: [] }));
     if (!live.current) return;
     if (answer.kind === "confirmed" || answer.kind === "unknown") {
-      setResult({ outcome: answer.kind === "confirmed" ? "landed" : "unknown", amount, fee });
+      setResult({
+        outcome: answer.kind === "confirmed" ? "landed" : "unknown",
+        amount,
+        fee,
+        balancesUnread: balancesUnread(answer),
+      });
       setStep("result");
       return;
     }
     const failed = describeFailure(answer, "mobile");
     if (failed.reviewAgain) {
-      setPriced({ for: chosen, cost: await priceCost(failed.reviewAgain === "other") });
+      const again = await withinLimit(
+        priceCost(failed.reviewAgain === "other"),
+        WAITING_LIMIT_MS.review,
+      ).catch((): NetworkCost => ({ kind: "unavailable" }));
+      if (!live.current) return;
+      setPriced({ for: chosen, cost: again });
     }
     setFailure(failed.error);
     setStep("review");
@@ -128,6 +148,8 @@ export function useEarnFlow(
     draft,
     failure,
     result,
+    /** The progress step's wait: its calm line, and whether it has run past its limit. */
+    working,
     confirm,
   };
 }

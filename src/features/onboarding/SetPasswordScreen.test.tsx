@@ -69,4 +69,17 @@ describe("SetPasswordScreen", () => {
     );
     vault.refuseWrites = false;
   });
+
+  it("checks strength with the dictionaries bundled in the app, with no network at all", async () => {
+    installTestPlatform();
+    const fetched = jest.fn(() => Promise.reject(new Error("offline")));
+    global.fetch = fetched as unknown as typeof fetch;
+    await renderWith(
+      await testServices({ useOnline: () => false }),
+      <SetPasswordScreen draft={createWallet()} origin="create" onSaved={jest.fn()} />,
+    );
+    await fireEvent.changeText(newField(), "harbor-velvet-orbit-canyon-meadow");
+    expect(await screen.findByText("Strong password.")).toBeOnTheScreen();
+    expect(fetched).not.toHaveBeenCalled();
+  });
 });

@@ -1,15 +1,14 @@
-import { walletCopy } from "@noirwire/shared/copy";
+import { mobileWalletCopy, walletCopy } from "@noirwire/shared/copy";
+import { isWrongPassword, unlockProblemText } from "@noirwire/shared/presentation";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { StyleSheet, View, type TextInput } from "react-native";
 import type { BiometricMethod } from "@/platform/biometricKeystore";
 import { Button, Divider, Field, Mark, Notice, Screen, Text } from "@/ui";
 import { errorHaptic, successHaptic } from "@/ui/haptics";
 import { layout } from "@/ui/theme";
-import { mobileResetCopy } from "../reset/copy";
 import { takeResetRefused } from "../reset/resetOutcome";
 import { useServices } from "../services";
 import { noteUnlocked, unlockWithPassword } from "../wallet/walletActions";
-import { isWrongPassword, mobileUnlockCopy, unlockProblemText } from "./copy";
 
 type UnlockScreenProps = { onReset: () => void };
 
@@ -30,7 +29,7 @@ export function UnlockScreen({ onReset }: UnlockScreenProps) {
   const [busy, setBusy] = useState(false);
   const [fieldError, setFieldError] = useState<string | null>(null);
   const [message, setMessage] = useState<Message | null>(() =>
-    takeResetRefused() ? { tone: "danger", text: mobileResetCopy.notRemoved } : null,
+    takeResetRefused() ? { tone: "danger", text: mobileWalletCopy.reset.notRemoved } : null,
   );
   const field = useRef<TextInput>(null);
   const prompted = useRef(false);
@@ -46,7 +45,7 @@ export function UnlockScreen({ onReset }: UnlockScreenProps) {
 
   async function unlockWithBiometrics(name: string) {
     setBusy(true);
-    const result = await biometric.unlock(mobileUnlockCopy.prompt);
+    const result = await biometric.unlock(mobileWalletCopy.unlock.prompt);
     setBusy(false);
     switch (result.kind) {
       case "unlocked":
@@ -54,13 +53,13 @@ export function UnlockScreen({ onReset }: UnlockScreenProps) {
         successHaptic();
         return;
       case "lockedOut":
-        setMessage({ tone: "info", text: mobileUnlockCopy.lockedOut(name) });
+        setMessage({ tone: "info", text: mobileWalletCopy.unlock.lockedOut(name) });
         break;
       case "changed":
-        setMessage({ tone: "info", text: mobileUnlockCopy.changed(name) });
+        setMessage({ tone: "info", text: mobileWalletCopy.unlock.changed(name) });
         break;
       case "refused":
-        setMessage({ tone: "danger", text: unlockProblemText(result.problem) });
+        setMessage({ tone: "danger", text: unlockProblemText(result.problem, "mobile") });
         break;
     }
     field.current?.focus();
@@ -89,7 +88,7 @@ export function UnlockScreen({ onReset }: UnlockScreenProps) {
       setFieldError(problem);
       setPassword("");
       field.current?.focus();
-    } else setMessage({ tone: "danger", text: unlockProblemText(problem) });
+    } else setMessage({ tone: "danger", text: unlockProblemText(problem, "mobile") });
   }
 
   return (
@@ -99,7 +98,7 @@ export function UnlockScreen({ onReset }: UnlockScreenProps) {
         <Text variant="display" accessibilityRole="header">
           {copy.title}
         </Text>
-        <Text tone="dim">{mobileUnlockCopy.lead}</Text>
+        <Text tone="dim">{mobileWalletCopy.unlock.lead}</Text>
       </View>
       {message && <Notice tone={message.tone}>{message.text}</Notice>}
       <View style={styles.group}>
@@ -126,7 +125,7 @@ export function UnlockScreen({ onReset }: UnlockScreenProps) {
         />
         {biometricOn && method && (
           <Button
-            label={mobileUnlockCopy.use(method.name)}
+            label={mobileWalletCopy.unlock.use(method.name)}
             variant="quiet"
             disabled={busy}
             onPress={() => void unlockWithBiometrics(method.name)}
@@ -135,7 +134,7 @@ export function UnlockScreen({ onReset }: UnlockScreenProps) {
       </View>
       <View style={styles.group}>
         <Divider />
-        <Text variant="faint">{mobileUnlockCopy.forgotten}</Text>
+        <Text variant="faint">{mobileWalletCopy.unlock.forgotten}</Text>
         <View style={styles.reset}>
           <Button label={copy.reset} variant="quiet" onPress={onReset} />
         </View>

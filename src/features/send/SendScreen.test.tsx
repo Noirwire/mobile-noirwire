@@ -1,7 +1,7 @@
 import { getSnapshot } from "@noirwire/shared/wallet";
 import { Keypair, PublicKey } from "@solana/web3.js";
 import { Buffer } from "buffer";
-import { fireEvent, screen } from "@testing-library/react-native";
+import { act, fireEvent, screen } from "@testing-library/react-native";
 import { useCameraPermissions } from "expo-camera";
 import {
   fakeChain,
@@ -12,6 +12,7 @@ import {
 } from "../network/testMoney";
 import type { AppServices } from "../services";
 import { forgetWallet, installTestPlatform, testServices } from "../testServices";
+import { WAITING_LIMIT_MS } from "@/ui";
 import { SendScreen } from "./SendScreen";
 
 jest.mock("expo-camera", () => {
@@ -22,7 +23,10 @@ jest.mock("expo-camera", () => {
   };
 });
 
-afterEach(() => forgetWallet());
+afterEach(() => {
+  jest.useRealTimers();
+  return forgetWallet();
+});
 
 const someone = () => Keypair.generate().publicKey.toBase58();
 
@@ -299,4 +303,70 @@ describe("SendScreen", () => {
     ).toBeOnTheScreen();
     expect(amountField()).toHaveDisplayValue("");
   });
+
+  it("says a landed send is sent when its new balance cannot be read back", async () => {
+    installTestPlatform();
+    const chain = fakeChain();
+    chain.unreadAfterAction = true;
+    await walletWith(chain);
+    await openSend(chain);
+    await toReview(someone(), "25");
+    await fireEvent.press(await screen.findByRole("button", { name: "Send" }));
+    expect(await screen.findByText("Sent 25.00 USDC")).toBeOnTheScreen();
+    expect(screen.getByText(/Balances will update shortly\.$/)).toBeOnTheScreen();
+    expect(screen.getByRole("button", { name: "Done" })).toBeOnTheScreen();
+  });
+
+  it("never leaves Review waiting: a check that does not answer ends, and the form is usable again", async () => {
+    installTestPlatform();
+    const chain = fakeChain();
+    await walletWith(chain);
+    const { money } = await openSend(chain);
+    money.checkRecipient = () => new Promise(() => undefined);
+    await fillIn(someone(), "10");
+    jest.useFakeTimers();
+    await fireEvent.press(screen.getByRole("button", { name: "Review" }));
+    await act(() => jest.advanceTimersByTimeAsync(WAITING_LIMIT_MS.review));
+    expect(
+      screen.getByText("We couldn't prepare your review. Nothing was sent. Try again."),
+    ).toBeOnTheScreen();
+    expect(screen.getByRole("button", { name: "Review" })).toBeEnabled();
+    expect(chain.calls).toHaveLength(0);
+  });
+
+  it("says a technical failure of the review in plain words", async () => {
+    installTestPlatform();
+    const chain = fakeChain();
+    await walletWith(chain);
+    const { money } = await openSend(chain);
+    money.sendChain.token = () => {
+      throw new Error("502 Bad Gateway from /api/relayer");
+    };
+    await fillIn(someone(), "10");
+    await fireEvent.press(screen.getByRole("button", { name: "Review" }));
+    expect(
+      await screen.findByText("We couldn't prepare your review. Nothing was sent. Try again."),
+    ).toBeOnTheScreen();
+    expect(screen.queryByText(/502|Gateway|relayer/)).toBeNull();
+  });
+
+  it("stops holding the sheet when a send never answers, without claiming it failed", async () => {
+    installTestPlatform();
+    const chain = fakeChain();
+    chain.beforeSigning = () => new Promise(() => undefined);
+    await walletWith(chain);
+    const { handlers } = await openSend(chain);
+    await toReview(someone(), "25");
+    jest.useFakeTimers();
+    await fireEvent.press(screen.getByRole("button", { name: "Send" }));
+    await act(() => jest.advanceTimersByTimeAsync(WAITING_LIMIT_MS.action));
+    expect(
+      screen.getByText(
+        "This is taking longer than it should. It may still go through, so check the balance and Activity before doing it again.",
+      ),
+    ).toBeOnTheScreen();
+    // The sheet's own Close, after the scrim and the header's control, which work again too.
+    await fireEvent.press(screen.getAllByRole("button", { name: "Close" }).at(-1)!);
+    expect(handlers.onClose).toHaveBeenCalled();
+  }, 30_000);
 });

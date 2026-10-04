@@ -1,5 +1,5 @@
 import type { Portfolio } from "@noirwire/shared/domain";
-import { getSnapshot } from "@noirwire/shared/wallet";
+import { getSnapshot, updateWallet } from "@noirwire/shared/wallet";
 import { act, fireEvent, screen, waitFor } from "@testing-library/react-native";
 import { AccessibilityInfo } from "react-native";
 import { copySecret } from "@/ui/secretClipboard";
@@ -33,14 +33,17 @@ async function walletWith(shape: (first: Portfolio) => Portfolio) {
   return wallet.portfolios[0];
 }
 
-async function show(id: string, overrides: { online?: boolean; initialPublic?: boolean } = {}) {
+async function show(
+  id: string,
+  overrides: { online?: boolean; initialPublic?: boolean; readsFail?: boolean } = {},
+) {
   const on = {
     onAction: jest.fn(),
     onBack: jest.fn(),
     onOpenPortfolio: jest.fn(),
     onSeeAllActivity: jest.fn(),
   };
-  const balances = fakeBalances();
+  const balances = fakeBalances(!overrides.readsFail);
   await renderScreen(
     await testServices({ useOnline: () => overrides.online ?? true }),
     <PortfolioScreen
@@ -215,5 +218,37 @@ describe("PortfolioScreen", () => {
     expect(await screen.findByText("Value at the time")).toBeOnTheScreen();
     await fireEvent.press(screen.getByRole("button", { name: "See all" }));
     expect(on.onSeeAllActivity).toHaveBeenCalled();
+  });
+
+  it("refuses a new name another portfolio already has", async () => {
+    const portfolio = await walletWith(invested);
+    await updateWallet((wallet) => ({
+      ...wallet,
+      portfolios: [
+        ...wallet.portfolios,
+        { ...wallet.portfolios[0], id: "other", label: "Trips", archivedAt: 1 },
+      ],
+    }));
+    await show(portfolio.id);
+    await fireEvent.press(screen.getByRole("button", { name: "Portfolio settings" }));
+    await fireEvent.changeText(screen.getByLabelText("Portfolio name"), "trips");
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "You already have a portfolio with that name. Choose another name.",
+    );
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+    await fireEvent.changeText(screen.getByLabelText("Portfolio name"), "Trips 2");
+    expect(screen.getByRole("button", { name: "Save" })).toBeEnabled();
+  });
+
+  it("says what may be out of date after a failed read, and asks again on Try again", async () => {
+    const portfolio = await walletWith(invested);
+    const { balances } = await show(portfolio.id, { readsFail: true });
+    expect(
+      await screen.findByText(
+        "We couldn't update your balances. What you see may be out of date. Pull down to try again.",
+      ),
+    ).toBeOnTheScreen();
+    await fireEvent.press(screen.getByRole("button", { name: "Try again" }));
+    await waitFor(() => expect(balances.calls).toHaveLength(2));
   });
 });

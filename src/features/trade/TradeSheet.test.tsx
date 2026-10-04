@@ -122,7 +122,7 @@ describe("TradeSheet", () => {
   it("reads a comma as the decimal separator", async () => {
     await open();
     await typeAmount("12,5");
-    expect(screen.getByLabelText("Spend $")).toHaveDisplayValue("12.5");
+    expect(screen.getByLabelText("Spend $")).toHaveDisplayValue("12,5");
     expect(screen.getByRole("button", { name: "Review buy" })).toBeEnabled();
   });
 
@@ -347,5 +347,38 @@ describe("TradeSheet", () => {
     await typeAmount("100");
     await press("Review buy");
     expect(await screen.findByText(errorsCopy.chain.noQuote)).toBeOnTheScreen();
+  });
+
+  it("never chooses a pie whose mix leaves the tracker out for the person", async () => {
+    await open({
+      portfolios: [
+        { label: "Core pie", cash: 100, pie: [{ symbol: "SPYx", weight: 100 }] },
+        { label: "Savings", cash: 20 },
+      ],
+    });
+    expect(screen.getByRole("radio", { name: /^Core pie/ })).not.toBeChecked();
+    expect(screen.getByRole("radio", { name: /^Savings/ })).toBeChecked();
+    expect(screen.getByRole("button", { name: "Continue with Savings" })).toBeEnabled();
+  });
+
+  it("chooses nothing when every portfolio is a pie without the tracker, and waits to be told", async () => {
+    await open({
+      portfolios: [
+        { label: "Core pie", cash: 100, pie: [{ symbol: "SPYx", weight: 100 }] },
+        { label: "Tech pie", cash: 100, pie: [{ symbol: "TSLAx", weight: 100 }] },
+      ],
+    });
+    expect(screen.getByRole("button", { name: "Continue" })).toBeDisabled();
+    await fireEvent.press(screen.getByRole("radio", { name: /^Tech pie/ }));
+    expect(screen.getByRole("button", { name: "Continue with Tech pie" })).toBeEnabled();
+  });
+
+  it("refuses an amount typed with more decimals than cash has, and says the smallest amount", async () => {
+    await open();
+    await typeAmount("12.1234567");
+    expect(
+      screen.getByText("That amount has too many decimals. The smallest amount is 0.000001 USDC."),
+    ).toBeOnTheScreen();
+    expect(screen.getByRole("button", { name: "Review buy" })).toBeDisabled();
   });
 });

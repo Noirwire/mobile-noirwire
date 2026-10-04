@@ -9,9 +9,14 @@ import {
   type FakeChain,
 } from "../network/testMoney";
 import { forgetWallet, installTestPlatform, testServices } from "../testServices";
+import { STILL_WORKING_AFTER_MS } from "@noirwire/shared/presentation";
+import { WAITING_LIMIT_MS } from "@/ui";
 import { FundScreen } from "./FundScreen";
 
-afterEach(() => forgetWallet());
+afterEach(() => {
+  jest.useRealTimers();
+  return forgetWallet();
+});
 
 const ARRIVAL_WAIT = { timeout: 8_000 };
 
@@ -253,4 +258,42 @@ describe("FundScreen", () => {
     });
     await waitFor(() => expect(getSnapshot()!.funding.pendingAction).toBeUndefined());
   });
+
+  it("refuses an amount with more decimals than USDC has, and says the smallest amount", async () => {
+    installTestPlatform();
+    const chain = fakeChain();
+    await walletWith(chain);
+    await openFund(chain);
+    expect(screen.queryByRole("alert")).toBeNull();
+    await fireEvent.changeText(amountField(), "10.1234567");
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "That amount has too many decimals. The smallest amount is 0.000001 USDC.",
+    );
+    expect(screen.getByRole("button", { name: "Review" })).toBeDisabled();
+  });
+
+  it("stops holding the sheet when a transfer never answers, without claiming it failed", async () => {
+    installTestPlatform();
+    const chain = fakeChain();
+    chain.beforeSigning = () => new Promise(() => undefined);
+    await walletWith(chain);
+    const { handlers } = await openFund(chain);
+    await fireEvent.changeText(amountField(), "100");
+    await fireEvent.press(screen.getByRole("button", { name: "Review" }));
+    jest.useFakeTimers();
+    await fireEvent.press(screen.getByRole("button", { name: "Confirm" }));
+    await act(() => jest.advanceTimersByTimeAsync(STILL_WORKING_AFTER_MS.action));
+    expect(
+      screen.getByText("Still working. You can leave this open; nothing more is needed from you."),
+    ).toBeOnTheScreen();
+    await act(() => jest.advanceTimersByTimeAsync(WAITING_LIMIT_MS.action));
+    expect(
+      screen.getByText(
+        "This is taking longer than it should. It may still go through, so check the balance and Activity before doing it again.",
+      ),
+    ).toBeOnTheScreen();
+    await fireEvent.press(screen.getAllByRole("button", { name: "Close" }).at(-1)!);
+    expect(handlers.onClose).toHaveBeenCalled();
+    jest.useRealTimers();
+  }, 30_000);
 });

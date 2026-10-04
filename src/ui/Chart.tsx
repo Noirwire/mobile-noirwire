@@ -1,9 +1,9 @@
+import { chartPaths } from "@noirwire/shared/design";
 import { useId, useState } from "react";
 import { View } from "react-native";
 import Svg, { Defs, LinearGradient, Path, Stop } from "react-native-svg";
 import { readAsOne } from "./accessibility";
-import { chartPaths } from "./chartPath";
-import { changeTone } from "./format";
+import { changeColor } from "./changeColor";
 import { colors } from "./theme";
 
 type ChartProps = {
@@ -20,7 +20,7 @@ export function Chart({ points, height = 200, label }: ChartProps) {
   const [width, setWidth] = useState(0);
   const fillId = useId();
   const paths = width > 0 ? chartPaths(points, width, height, PAD) : null;
-  const stroke = colors[changeTone((points.at(-1) ?? 0) - (points[0] ?? 0))];
+  const stroke = colors[changeColor((points.at(-1) ?? 0) - (points[0] ?? 0))];
 
   return (
     <View

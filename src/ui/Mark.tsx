@@ -1,7 +1,7 @@
 import { View } from "react-native";
 import Svg, { Path } from "react-native-svg";
 import { readAsOne } from "./accessibility";
-import { RAVEN_PATH, RAVEN_VIEWBOX } from "./brand-geometry";
+import { RAVEN_PATH, RAVEN_VIEWBOX } from "@noirwire/shared/design";
 import { colors, type ColorToken } from "./theme";
 
 type MarkProps = {

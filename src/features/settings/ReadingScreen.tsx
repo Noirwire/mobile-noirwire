@@ -1,7 +1,7 @@
+import { mobileSettingsCopy } from "@noirwire/shared/copy";
 import { StyleSheet, View } from "react-native";
 import { Panel, Screen, Text } from "@/ui";
 import { fonts, layout } from "@/ui/theme";
-import { mobileSettingsCopy } from "./copy";
 
 type Block = { title: string; body: string };
 

@@ -8,9 +8,10 @@ import { useServices } from "../services";
 
 type OfflineBannerProps = {
   /**
-   * Pinned over the top edge of the app, under the status bar, and passing
-   * every touch through to what is beneath it. Without it, the banner sits in
-   * the flow of a sheet's content.
+   * The app's own banner: it takes its place above everything else, under
+   * the status bar, and the screens begin beneath it, so it never lies over a
+   * header, a title or a control. Without it, the banner sits in the flow of
+   * a sheet's content.
    */
   pinned?: boolean;
 };
@@ -24,16 +25,13 @@ export function OfflineBanner({ pinned = false }: OfflineBannerProps) {
   const insets = useSafeAreaInsets();
   if (online) return null;
   return (
-    <View
-      pointerEvents="none"
-      accessibilityRole="alert"
-      accessibilityLiveRegion="polite"
-      style={[styles.banner, pinned && [styles.pinned, { top: insets.top + layout.hairline }]]}
-    >
-      <WarningIcon size={size.iconSmall} color={colors.warning} />
-      <Text variant="faint" tone="warning" style={styles.text}>
-        {mobileAppCopy.network.offline}
-      </Text>
+    <View style={pinned && [styles.pinned, { paddingTop: insets.top + layout.hairline }]}>
+      <View accessibilityRole="alert" accessibilityLiveRegion="polite" style={styles.banner}>
+        <WarningIcon size={size.iconSmall} color={colors.warning} />
+        <Text variant="faint" tone="warning" style={styles.text}>
+          {mobileAppCopy.network.offline}
+        </Text>
+      </View>
     </View>
   );
 }
@@ -50,6 +48,10 @@ const styles = StyleSheet.create({
     borderColor: colors.warning,
     backgroundColor: colors.surface,
   },
-  pinned: { position: "absolute", left: layout.gutter, right: layout.gutter },
+  pinned: {
+    paddingHorizontal: layout.gutter,
+    paddingBottom: layout.hairline,
+    backgroundColor: colors.base,
+  },
   text: { flex: 1 },
 });

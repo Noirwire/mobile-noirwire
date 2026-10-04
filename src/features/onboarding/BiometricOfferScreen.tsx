@@ -6,8 +6,7 @@ import { Button, Notice, Screen, Text } from "@/ui";
 import { successHaptic } from "@/ui/haptics";
 import { colors, layout } from "@/ui/theme";
 import { useServices } from "../services";
-import { mobileUnlockCopy } from "../unlock/copy";
-import { mobileOnboardingCopy } from "@noirwire/shared/copy";
+import { mobileOnboardingCopy, mobileWalletCopy } from "@noirwire/shared/copy";
 
 type BiometricOfferScreenProps = {
   method: string;
@@ -28,7 +27,7 @@ export function BiometricOfferScreen({ method, password, onDone }: BiometricOffe
 
   async function turnOn() {
     setBusy(true);
-    const result = await biometric.turnOn(password, mobileUnlockCopy.prompt);
+    const result = await biometric.turnOn(password, mobileWalletCopy.unlock.prompt);
     setBusy(false);
     if (result === "on") {
       successHaptic();

@@ -76,6 +76,7 @@ export async function testServices(
     preferences,
     biometric: biometricUnlock({ keystore, preferences, access }),
     resolveImport: () => Promise.reject(new Error("no network in tests")),
+    lookFurther: () => Promise.reject(new Error("no network in tests")),
     readClipboard: async () => "",
     useOnline: () => true,
     ...rest,

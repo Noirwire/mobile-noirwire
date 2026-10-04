@@ -1,6 +1,5 @@
 import { Stack } from "expo-router";
-import { settingsCopy } from "@noirwire/shared/copy";
-import { mobileSettingsCopy } from "@/features/settings/copy";
+import { mobileSettingsCopy, settingsCopy } from "@noirwire/shared/copy";
 import { stackScreenOptions } from "@/navigation/stackOptions";
 
 export default function SettingsLayout() {

@@ -1,6 +1,7 @@
 import { FUNDING } from "@noirwire/shared/application";
 import { errorsCopy, mobilePendingActionCopy } from "@noirwire/shared/copy";
 import { ChainError } from "@noirwire/shared/domain";
+import { unsignedTransaction } from "@noirwire/shared/testing";
 import { getSnapshot, unlockedSession } from "@noirwire/shared/wallet";
 import { Keypair } from "@solana/web3.js";
 import { act, fireEvent, screen, waitFor } from "@testing-library/react-native";
@@ -15,7 +16,6 @@ import {
   renderWithMoney,
   signAsAClientWould,
   testMoney,
-  unsignedTransaction,
   walletWith,
   type FakeChain,
 } from "./testMoney";

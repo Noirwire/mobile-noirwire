@@ -1,4 +1,4 @@
-import { symbolAmount, usd } from "./format";
+import { symbolAmount, usd } from "@noirwire/shared/domain";
 import { Text, type TextProps } from "./Text";
 
 type MoneyProps = Omit<TextProps, "children"> & {

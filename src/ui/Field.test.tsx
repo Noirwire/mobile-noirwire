@@ -26,19 +26,20 @@ describe("Field", () => {
     expect(screen.queryByRole("button")).toBeNull();
   });
 
-  it("reads a comma as the decimal separator in an amount field, and leaves other fields as typed", async () => {
+  it("hands on an amount exactly as it was typed: the shared amount reading takes a comma or a period", async () => {
     const onAmount = jest.fn();
-    const onName = jest.fn();
     await render(
-      <>
-        <Field label="Amount in USDC" keyboardType="decimal-pad" onChangeText={onAmount} />
-        <Field label="Portfolio name" onChangeText={onName} />
-      </>,
+      <Field label="Amount in USDC" keyboardType="decimal-pad" onChangeText={onAmount} />,
     );
     await fireEvent.changeText(screen.getByLabelText("Amount in USDC"), "12,5");
-    await fireEvent.changeText(screen.getByLabelText("Portfolio name"), "Rainy day, maybe");
-    expect(onAmount).toHaveBeenCalledWith("12.5");
-    expect(onName).toHaveBeenCalledWith("Rainy day, maybe");
+    expect(onAmount).toHaveBeenCalledWith("12,5");
+  });
+
+  it("is as many lines tall as it is asked to be, with the text starting at the top", async () => {
+    await render(<Field label="Recovery phrase" lines={4} />);
+    const field = screen.getByLabelText("Recovery phrase");
+    expect(field.props.multiline).toBe(true);
+    expect(field).toHaveStyle({ minHeight: 4 * 22 + 24, textAlignVertical: "top" });
   });
 
   it("shows its error as an alert", async () => {

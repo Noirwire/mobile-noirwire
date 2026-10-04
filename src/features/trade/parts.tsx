@@ -1,14 +1,12 @@
 import type { PortfolioIcon } from "@noirwire/shared/domain";
 import { searchMarkets } from "@noirwire/shared/wallet";
-import { marketsCopy } from "@noirwire/shared/copy";
+import { marketsCopy, mobileSettingsCopy } from "@noirwire/shared/copy";
 import { useState } from "react";
 import { Pressable, StyleSheet, TextInput, View } from "react-native";
 import { Field, IdentityMark, Text } from "@/ui";
-import { decimalText } from "@/ui/decimalText";
 import { colors, fonts, layout, opacity } from "@/ui/theme";
 import { TrackerMark } from "@/ui/TrackerMark";
 import { textStyles } from "@/ui/typography";
-import { mobileSettingsCopy } from "../settings/copy";
 
 /** The 3pt line in the acting portfolio's tint; the neutral tint draws it in ink at 40 percent. */
 export function IdentityLine({ tint }: { tint: PortfolioIcon["tint"] }) {
@@ -135,7 +133,7 @@ export function AmountField({
       <TextInput
         accessibilityLabel={label}
         value={value}
-        onChangeText={(text) => onChange(decimalText(text))}
+        onChangeText={onChange}
         editable={editable}
         placeholder={placeholder}
         placeholderTextColor={colors.faint}

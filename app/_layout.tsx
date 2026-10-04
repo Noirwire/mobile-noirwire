@@ -60,29 +60,30 @@ function Routes() {
       <MoneyProvider money={installed.money}>
         <ActivityCapture onInput={installed.activity.noteInput}>
           <NetworkGate>
-            <WalletGate>
-              <Stack screenOptions={stackScreenOptions}>
-                <Stack.Screen name="(onboarding)" options={{ headerShown: false }} />
-                <Stack.Screen name="(visitor)" options={{ headerShown: false }} />
-                <Stack.Screen
-                  name="unlock"
-                  options={{ headerShown: false, gestureEnabled: false }}
-                />
-                <Stack.Screen name="reset" options={{ title: "", gestureEnabled: false }} />
-                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-                <Stack.Screen name="portfolio/[id]" options={{ title: "Portfolio" }} />
-                <Stack.Screen name="markets/[symbol]" options={{ title: "Tracker" }} />
-                {SHEET_ROUTES.map((name) => (
-                  <Stack.Screen
-                    key={name}
-                    name={name}
-                    options={{ title: SHEET_TITLES[name], presentation: "modal" }}
-                  />
-                ))}
-                <Stack.Screen name="dev/ui" options={{ title: "UI kit" }} />
-              </Stack>
-            </WalletGate>
             <OfflineBanner pinned />
+            {/* The screens measure their safe area from where they begin, which is under the banner while it shows. */}
+            <SafeAreaProvider style={styles.root}>
+              <WalletGate>
+                <Stack screenOptions={stackScreenOptions}>
+                  <Stack.Screen name="(onboarding)" options={{ headerShown: false }} />
+                  <Stack.Screen name="(visitor)" options={{ headerShown: false }} />
+                  <Stack.Screen
+                    name="unlock"
+                    options={{ headerShown: false, gestureEnabled: false }}
+                  />
+                  <Stack.Screen name="reset" options={{ title: "", gestureEnabled: false }} />
+                  <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                  {SHEET_ROUTES.map((name) => (
+                    <Stack.Screen
+                      key={name}
+                      name={name}
+                      options={{ title: SHEET_TITLES[name], presentation: "modal" }}
+                    />
+                  ))}
+                  <Stack.Screen name="dev/ui" options={{ title: "UI kit" }} />
+                </Stack>
+              </WalletGate>
+            </SafeAreaProvider>
           </NetworkGate>
           <PrivacyCover />
         </ActivityCapture>

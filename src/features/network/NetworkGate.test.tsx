@@ -1,8 +1,9 @@
+import { STILL_WORKING_AFTER_MS, WAITING_DELAY_MS } from "@noirwire/shared/presentation";
 import { act, fireEvent, render, screen } from "@testing-library/react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { Text } from "@/ui";
+import { Text, WAITING_LIMIT_MS } from "@/ui";
 import { renderWith, testServices } from "../testServices";
-import { checkNetwork, QUIET_CHECK_MS } from "./gateCheck";
+import { checkNetwork } from "./gateCheck";
 import { NetworkGate } from "./NetworkGate";
 import { OfflineBanner } from "./OfflineBanner";
 
@@ -38,7 +39,7 @@ describe("NetworkGate", () => {
     );
     expect(
       await screen.findByText(
-        "This app is built for Solana mainnet, but its network connection serves a different chain. Nothing can be sent until that is fixed.",
+        "NoirWire is not connected to Solana mainnet as it should be. Your money has not moved, and nothing can be sent until this is fixed. Try again later.",
       ),
     ).toBeOnTheScreen();
     expect(screen.queryByText("The wallet")).toBeNull();
@@ -57,7 +58,7 @@ describe("NetworkGate", () => {
     );
     expect(
       await screen.findByText(
-        "The network could not be reached, so balances cannot be shown safely.",
+        "We can't show your balances right now. Your money has not moved. Try again.",
       ),
     ).toBeOnTheScreen();
     await fireEvent.press(screen.getByRole("button", { name: "Try again" }));
@@ -73,12 +74,40 @@ describe("NetworkGate", () => {
           <Text>The wallet</Text>
         </NetworkGate>,
       );
-      expect(screen.queryByText("Checking the network...")).toBeNull();
-      await act(async () => {
-        jest.advanceTimersByTime(QUIET_CHECK_MS);
-      });
-      expect(screen.getByText("Checking the network...")).toBeOnTheScreen();
+      expect(screen.queryByText("Getting things ready...")).toBeNull();
+      await act(() => jest.advanceTimersByTimeAsync(WAITING_DELAY_MS));
+      expect(screen.getByText("Getting things ready...")).toBeOnTheScreen();
       expect(screen.queryByText("The wallet")).toBeNull();
+      await act(() => jest.advanceTimersByTimeAsync(STILL_WORKING_AFTER_MS.check));
+      expect(
+        screen.getByText("Still checking. This is taking longer than usual."),
+      ).toBeOnTheScreen();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it("never waits for ever: a check that does not answer ends with Try again", async () => {
+    jest.useFakeTimers();
+    try {
+      const check = jest
+        .fn<Promise<"ok">, []>()
+        .mockReturnValueOnce(new Promise(() => undefined))
+        .mockResolvedValueOnce("ok");
+      await render(
+        <NetworkGate check={check} network={network}>
+          <Text>The wallet</Text>
+        </NetworkGate>,
+      );
+      await act(() => jest.advanceTimersByTimeAsync(WAITING_LIMIT_MS.check));
+      expect(
+        screen.getByText(
+          "We can't show your balances right now. Your money has not moved. Try again.",
+        ),
+      ).toBeOnTheScreen();
+      await fireEvent.press(screen.getByRole("button", { name: "Try again" }));
+      await act(() => jest.advanceTimersByTimeAsync(0));
+      expect(screen.getByText("The wallet")).toBeOnTheScreen();
     } finally {
       jest.useRealTimers();
     }
@@ -105,5 +134,17 @@ describe("OfflineBanner", () => {
     );
     expect(screen.queryByText(OFFLINE) !== null).toBe(shown);
     expect(screen.queryByRole("button")).toBeNull();
+  });
+
+  it("takes its own place under the status bar instead of lying over the screen", async () => {
+    const view = await renderWith(
+      await testServices({ useOnline: () => false }),
+      <SafeAreaProvider initialMetrics={metrics}>
+        <OfflineBanner pinned />
+      </SafeAreaProvider>,
+    );
+    const positions = JSON.stringify(view.toJSON());
+    expect(positions).not.toContain('"position":"absolute"');
+    expect(positions).toContain('"paddingTop":51');
   });
 });

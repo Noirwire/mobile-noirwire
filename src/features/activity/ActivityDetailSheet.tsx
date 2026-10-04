@@ -32,7 +32,7 @@ export function ActivityDetailSheet({
   const view = wallet && entryId ? activityDetailView(screenReads, wallet, entryId) : null;
 
   return (
-    <Sheet open={view !== null} onClose={onClose} title={view?.title ?? ""}>
+    <Sheet open={view !== null} onClose={onClose} title={view?.title ?? ""} secure>
       {view && (
         <>
           <Text variant="display" tone={view.headlineTone} style={styles.figure}>

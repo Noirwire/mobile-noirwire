@@ -1,3 +1,4 @@
+import type { WaitingKind } from "@noirwire/shared/presentation";
 import {
   ActivityIndicator,
   Pressable,
@@ -10,15 +11,24 @@ import { lightHaptic } from "./haptics";
 import { Text } from "./Text";
 import { colors, fonts, layout, opacity, radius, size, type ColorToken } from "./theme";
 import { controlText } from "./typography";
+import { useWaiting } from "./useWaiting";
+import { StillWorking } from "./Waiting";
 
 export type ButtonVariant = "primary" | "quiet" | "danger";
 
 type ButtonProps = Omit<PressableProps, "children" | "style"> & {
   label: string;
   variant?: ButtonVariant;
+  /**
+   * The press is being answered. The button stops taking presses at once; its
+   * spinner and busy label appear only once the wait has lasted a moment, and
+   * a calm line is added under it when the wait runs long.
+   */
   loading?: boolean;
   /** Shown beside the spinner while loading, such as "Encrypting...". The button keeps its width. */
   loadingLabel?: string;
+  /** What is being waited for, which decides when the calm line appears. */
+  waitingFor?: WaitingKind;
   style?: ViewStyle;
 };
 
@@ -39,12 +49,15 @@ export function Button({
   variant = "primary",
   loading = false,
   loadingLabel,
+  waitingFor = "check",
   disabled,
   onPress,
   style,
   ...rest
 }: ButtonProps) {
   const inert = disabled || loading;
+  const waiting = useWaiting(loading, waitingFor);
+  const spinning = loading && waiting.signal !== "none";
 
   function press(event: GestureResponderEvent) {
     if (variant === "primary") {
@@ -54,43 +67,46 @@ export function Button({
   }
 
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={loading && loadingLabel ? loadingLabel : label}
-      accessibilityState={{ disabled: !!inert, busy: loading }}
-      disabled={inert}
-      onPress={press}
-      {...rest}
-      style={({ pressed }) => [
-        styles.base,
-        styles[variant],
-        pressed && pressedStyles[variant],
-        pressed && styles.pressed,
-        inert && styles.inert,
-        style,
-      ]}
-    >
-      {({ pressed }) =>
-        loading ? (
-          <>
-            <ActivityIndicator color={colors[LABEL_TONE[variant]]} />
-            {loadingLabel !== undefined && (
-              <Text tone={LABEL_TONE[variant]} style={styles.label} numberOfLines={1}>
-                {loadingLabel}
-              </Text>
-            )}
-          </>
-        ) : (
-          <Text
-            tone={pressed ? PRESSED_LABEL_TONE[variant] : LABEL_TONE[variant]}
-            style={styles.label}
-            numberOfLines={1}
-          >
-            {label}
-          </Text>
-        )
-      }
-    </Pressable>
+    <>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={spinning && loadingLabel ? loadingLabel : label}
+        accessibilityState={{ disabled: !!inert, busy: loading }}
+        disabled={inert}
+        onPress={press}
+        {...rest}
+        style={({ pressed }) => [
+          styles.base,
+          styles[variant],
+          pressed && pressedStyles[variant],
+          pressed && styles.pressed,
+          inert && styles.inert,
+          style,
+        ]}
+      >
+        {({ pressed }) =>
+          spinning ? (
+            <>
+              <ActivityIndicator color={colors[LABEL_TONE[variant]]} />
+              {loadingLabel !== undefined && (
+                <Text tone={LABEL_TONE[variant]} style={styles.label} numberOfLines={1}>
+                  {loadingLabel}
+                </Text>
+              )}
+            </>
+          ) : (
+            <Text
+              tone={pressed ? PRESSED_LABEL_TONE[variant] : LABEL_TONE[variant]}
+              style={styles.label}
+              numberOfLines={1}
+            >
+              {label}
+            </Text>
+          )
+        }
+      </Pressable>
+      <StillWorking waiting={waiting} />
+    </>
   );
 }
 

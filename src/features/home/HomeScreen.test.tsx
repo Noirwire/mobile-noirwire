@@ -1,3 +1,4 @@
+import { STILL_WORKING_AFTER_MS, WAITING_DELAY_MS } from "@noirwire/shared/presentation";
 import { getSnapshot } from "@noirwire/shared/wallet";
 import { act, fireEvent, screen, waitFor, within } from "@testing-library/react-native";
 import {
@@ -10,6 +11,7 @@ import {
   withHolding,
 } from "../portfolio/testWallet";
 import { forgetWallet, installTestPlatform, testServices } from "../testServices";
+import { WAITING_LIMIT_MS } from "@/ui";
 import { HomeScreen, RESTORED_MS } from "./HomeScreen";
 
 let updatedAt: number;
@@ -191,9 +193,52 @@ describe("HomeScreen", () => {
       <HomeScreen {...handlers()} pricesUpdatedAt={updatedAt} />,
       fakeBalances(false),
     );
-    expect(await screen.findByText("Could not refresh. Pull down to try again.")).toBeOnTheScreen();
+    expect(
+      await screen.findByText(
+        "We couldn't update your balances. What you see may be out of date. Pull down to try again.",
+      ),
+    ).toBeOnTheScreen();
     expect(screen.getByText("$457.33")).toBeOnTheScreen();
   });
+
+  it("offers a plain retry after a failed read, which asks again", async () => {
+    await populated();
+    const balances = fakeBalances(false);
+    await renderScreen(
+      await testServices(),
+      <HomeScreen {...handlers()} pricesUpdatedAt={updatedAt} />,
+      balances,
+    );
+    await fireEvent.press(await screen.findByRole("button", { name: "Try again" }));
+    await waitFor(() => expect(balances.calls).toEqual(["everything", "everything"]));
+  });
+
+  it("holds the balance's place quietly at first, then as loading, and never for ever", async () => {
+    await unlockedWallet((wallet) => ({ ...wallet, portfolios: [] }));
+    jest.useFakeTimers();
+    const never = fakeBalances();
+    never.money.refresh.everything = () => new Promise<boolean>(() => undefined);
+    await renderScreen(
+      await testServices(),
+      <HomeScreen {...handlers()} pricesUpdatedAt={updatedAt} />,
+      never,
+    );
+    expect(screen.queryAllByLabelText("Loading")).toHaveLength(0);
+    expect(screen.queryByText("Total value")).toBeNull();
+    await act(() => jest.advanceTimersByTimeAsync(WAITING_DELAY_MS));
+    expect(screen.getAllByLabelText("Loading").length).toBeGreaterThan(0);
+    await act(() => jest.advanceTimersByTimeAsync(STILL_WORKING_AFTER_MS.content));
+    expect(screen.getByText("Still loading. This is taking longer than usual.")).toBeOnTheScreen();
+    await act(() => jest.advanceTimersByTimeAsync(WAITING_LIMIT_MS.content));
+    expect(screen.queryAllByLabelText("Loading")).toHaveLength(0);
+    expect(
+      screen.getByText(
+        "We couldn't update your balances. What you see may be out of date. Pull down to try again.",
+      ),
+    ).toBeOnTheScreen();
+    expect(screen.getByRole("button", { name: "Try again" })).toBeEnabled();
+    // Twenty seconds of the placeholder's animation frames pass under the fake clock.
+  }, 20_000);
 
   it("does not read balances while offline", async () => {
     await populated();

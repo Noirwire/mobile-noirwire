@@ -2,7 +2,6 @@ import { EyeIcon } from "phosphor-react-native/src/icons/Eye";
 import { EyeSlashIcon } from "phosphor-react-native/src/icons/EyeSlash";
 import { useState, type Ref } from "react";
 import { StyleSheet, TextInput, View, type TextInputProps } from "react-native";
-import { decimalText } from "./decimalText";
 import { IconButton } from "./IconButton";
 import { Text } from "./Text";
 import { colors, fonts, layout, radius, size } from "./theme";
@@ -18,6 +17,8 @@ type FieldProps = Omit<TextInputProps, "style" | "secureTextEntry"> & {
   onRevealedChange?: (revealed: boolean) => void;
   /** The reveal control's names; by default "Show" and "Hide" followed by the label. */
   revealLabels?: { show: string; hide: string };
+  /** A field this many lines tall from the start, for text that runs over several. */
+  lines?: number;
   ref?: Ref<TextInput>;
 };
 
@@ -28,6 +29,7 @@ export function Field({
   revealed: controlledRevealed,
   onRevealedChange,
   revealLabels = { show: `Show ${label}`, hide: `Hide ${label}` },
+  lines,
   ref,
   ...input
 }: FieldProps) {
@@ -55,13 +57,9 @@ export function Field({
           autoCapitalize={secure ? "none" : input.autoCapitalize}
           autoCorrect={secure ? false : input.autoCorrect}
           {...input}
-          onChangeText={
-            input.keyboardType === "decimal-pad" && input.onChangeText
-              ? (text) => input.onChangeText?.(decimalText(text))
-              : input.onChangeText
-          }
           secureTextEntry={secure && !revealed}
-          style={styles.input}
+          multiline={lines !== undefined ? true : input.multiline}
+          style={[styles.input, lines !== undefined && tall(lines)]}
         />
         {secure && (
           <IconButton
@@ -80,6 +78,17 @@ export function Field({
     </View>
   );
 }
+
+/** Room for `lines` lines of typed text, which starts at the top. */
+const tall = (lines: number) =>
+  ({
+    minHeight: lines * LINE_HEIGHT + 2 * layout.inset,
+    paddingVertical: layout.inset,
+    lineHeight: LINE_HEIGHT,
+    textAlignVertical: "top",
+  }) as const;
+
+const LINE_HEIGHT = 22;
 
 const styles = StyleSheet.create({
   field: { gap: layout.tight },

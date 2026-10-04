@@ -3,6 +3,7 @@ import { useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { Button, Row, Text } from "@/ui";
 import { layout } from "@/ui/theme";
+import { ProtectionRefused } from "@/ui/ProtectionRefused";
 import { useCaptureProtection } from "@/ui/useCaptureProtection";
 import { useCopied } from "./useCopied";
 
@@ -33,22 +34,30 @@ type AddressRevealProps = {
  * sheet or Back never leave it showing.
  */
 export function AddressReveal({ address, copy, onCopied }: AddressRevealProps) {
-  const [shown, setShown] = useState(false);
+  const [asked, setAsked] = useState(false);
   const clipboard = useCopied(onCopied);
-  useCaptureProtection(shown);
+  const protection = useCaptureProtection(asked);
+  // Drawn only once the system has confirmed the protection, never on the press itself.
+  const shown = asked && protection.ready;
 
   if (!shown) {
     return (
-      <View style={styles.hiddenRow}>
-        <View style={styles.flex}>
-          <Row label={copy.label} value={copy.hidden} last />
+      <View style={styles.hidden}>
+        <View style={styles.hiddenRow}>
+          <View style={styles.flex}>
+            <Row label={copy.label} value={copy.hidden} last />
+          </View>
+          {!protection.refused && (
+            <Button
+              variant="quiet"
+              label={copy.show}
+              accessibilityLabel={copy.showLabel}
+              disabled={asked}
+              onPress={() => setAsked(true)}
+            />
+          )}
         </View>
-        <Button
-          variant="quiet"
-          label={copy.show}
-          accessibilityLabel={copy.showLabel}
-          onPress={() => setShown(true)}
-        />
+        <ProtectionRefused protection={protection} />
       </View>
     );
   }
@@ -72,7 +81,7 @@ export function AddressReveal({ address, copy, onCopied }: AddressRevealProps) {
           variant="quiet"
           label={copy.hide}
           accessibilityLabel={copy.hideLabel}
-          onPress={() => setShown(false)}
+          onPress={() => setAsked(false)}
           style={styles.action}
         />
       </View>
@@ -81,6 +90,7 @@ export function AddressReveal({ address, copy, onCopied }: AddressRevealProps) {
 }
 
 const styles = StyleSheet.create({
+  hidden: { gap: layout.tight },
   hiddenRow: { flexDirection: "row", alignItems: "center", gap: layout.tight },
   flex: { flex: 1 },
   shown: { gap: layout.tight, paddingVertical: layout.tight },

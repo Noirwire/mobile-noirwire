@@ -9,7 +9,8 @@ appId: com.noirwire.app
 - tapOn: "Continue"
 - extendedWaitUntil:
     visible: "Where did this phrase come from?"
-    timeout: 60000
+    # The import shows "Importing your wallet" while it looks; a slow device takes a while.
+    timeout: 180000
 - tapOn: "NoirWire\\..*"
 - tapOn: "Open this wallet"
 - tapOn: "Continue"

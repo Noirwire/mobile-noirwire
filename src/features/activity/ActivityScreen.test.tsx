@@ -89,4 +89,23 @@ describe("ActivityScreen", () => {
     expect(onOpenPortfolio).toHaveBeenCalledWith(wallet.portfolios[0].id);
     expect(screen.queryByText("Value at the time")).toBeNull();
   });
+
+  it("says older entries are no longer kept once the list has reached the most the phone keeps", async () => {
+    await show((id) =>
+      Array.from({ length: 500 }, (_, index) => ({
+        portfolioId: id,
+        kind: index < 2 ? ("buy" as const) : ("fund" as const),
+        symbol: index < 2 ? "NVDAx" : "USDC",
+        at: NOW - index * 60_000,
+        usd: 1,
+        amount: 1,
+      })),
+    );
+    const older =
+      "Only your 500 most recent entries are kept on this phone. Older ones are no longer shown here. Your money is not affected.";
+    // Fifty of five hundred are shown: there is more to scroll to, so nothing is said yet.
+    expect(screen.queryByText(older)).toBeNull();
+    await fireEvent.press(screen.getByRole("button", { name: "Trades" }));
+    expect(screen.getByText(older)).toBeOnTheScreen();
+  });
 });

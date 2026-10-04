@@ -81,6 +81,13 @@ export function ActivityScreen({ onOpenPortfolio, now = Date.now }: ActivityScre
         }
         keyExtractor={(row) => row.id}
         ListHeaderComponent={header}
+        ListFooterComponent={
+          view.kind === "list" && view.olderNotKept ? (
+            <Text variant="faint" style={styles.older}>
+              {view.olderNotKept}
+            </Text>
+          ) : null
+        }
         ListEmptyComponent={
           view.kind === "none" ? (
             <EmptyState title={view.title} detail={view.detail} />
@@ -119,5 +126,6 @@ const styles = StyleSheet.create({
   header: { gap: layout.group, paddingTop: layout.gutter, paddingBottom: layout.tight },
   chips: { gap: layout.tight },
   day: { paddingTop: layout.group, paddingBottom: layout.hairline },
+  older: { paddingTop: layout.group },
   noMatch: { paddingTop: layout.section, textAlign: "center" },
 });

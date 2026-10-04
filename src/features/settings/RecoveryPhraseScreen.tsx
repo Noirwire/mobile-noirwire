@@ -1,4 +1,4 @@
-import { commonCopy, settingsCopy } from "@noirwire/shared/copy";
+import { commonCopy, mobileSettingsCopy, settingsCopy } from "@noirwire/shared/copy";
 import { useEffect, useState } from "react";
 import { AccessibilityInfo, StyleSheet, View } from "react-native";
 import { Button, Field, Notice, PhraseGrid, Screen, Text } from "@/ui";
@@ -7,7 +7,6 @@ import { layout } from "@/ui/theme";
 import { useAppLeaves } from "../security/useAppLeaves";
 import { SCREENSHOT_WARNING, useScreenshotWarning } from "../security/useScreenshotWarning";
 import { revealPhrase } from "../wallet/walletActions";
-import { mobileSettingsCopy } from "./copy";
 
 /** The phrase hides itself this long after it is shown. */
 export const PHRASE_VISIBLE_MS = 60_000;

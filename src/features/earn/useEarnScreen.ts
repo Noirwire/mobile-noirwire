@@ -5,11 +5,13 @@ import type { EarnPortfolio, EarnRateRead, EarnTotal } from "@noirwire/shared/pr
 import { useMoney } from "../network/money";
 import { useWalletSnapshot } from "../network/useWalletSnapshot";
 import { useServices } from "../services";
+import { WAITING_LIMIT_MS, withinLimit } from "@/ui/useWaiting";
 
 /**
  * Each portfolio's position at the lending venue, one request per portfolio
  * so no request names two of them. Undefined while one is read, null when it
- * could not be. Read again whenever `version` changes.
+ * could not be, which includes one that did not answer within the content
+ * limit. Read again whenever `version` changes.
  */
 function useEarnPositions(version: number, onSettled?: () => void) {
   const money = useMoney();
@@ -27,8 +29,7 @@ function useEarnPositions(version: number, onSettled?: () => void) {
     if (!available) return;
     let current = true;
     const reads = addresses.map(([id, address]) =>
-      money.earnVenue
-        .position(address)
+      withinLimit(money.earnVenue.position(address), WAITING_LIMIT_MS.content)
         .then((position): EarnPosition | null => position)
         .catch(() => null)
         .then((position) => current && setPositions((all) => ({ ...all, [id]: position }))),
@@ -78,8 +79,7 @@ export function useEarnScreen() {
   useEffect(() => {
     if (!available) return;
     let current = true;
-    money.earnVenue
-      .rate()
+    withinLimit(money.earnVenue.rate(), WAITING_LIMIT_MS.content)
       .then((next) => current && setRate(next))
       .catch(() => current && setRate(null));
     return () => {

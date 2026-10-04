@@ -45,6 +45,16 @@ export const test = base.extend<Fixtures>({
 
 export { expect };
 
+/** How a request describes its own failure. None of it belongs on a screen. */
+const TECHNICAL =
+  /failed to fetch|fetch failed|network request|\b(50[0-9]|429)\b(?![.,]\d)|timed? ?out|upstream|\brpc\b|\bjson\b|undefined|exception|\[object/i;
+
+/** Nothing on the page says how a request failed: a person is told about their money, not about requests. */
+export async function expectNothingTechnical(page: Page): Promise<void> {
+  const shown = await page.locator("body").innerText();
+  expect(shown.match(TECHNICAL)?.[0] ?? null, "technical words shown on the page").toBeNull();
+}
+
 /** Moves within the single-page app without a reload, which would lock the wallet. */
 export async function navigate(page: Page, href: string): Promise<void> {
   await page.evaluate((target) => {

@@ -19,13 +19,18 @@ const DOT = 8;
 /**
  * A tracker's mark: its ticker's letters on a neutral tile, so a tracker never
  * borrows a portfolio's glyph or tint. Decoration only: the name beside it is
- * what gets read out.
+ * what gets read out, so the letters keep the tile's size at every text size
+ * instead of growing out of it.
  */
 export function TrackerMark({ symbol, live = false, size = "md" }: TrackerMarkProps) {
   const letters = symbol.replace(/x$/, "").slice(0, LETTERS[size]).toUpperCase();
   return (
     <View aria-hidden style={[styles.tile, { width: TILE[size], height: TILE[size] }]}>
-      <Text style={[styles.letters, { fontSize: FONT[size], lineHeight: FONT[size] + 4 }]}>
+      <Text
+        allowFontScaling={false}
+        numberOfLines={1}
+        style={[styles.letters, { fontSize: FONT[size], lineHeight: FONT[size] + 4 }]}
+      >
         {letters}
       </Text>
       {live && <View style={styles.dot} />}

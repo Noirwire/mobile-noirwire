@@ -229,4 +229,45 @@ describe("EarnScreen", () => {
     ).toBeDisabled();
     expect(getSnapshot()).not.toBeNull();
   });
+
+  it("says a landed deposit is done when the new balances cannot be read back", async () => {
+    installTestPlatform();
+    const chain = fakeChain();
+    chain.unreadAfterAction = true;
+    await walletWith(chain);
+    await openEarn(chain);
+    await screen.findByText("$0.00");
+    await fireEvent.press(
+      screen.getByRole("button", { name: "Investing, $457.33 cash available, $0.00 in Earn" }),
+    );
+    await screen.findByText("457.31 USDC");
+    await fireEvent.changeText(amountField(), "100");
+    await fireEvent.press(screen.getByRole("button", { name: "Review" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Deposit 100.00 USDC" }));
+    expect(await screen.findByText("Deposited 100.00 USDC")).toBeOnTheScreen();
+    expect(screen.getByText(/Balances will update shortly\.$/)).toBeOnTheScreen();
+  });
+
+  it("says what may be out of date when Earn cannot be read, and reads again on Try again", async () => {
+    installTestPlatform();
+    const chain = fakeChain();
+    chain.earn.rate = null;
+    await walletWith(chain);
+    await openEarn(chain);
+    const stale = "We couldn't update what is in Earn. What you see may be out of date.";
+    expect(await screen.findByText(stale)).toBeOnTheScreen();
+    chain.earn.rate = { apy: 4.16, supplyApy: 3.79, rewardsApy: 0.37 };
+    await fireEvent.press(screen.getByRole("button", { name: "Try again" }));
+    expect(await screen.findByText("4.16%")).toBeOnTheScreen();
+    expect(screen.queryByText(stale)).toBeNull();
+  });
+
+  it("offers no retry where Earn is simply not offered", async () => {
+    installTestPlatform();
+    const chain = fakeChain();
+    chain.earn.available = false;
+    await walletWith(chain);
+    await openEarn(chain);
+    expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
+  });
 });

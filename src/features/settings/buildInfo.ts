@@ -1,6 +1,6 @@
+import { mobileSettingsCopy } from "@noirwire/shared/copy";
 import Constants from "expo-constants";
 import { Platform } from "react-native";
-import { mobileSettingsCopy } from "./copy";
 
 export function appVersion(): string {
   return Constants.expoConfig?.version ?? "0.0.0";

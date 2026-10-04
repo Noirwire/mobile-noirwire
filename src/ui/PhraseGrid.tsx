@@ -2,6 +2,7 @@ import { StyleSheet, useWindowDimensions, View } from "react-native";
 import { readAsOne } from "./accessibility";
 import { Button } from "./Button";
 import { PhraseCopy } from "./PhraseCopy";
+import { ProtectionRefused } from "./ProtectionRefused";
 import { Text } from "./Text";
 import { colors, layout, radius } from "./theme";
 import { useCaptureProtection } from "./useCaptureProtection";
@@ -27,13 +28,20 @@ const HALF_ROW = "47%";
 
 /**
  * The recovery phrase in a numbered grid. Concealed on arrival as one unit, so
- * no word renders before Reveal; the words are never selectable, and the
- * screen is kept out of screenshots while they are shown.
+ * no word renders before Reveal; the words are never selectable, and they
+ * are drawn only once the screen is confirmed kept out of screenshots.
  */
-export function PhraseGrid({ words, revealed, onReveal, copyable = false }: PhraseGridProps) {
+export function PhraseGrid({
+  words,
+  revealed: asked,
+  onReveal,
+  copyable = false,
+}: PhraseGridProps) {
   const { fontScale } = useWindowDimensions();
   const columns = fontScale > ONE_COLUMN_FONT_SCALE ? 1 : 2;
-  useCaptureProtection(revealed);
+  const protection = useCaptureProtection(asked);
+  // Asked for is not shown: no word is drawn until the system has confirmed the protection.
+  const revealed = asked && protection.ready;
 
   return (
     <View style={styles.phrase}>
@@ -63,10 +71,11 @@ export function PhraseGrid({ words, revealed, onReveal, copyable = false }: Phra
         </View>
         {!revealed && (
           <View style={styles.cover}>
-            <Button label="Reveal phrase" onPress={onReveal} />
+            {!asked && <Button label="Reveal phrase" onPress={onReveal} />}
           </View>
         )}
       </View>
+      <ProtectionRefused protection={protection} />
       {revealed && copyable && <PhraseCopy phrase={words.join(" ")} />}
     </View>
   );

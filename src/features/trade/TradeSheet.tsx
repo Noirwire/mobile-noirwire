@@ -1,5 +1,16 @@
-import { costAgreed, tradeDraft, type Denomination } from "@noirwire/shared/application";
-import { commonCopy, marketsCopy, mobileTradeCopy, tradeCopy as copy } from "@noirwire/shared/copy";
+import {
+  costAgreed,
+  tradeDraft,
+  type Attempt,
+  type Denomination,
+} from "@noirwire/shared/application";
+import {
+  commonCopy,
+  errorsCopy,
+  marketsCopy,
+  mobileTradeCopy,
+  tradeCopy as copy,
+} from "@noirwire/shared/copy";
 import { resolvePortfolioIcon, type NetworkCost, type Side } from "@noirwire/shared/domain";
 import { networkLabel, type TradePlan } from "@noirwire/shared/infrastructure";
 import { getPlatform } from "@noirwire/shared/platform";
@@ -27,11 +38,17 @@ import {
   Segmented,
   Sheet,
   StepList,
+  StillWorking,
   Text,
+  useWaiting,
+  withinLimit,
+  WAITING_LIMIT_MS,
 } from "@/ui";
 import { errorHaptic, heavyHaptic, successHaptic, warningHaptic } from "@/ui/haptics";
 import { fonts, layout } from "@/ui/theme";
 import { useLivePrices, useWalletSnapshot } from "../markets/useMarketData";
+import { ActionOverdue } from "../network/ActionOverdue";
+import { assetDecimals } from "../network/decimals";
 import { PendingNote } from "../network/PendingNote";
 import { usePendingBlock } from "../network/usePendingBlock";
 import { useServices } from "../services";
@@ -54,8 +71,6 @@ const clock = () => Date.now();
 
 /** A review replaced under the user's finger holds Confirm back this long. */
 export const REPLACED_HOLD_MS = 600;
-/** After this long in progress, the sheet says it is still working. */
-export const STILL_WORKING_MS = 20_000;
 
 /** Spec 2.20: buy or sell one tracker in one portfolio, at a price the user has seen. */
 export function TradeSheet({
@@ -71,6 +86,13 @@ export function TradeSheet({
   const updatedAt = useLivePrices();
   const choices = wallet ? portfolioChoices(screenReads, wallet, side, initialSymbol) : [];
   const preselected = initialPortfolio ?? (choices.length === 1 ? choices[0].id : null);
+  // A pie is steered toward its mix, so one whose mix leaves this tracker out
+  // is never the choice made for the person: they can still pick it.
+  const suits = (id: string) => {
+    const pie = wallet?.portfolios.find((entry) => entry.id === id)?.pie;
+    return !pie || initialSymbol === null || pie.some((slice) => slice.symbol === initialSymbol);
+  };
+  const suggested = side === "buy" ? choices.find((choice) => suits(choice.id)) : choices[0];
   const askPortfolio = preselected === null;
   const askTracker = initialSymbol === null;
 
@@ -78,7 +100,7 @@ export function TradeSheet({
     askPortfolio ? "portfolio" : askTracker ? "tracker" : "amount",
   );
   const [portfolioId, setPortfolioId] = useState<string | null>(
-    preselected ?? choices[0]?.id ?? null,
+    preselected ?? suggested?.id ?? null,
   );
   const [symbol, setSymbol] = useState<string | null>(initialSymbol);
   const [denom, setDenom] = useState<Denomination>(side === "buy" ? "cash" : "units");
@@ -90,7 +112,6 @@ export function TradeSheet({
   const [notice, setNotice] = useState<{ tone: "danger" | "warning"; text: string } | null>(null);
   const [now, setNow] = useState(clock);
   const [phase, setPhase] = useState<TradePhase>("starting");
-  const [stillWorking, setStillWorking] = useState(false);
   const [result, setResult] = useState<TradeResultView | null>(null);
   const [costPaid, setCostPaid] = useState(false);
   const [relayerDown, setRelayerDown] = useState(false);
@@ -105,11 +126,7 @@ export function TradeSheet({
     const timer = setInterval(() => setNow(clock()), 1000);
     return () => clearInterval(timer);
   }, [reviewing]);
-  useEffect(() => {
-    if (step !== "progress") return;
-    const timer = setTimeout(() => setStillWorking(true), STILL_WORKING_MS);
-    return () => clearTimeout(timer);
-  }, [step]);
+  const working = useWaiting(step === "progress", "action");
   useEffect(() => {
     if (!settling) return;
     const timer = setTimeout(() => setSettling(false), REPLACED_HOLD_MS);
@@ -145,6 +162,7 @@ export function TradeSheet({
     heldRaw,
     unitsPerHeld: units,
     displayPrice: displayLive ? (entry?.price ?? 0) : 0,
+    decimals: symbol ? assetDecimals(symbol) : undefined,
   });
   const form = tradeFormView({
     draft,
@@ -167,7 +185,12 @@ export function TradeSheet({
     setFormError(null);
     setNotice(null);
     setQuoting(true);
-    const quoted = await service.quote(portfolio.id, side, symbol, draft.amountToQuote);
+    // A price that does not come within the review's limit ends the wait
+    // with the plain failure, and the form is usable again.
+    const quoted = await withinLimit(
+      service.quote(portfolio.id, side, symbol, draft.amountToQuote),
+      WAITING_LIMIT_MS.review,
+    ).catch(() => ({ error: errorsCopy.trade.noPrice }));
     if ("error" in quoted) {
       setQuoting(false);
       setFormError(quoted.error);
@@ -182,7 +205,10 @@ export function TradeSheet({
       setNetwork(
         paid
           ? { lamports: 0, cost: { kind: "covered" } }
-          : await service.reviewCost(portfolio.id, [quoted.plan], withoutRelayer),
+          : await withinLimit(
+              service.reviewCost(portfolio.id, [quoted.plan], withoutRelayer),
+              WAITING_LIMIT_MS.review,
+            ),
       );
     } catch {
       setQuoting(false);
@@ -200,13 +226,15 @@ export function TradeSheet({
     if (!portfolio || !symbol || !plan || !network) return;
     heavyHaptic();
     setPhase("starting");
-    setStillWorking(false);
     setStep("progress");
     const reviewed = plan;
-    const attempt = await service.place(portfolio.id, reviewed, {
-      ...costAgreed(costPaid ? null : network.cost),
-      onStep: (next) => setPhase(next === "covering" ? "covering" : "acting"),
-    });
+    const attempt = await service
+      .place(portfolio.id, reviewed, {
+        ...costAgreed(costPaid ? null : network.cost),
+        onStep: (next) => setPhase(next === "covering" ? "covering" : "acting"),
+      })
+      // Thrown past the use case's own answers: whether it was placed is not known.
+      .catch((): Attempt<TradePlan> => ({ kind: "unknown", completed: [] }));
     const outcome = tradeOutcome(attempt, {
       side,
       symbol,
@@ -236,12 +264,13 @@ export function TradeSheet({
     if (outcome.reviewAgain && !paid) {
       const off = withoutRelayer || outcome.reviewAgain === "other";
       setWithoutRelayer(off);
-      const next = await service
-        .reviewCost(portfolio.id, [outcome.replacement ?? reviewed], off)
-        .catch(() => ({
-          lamports: network.lamports,
-          cost: { kind: "unavailable" } as NetworkCost,
-        }));
+      const next = await withinLimit(
+        service.reviewCost(portfolio.id, [outcome.replacement ?? reviewed], off),
+        WAITING_LIMIT_MS.review,
+      ).catch(() => ({
+        lamports: network.lamports,
+        cost: { kind: "unavailable" } as NetworkCost,
+      }));
       setNetwork(next);
       setSettling(true);
     }
@@ -268,7 +297,7 @@ export function TradeSheet({
             ? () => setStep("review")
             : undefined;
 
-  const busy = step === "progress" || quoting;
+  const busy = (step === "progress" && !working.overdue) || quoting;
   const dirty = amountText !== "" && step !== "result";
   const header = step !== "portfolio" && step !== "tracker" && (
     <>
@@ -292,7 +321,7 @@ export function TradeSheet({
   let footer: React.ReactNode = undefined;
 
   if (step === "portfolio") {
-    const chosen = choices.find((choice) => choice.id === portfolioId) ?? choices[0];
+    const chosen = choices.find((choice) => choice.id === portfolioId) ?? null;
     body = (
       <>
         <Text tone="dim">{copy.whichPortfolio(side)}</Text>
@@ -307,10 +336,12 @@ export function TradeSheet({
         ))}
       </>
     );
-    footer = chosen && (
+    footer = (
       <Button
-        label={copy.continueWith(chosen.label)}
+        label={chosen ? copy.continueWith(chosen.label) : commonCopy.continue}
+        disabled={!chosen}
         onPress={() => {
+          if (!chosen) return;
           setPortfolioId(chosen.id);
           setAmountText("");
           setStep(askTracker ? "tracker" : "amount");
@@ -376,6 +407,11 @@ export function TradeSheet({
             )}
             <Text tone="dim">{form.available}</Text>
             <Text tone="dim">{form.estimate}</Text>
+            {form.tooPrecise && (
+              <Text variant="note" tone="danger" accessibilityRole="alert">
+                {form.tooPrecise}
+              </Text>
+            )}
             {form.overCap && (
               <Text variant="note" tone="danger" accessibilityRole="alert">
                 {form.overCap}
@@ -397,6 +433,7 @@ export function TradeSheet({
           disabled={reviewDisabled}
           loading={quoting}
           loadingLabel={copy.gettingPrice}
+          waitingFor="review"
           onPress={() => void review()}
         />
       );
@@ -483,6 +520,7 @@ export function TradeSheet({
             label={model.action.label}
             loading={quoting}
             loadingLabel={copy.gettingPrice}
+            waitingFor="review"
             onPress={() => void review()}
           />
         ) : (
@@ -500,9 +538,13 @@ export function TradeSheet({
       <>
         {header}
         <StepList steps={tradeProgressSteps({ firstBuy, symbol, phase })} />
-        {stillWorking && <Text variant="faint">{copy.progress.stillWorking}</Text>}
+        {!working.overdue && <StillWorking waiting={working} />}
+        <ActionOverdue waiting={working} />
       </>
     );
+    footer = working.overdue ? (
+      <Button variant="quiet" label={commonCopy.close} onPress={onClose} />
+    ) : undefined;
   } else if (step === "result" && result) {
     body = (
       <>

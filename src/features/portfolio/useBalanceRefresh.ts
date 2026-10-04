@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { lightHaptic } from "@/ui/haptics";
+import { WAITING_LIMIT_MS, withinLimit } from "@/ui/useWaiting";
 
 type RefreshState = {
   /** A read is on its way. */
@@ -14,8 +15,10 @@ type RefreshState = {
 
 /**
  * Re-reads balances when a screen opens, when the phone comes back online,
- * and on a pull down. While offline a pull does nothing: the offline banner
- * says why.
+ * on a pull down and on "Try again". While offline a pull does nothing: the
+ * offline banner says why. A read that has not answered within the content
+ * limit counts as failed, so the screen never waits on it for ever; it may
+ * still answer later, and what it read is kept.
  */
 export function useBalanceRefresh(read: () => Promise<boolean>, online: boolean) {
   const [state, setState] = useState<RefreshState>({
@@ -39,7 +42,7 @@ export function useBalanceRefresh(read: () => Promise<boolean>, online: boolean)
       if (busy.current) return;
       busy.current = true;
       setState((current) => ({ ...current, reading: true, pulled }));
-      const ok = await read().catch(() => false);
+      const ok = await withinLimit(read(), WAITING_LIMIT_MS.content).catch(() => false);
       busy.current = false;
       if (mounted.current) {
         setState({ reading: false, pulled: false, failed: !ok, settled: true });
@@ -61,6 +64,10 @@ export function useBalanceRefresh(read: () => Promise<boolean>, online: boolean)
       if (!online) return;
       lightHaptic();
       void run(true);
+    },
+    /** Asks again after a read that failed, without the pull's spinner. */
+    retry() {
+      if (online) void run(false);
     },
   };
 }

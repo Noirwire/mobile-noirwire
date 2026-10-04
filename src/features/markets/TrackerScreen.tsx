@@ -1,3 +1,4 @@
+import { mobileSettingsCopy } from "@noirwire/shared/copy";
 import { PRICE_RANGES, type PriceRange } from "@noirwire/shared/domain";
 import { trackerView, type TrackerAction } from "@noirwire/shared/presentation";
 import { screenReads } from "@noirwire/shared/wallet";
@@ -9,19 +10,20 @@ import {
   Button,
   Chart,
   Divider,
-  EmptyState,
   IconButton,
   ListRow,
   Notice,
   Segmented,
   Skeleton,
   Text,
+  useWaiting,
+  WaitingLine,
+  WaitingPlaceholder,
 } from "@/ui";
 import { selectionHaptic } from "@/ui/haptics";
 import { colors, fonts, layout, size } from "@/ui/theme";
 import { TrackerMark } from "@/ui/TrackerMark";
 import { useServices } from "../services";
-import { mobileSettingsCopy } from "../settings/copy";
 import { useLivePrices, usePriceHistory, useWalletSnapshot } from "./useMarketData";
 import { toggleWatch } from "./watchlist";
 
@@ -55,6 +57,8 @@ export function TrackerScreen({ symbol, visitor = false, onIntent }: TrackerScre
   const [risksOpen, setRisksOpen] = useState(false);
   const history = usePriceHistory(symbol, range);
   const { fontScale } = useWindowDimensions();
+  const priceWaiting = useWaiting(updatedAt === null && history.status === "loading", "content");
+  const chartWaiting = useWaiting(history.status === "loading", "check");
   const view = trackerView(screenReads, {
     symbol,
     wallet: visitor ? null : wallet,
@@ -68,17 +72,12 @@ export function TrackerScreen({ symbol, visitor = false, onIntent }: TrackerScre
   if (view.kind === "notFound") {
     return (
       <SafeAreaView style={styles.safe} edges={["right", "bottom", "left"]}>
-        <EmptyState
-          title={view.title}
-          detail={view.detail}
-          action={
-            <Button
-              variant="quiet"
-              label={view.back}
-              onPress={() => onIntent({ kind: "markets" })}
-            />
-          }
-        />
+        <View style={styles.notFound}>
+          <Text variant="h2" style={styles.centred}>
+            {view.title}
+          </Text>
+          <Button variant="quiet" label={view.back} onPress={() => onIntent({ kind: "markets" })} />
+        </View>
       </SafeAreaView>
     );
   }
@@ -122,8 +121,13 @@ export function TrackerScreen({ symbol, visitor = false, onIntent }: TrackerScre
         </View>
 
         <View style={styles.hero}>
-          {updatedAt === null && view.price.live === false && history.status === "loading" ? (
-            <Skeleton width={180} height={42} />
+          {updatedAt === null &&
+          view.price.live === false &&
+          history.status === "loading" &&
+          !priceWaiting.overdue ? (
+            <WaitingPlaceholder waiting={priceWaiting}>
+              <Skeleton width={180} height={42} />
+            </WaitingPlaceholder>
           ) : view.price.live ? (
             <View style={styles.priceLine}>
               <Text variant="display" adjustsFontSizeToFit numberOfLines={1} minimumFontScale={0.6}>
@@ -154,6 +158,10 @@ export function TrackerScreen({ symbol, visitor = false, onIntent }: TrackerScre
               <Chart points={view.chart.points} height={CHART_HEIGHT} label={view.chart.label} />
               <Text variant="faint">{view.chart.source}</Text>
             </>
+          ) : view.chart.kind === "loading" ? (
+            <View style={styles.chartEmpty}>
+              <WaitingLine waiting={{ ...chartWaiting, label: view.chart.text }} />
+            </View>
           ) : (
             <View style={styles.chartEmpty}>
               <Text variant="faint">{view.chart.text}</Text>
@@ -250,6 +258,14 @@ function ActionButton({
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.base },
+  notFound: {
+    flexGrow: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: layout.group,
+    padding: layout.gutter,
+  },
+  centred: { textAlign: "center" },
   fill: { flex: 1 },
   content: { padding: layout.gutter, gap: layout.section },
   identity: { flexDirection: "row", alignItems: "center", gap: layout.inset },

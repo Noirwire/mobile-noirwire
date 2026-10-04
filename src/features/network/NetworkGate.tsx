@@ -1,15 +1,9 @@
 import { connection, expectedGenesisHash, networkLabel } from "@noirwire/shared/infrastructure";
 import { useEffect, useState, type ReactNode } from "react";
 import { AccessibilityInfo, StyleSheet, View } from "react-native";
-import { Button, Mark, Text } from "@/ui";
+import { Button, Mark, StillWorking, Text, useWaiting } from "@/ui";
 import { colors, layout } from "@/ui/theme";
-import {
-  checkNetwork,
-  networkGateView,
-  QUIET_CHECK_MS,
-  type GateState,
-  type NetworkCheck,
-} from "./gateCheck";
+import { checkNetwork, networkGateView, type GateState, type NetworkCheck } from "./gateCheck";
 
 type NetworkGateProps = {
   children: ReactNode;
@@ -23,7 +17,10 @@ const deviceCheck = () => checkNetwork(() => connection.getGenesisHash(), expect
 
 /**
  * Spec 2.0: nothing else opens until the RPC has proved which network it
- * serves. Once it has, the gate stays open for the rest of the run.
+ * serves. Once it has, the gate stays open for the rest of the run. The check
+ * waits by the waiting standard: quiet at first, then what it is doing, then
+ * that it is still at it; one that never answers ends as unreachable, with
+ * "Try again".
  */
 export function NetworkGate({
   children,
@@ -32,21 +29,20 @@ export function NetworkGate({
 }: NetworkGateProps) {
   const [state, setState] = useState<GateState>("checking");
   const [attempt, setAttempt] = useState(0);
-  /** The attempt that has been checking for longer than a moment. */
-  const [slowAttempt, setSlowAttempt] = useState<number | null>(null);
-  const slow = slowAttempt === attempt;
+  const waiting = useWaiting(state === "checking", "check");
 
   useEffect(() => {
     let current = true;
-    const timer = setTimeout(() => current && setSlowAttempt(attempt), QUIET_CHECK_MS);
     void check().then((result) => current && setState(result));
     return () => {
       current = false;
-      clearTimeout(timer);
     };
   }, [check, attempt]);
 
-  const view = state === "ok" ? null : networkGateView(state, network(), slow);
+  // A check that has not answered within its limit is the same as no answer.
+  if (state === "checking" && waiting.overdue) setState("unreachable");
+
+  const view = state === "ok" ? null : networkGateView(state, network(), waiting.signal !== "none");
   const message = view?.message ?? null;
   useEffect(() => {
     if (message) AccessibilityInfo.announceForAccessibility(message);
@@ -58,6 +54,7 @@ export function NetworkGate({
     <View style={styles.gate}>
       <Mark size={40} />
       {view.caption !== null && <Text variant="faint">{view.caption}</Text>}
+      <StillWorking waiting={waiting} />
       {view.message !== null && (
         <Text accessibilityRole="alert" style={styles.centered}>
           {view.message}

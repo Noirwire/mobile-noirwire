@@ -1,4 +1,5 @@
-import { mobilePortfolioCopy, portfolioCopy } from "@noirwire/shared/copy";
+import { canCreatePortfolio, portfolioNameTaken } from "@noirwire/shared/application";
+import { errorsCopy, mobilePortfolioCopy, portfolioCopy } from "@noirwire/shared/copy";
 import {
   DEFAULT_PORTFOLIO_GLYPH,
   DEFAULT_PORTFOLIO_TINT,
@@ -13,6 +14,7 @@ import {
   pieMixView,
   type NewKind,
 } from "@noirwire/shared/presentation";
+import { FUNDING_DERIVATION_INDEX } from "@noirwire/shared/infrastructure";
 import { screenReads } from "@noirwire/shared/wallet";
 import { useEffect, useState } from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
@@ -20,8 +22,10 @@ import { Button, Chip, Field, Notice, PieRing, Segmented, Sheet, Text } from "@/
 import { selectionHaptic, successHaptic } from "@/ui/haptics";
 import { layout } from "@/ui/theme";
 import { PieMixEditor } from "../pie/PieBuilderSheet";
+import { phoneCopy } from "../phoneCopy";
 import { IconPicker } from "./IconPicker";
 import { addPortfolio, noteSheetOpened } from "./portfolioActions";
+import { useWalletSnapshot } from "./useWalletSnapshot";
 
 type NewPortfolioSheetProps = {
   onClose: () => void;
@@ -37,7 +41,11 @@ const PIE_MARK = 40;
 
 /**
  * Spec 2.14: a portfolio, or a pie, with a name only the user sees. Nothing
- * goes on chain and nothing is priced, so it works offline.
+ * goes on chain and nothing is priced, so it works offline. The button can
+ * always be pressed and says what is missing; a name another portfolio has is
+ * refused as it is typed; and a wallet that already ends in a run of
+ * never-used portfolios is told to use one of those first, since one made
+ * past them could be out of an import's reach.
  */
 export function NewPortfolioSheet({ onClose, onCreated }: NewPortfolioSheetProps) {
   const [kind, setKind] = useState<NewKind>("portfolio");
@@ -47,6 +55,9 @@ export function NewPortfolioSheet({ onClose, onCreated }: NewPortfolioSheetProps
   const [mix, setMix] = useState<Mix>(() => mixFrom([]));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** Create was pressed: what is missing is said. */
+  const [asked, setAsked] = useState(false);
+  const wallet = useWalletSnapshot();
   useEffect(() => noteSheetOpened("new_account"), []);
 
   const pie = kind === "pie";
@@ -54,7 +65,17 @@ export function NewPortfolioSheet({ onClose, onCreated }: NewPortfolioSheetProps
   const view = newPortfolioView({ kind, name, mixProblem, platform: "mobile" });
   const labelToKind = new Map(NEW_KINDS.map((option) => [view.kindLabels[option], option]));
 
+  const tooManyUnused = wallet !== null && !canCreatePortfolio(wallet, FUNDING_DERIVATION_INDEX);
+  const nameProblem =
+    wallet !== null && portfolioNameTaken(wallet, name.trim())
+      ? errorsCopy.duplicateName
+      : asked && name.trim() === ""
+        ? phoneCopy.nameNeeded
+        : undefined;
+
   async function create() {
+    setAsked(true);
+    if (!view.canSubmit || nameProblem !== undefined || tooManyUnused) return;
     setBusy(true);
     setError(null);
     const result = await addPortfolio({
@@ -84,11 +105,12 @@ export function NewPortfolioSheet({ onClose, onCreated }: NewPortfolioSheetProps
           label={view.submit}
           loading={busy}
           loadingLabel={view.submitting}
-          disabled={!view.canSubmit}
+          disabled={tooManyUnused}
           onPress={() => void create()}
         />
       }
     >
+      {tooManyUnused && <Notice tone="warning">{errorsCopy.unusedPortfolios}</Notice>}
       <View style={styles.group}>
         <Segmented
           label={view.kindsLabel}
@@ -101,11 +123,12 @@ export function NewPortfolioSheet({ onClose, onCreated }: NewPortfolioSheetProps
       <Text tone="dim">{view.lead}</Text>
       <Field
         label={view.nameLabel}
-        placeholder={view.placeholder}
+        placeholder={phoneCopy.forExample(view.placeholder)}
         value={name}
         maxLength={NAME_MAX}
         onChangeText={setName}
         autoCapitalize="sentences"
+        error={nameProblem}
       />
       {view.suggestions.length > 0 && (
         <ScrollView
@@ -151,6 +174,7 @@ export function NewPortfolioSheet({ onClose, onCreated }: NewPortfolioSheetProps
         }
       />
       {pie && <PieMixEditor mix={mix} onChange={setMix} />}
+      {pie && asked && mixProblem && <Notice tone="warning">{mixProblem}</Notice>}
       {error && <Notice tone="danger">{error}</Notice>}
     </Sheet>
   );

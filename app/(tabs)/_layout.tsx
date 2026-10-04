@@ -8,8 +8,8 @@ import { MagnifyingGlassIcon } from "phosphor-react-native/src/icons/MagnifyingG
 import { colors, fonts } from "@/ui/theme";
 
 const TABS: { name: string; title: string; icon: Icon }[] = [
-  { name: "index", title: "Home", icon: HouseIcon },
-  { name: "markets", title: "Markets", icon: MagnifyingGlassIcon },
+  { name: "(home)", title: "Home", icon: HouseIcon },
+  { name: "(markets)", title: "Markets", icon: MagnifyingGlassIcon },
   { name: "earn", title: "Earn", icon: ChartLineUpIcon },
   { name: "activity", title: "Activity", icon: ClockCounterClockwiseIcon },
   { name: "settings", title: "Settings", icon: GearSixIcon },

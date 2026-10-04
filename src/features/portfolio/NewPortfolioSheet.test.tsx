@@ -22,10 +22,16 @@ describe("NewPortfolioSheet", () => {
       screen.getByText("Give it a name only you see. The name never leaves this phone."),
     ).toBeOnTheScreen();
     const create = () => screen.getByRole("button", { name: "Create portfolio" });
-    expect(create()).toBeDisabled();
+    expect(screen.getByLabelText("Portfolio name").props.placeholder).toBe(
+      "For example: Investing",
+    );
+    expect(create()).toBeEnabled();
     await fireEvent.changeText(screen.getByLabelText("Portfolio name"), "   ");
-    expect(create()).toBeDisabled();
+    await fireEvent.press(create());
+    expect(screen.getByRole("alert")).toHaveTextContent("Type a name first.");
+    expect(on.onCreated).not.toHaveBeenCalled();
     await fireEvent.press(screen.getByRole("button", { name: "Long term" }));
+    expect(screen.queryByRole("alert")).toBeNull();
     await fireEvent.press(screen.getByRole("button", { name: "Change Icon and colour" }));
     await fireEvent.press(screen.getByRole("radio", { name: "Travel icon" }));
     await fireEvent.press(screen.getByRole("radio", { name: "Rose colour" }));
@@ -45,15 +51,59 @@ describe("NewPortfolioSheet", () => {
   it("switches to a pie, which needs a name and a mix before it can be created", async () => {
     installTestPlatform();
     await unlockedWallet();
-    await open();
+    const on = await open();
     await fireEvent.press(screen.getByRole("radio", { name: "Pie" }));
     expect(screen.getByText("New pie")).toBeOnTheScreen();
     expect(
       screen.getByText("Set a mix of trackers and invest in all of them at once."),
     ).toBeOnTheScreen();
+    await fireEvent.press(screen.getByRole("button", { name: "Create pie" }));
+    expect(screen.getByText("Type a name first.")).toBeOnTheScreen();
     await fireEvent.changeText(screen.getByLabelText("Pie name"), "Core");
-    expect(screen.getByRole("button", { name: "Create pie" })).toBeDisabled();
+    expect(screen.queryByText("Type a name first.")).toBeNull();
+    await fireEvent.press(screen.getByRole("button", { name: "Create pie" }));
+    expect(screen.getAllByText("Add at least one tracker.").length).toBeGreaterThan(0);
+    expect(on.onCreated).not.toHaveBeenCalled();
     expect(screen.getByLabelText("The pie's ring, its default mark")).toBeOnTheScreen();
+  });
+
+  it("refuses a name another portfolio already has, as it is typed", async () => {
+    installTestPlatform();
+    await unlockedWallet((wallet) => ({
+      ...wallet,
+      portfolios: [{ ...wallet.portfolios[0], label: "Trips" }],
+    }));
+    const on = await open();
+    await fireEvent.changeText(screen.getByLabelText("Portfolio name"), " trips ");
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "You already have a portfolio with that name. Choose another name.",
+    );
+    await fireEvent.press(screen.getByRole("button", { name: "Create portfolio" }));
+    expect(on.onCreated).not.toHaveBeenCalled();
+    expect(getSnapshot()!.portfolios).toHaveLength(1);
+  });
+
+  it("says to use a never-used portfolio first once the wallet ends in ten of them", async () => {
+    installTestPlatform();
+    await unlockedWallet((wallet) => {
+      const [first] = wallet.portfolios;
+      return {
+        ...wallet,
+        portfolios: Array.from({ length: 10 }, (_, index) => ({
+          ...first,
+          id: `empty-${index}`,
+          label: `Empty ${index}`,
+          derivationIndex: first.derivationIndex + index,
+        })),
+      };
+    });
+    await open();
+    expect(
+      screen.getByText(
+        "You have several portfolios that were never used. Use one of those first. An archived one can be restored.",
+      ),
+    ).toBeOnTheScreen();
+    expect(screen.getByRole("button", { name: "Create portfolio" })).toBeDisabled();
   });
 
   it("says when the new portfolio could not be saved on this phone", async () => {

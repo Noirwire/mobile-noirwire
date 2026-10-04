@@ -17,6 +17,7 @@ import {
   stockBySymbol,
   type TradePlan,
 } from "@noirwire/shared/infrastructure";
+import { signAsClient, unsignedTransaction } from "@noirwire/shared/testing";
 import {
   createPortfolio,
   createWallet,
@@ -25,14 +26,10 @@ import {
   storeNewWallet,
 } from "@noirwire/shared/wallet";
 import { MintLayout, TOKEN_PROGRAM_ID } from "@solana/spl-token";
-import { PublicKey, TransactionMessage, VersionedTransaction, type Keypair } from "@solana/web3.js";
+import { PublicKey, type Keypair } from "@solana/web3.js";
 import { Buffer } from "buffer";
 import type { ReactElement } from "react";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-// The shared package's own signing entry point, which its chain clients call
-// and its public surface does not export: the stand-ins below sign through it
-// exactly as the real clients do.
-import { signForSending } from "../../../node_modules/@noirwire/shared/dist/infrastructure/solana/signerAccounts.js";
 import { renderWith, STRONG_PASSWORD } from "../testServices";
 import type { AppServices } from "../services";
 import { MoneyProvider, type Money } from "./money";
@@ -91,6 +88,8 @@ export type FakeChain = {
     deposited: Map<string, number>;
     unreadable: Set<string>;
   };
+  /** Once an action has been sent, every balance read fails: it landed, and what it left cannot be read back. */
+  unreadAfterAction: boolean;
   calls: { kind: string; amount: number; to?: string; symbol?: string }[];
 };
 
@@ -123,6 +122,7 @@ export function fakeChain(): FakeChain {
       deposited: new Map(),
       unreadable: new Set(),
     },
+    unreadAfterAction: false,
     calls: [],
   };
 }
@@ -130,26 +130,20 @@ export function fakeChain(): FakeChain {
 const USDC = "USDC";
 const UNIT = 1_000_000;
 const TRACKER_ACCOUNT_RENT = 2_039_280;
-const BLOCKHASH = PublicKey.default.toBase58();
 export const FAKE_SIGNATURE = "fake-signature";
 
 function balanceIn(chain: FakeChain, address: string, symbol: string) {
   return chain.balances.get(address)?.[symbol] ?? 0;
 }
 
-function setBalance(chain: FakeChain, address: string, symbol: string, amount: number) {
-  chain.balances.set(address, { ...chain.balances.get(address), [symbol]: amount });
+/** A balance as a chain client reads it, which fails once `unreadAfterAction` applies. */
+function readBalance(chain: FakeChain, address: string, symbol: string) {
+  if (chain.unreadAfterAction && chain.calls.length > 0) throw new Error("unreadable");
+  return balanceIn(chain, address, symbol);
 }
 
-/** An empty transaction of `signer`'s, not yet signed. */
-export function unsignedTransaction(signer: Keypair) {
-  return new VersionedTransaction(
-    new TransactionMessage({
-      payerKey: signer.publicKey,
-      recentBlockhash: BLOCKHASH,
-      instructions: [],
-    }).compileToV0Message(),
-  );
+function setBalance(chain: FakeChain, address: string, symbol: string, amount: number) {
+  chain.balances.set(address, { ...chain.balances.get(address), [symbol]: amount });
 }
 
 /** Signs a transaction of `signer`'s through the shared signing guard, as a chain client does. */
@@ -160,7 +154,7 @@ export async function signAsAClientWould(
   transaction = unsignedTransaction(signer),
 ) {
   await chain.beforeSigning();
-  await signForSending(transaction, signer, stillUnlocked);
+  await signAsClient(signer, stillUnlocked, transaction);
 }
 
 /** A token's mint account as the chain holds it, for the shared code that sizes a tracker's account from it. */
@@ -239,7 +233,7 @@ export function testMoney(chain: FakeChain): Money {
 
   const asset: Money["asset"] = (symbol) => ({
     symbol,
-    balance: async (owner) => balanceIn(chain, owner, symbol),
+    balance: async (owner) => readBalance(chain, owner, symbol),
     ensureAccount: async () => undefined,
     deposit: async () => undefined,
     withdraw: async () => {
@@ -439,8 +433,9 @@ function fakeRefresh(real: Money, chain: FakeChain) {
   return createBalanceRefresh({
     store,
     chain: {
-      balanceOf: async (address, symbol) => balanceIn(chain, address, symbol),
+      balanceOf: async (address, symbol) => readBalance(chain, address, symbol),
       async portfolioBalances(address) {
+        readBalance(chain, address, USDC);
         const { USDC: cash = 0, ...trackers } = chain.balances.get(address) ?? {};
         return { cash: { SOL: 0, USDC: cash }, trackers };
       },

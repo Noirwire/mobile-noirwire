@@ -2,8 +2,10 @@ import { fundingWalletView } from "@noirwire/shared/presentation";
 import { useEffect, useState } from "react";
 import { RefreshControl, ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Button, Skeleton, Text } from "@/ui";
+import { Button, Skeleton, Text, useWaiting, WaitingPlaceholder } from "@/ui";
 import { colors, layout } from "@/ui/theme";
+import { WAITING_LIMIT_MS, withinLimit } from "@/ui/useWaiting";
+import { phoneCopy } from "../phoneCopy";
 import { useServices } from "../services";
 import { useMoney } from "../network/money";
 import { useWalletSnapshot } from "../network/useWalletSnapshot";
@@ -30,8 +32,7 @@ export function FundingWalletScreen({ onMove, onShowAddress }: FundingWalletScre
   useEffect(() => {
     if (!address) return;
     let current = true;
-    money.refresh
-      .funding(address, CASH)
+    withinLimit(money.refresh.funding(address, CASH), WAITING_LIMIT_MS.content)
       .then(
         () => current && setReadFailed(false),
         () => current && setReadFailed(true),
@@ -45,6 +46,8 @@ export function FundingWalletScreen({ onMove, onShowAddress }: FundingWalletScre
       current = false;
     };
   }, [money, address, version]);
+
+  const waiting = useWaiting(!read, "content");
 
   const view = fundingWalletView({
     balance: read && wallet ? (wallet.funding.tokens[CASH] ?? 0) : null,
@@ -70,7 +73,9 @@ export function FundingWalletScreen({ onMove, onShowAddress }: FundingWalletScre
         <View style={styles.hero}>
           <Text variant="faint">{view.waiting}</Text>
           {view.balance === null ? (
-            <Skeleton width={180} height={46} />
+            <WaitingPlaceholder waiting={waiting}>
+              <Skeleton width={180} height={46} />
+            </WaitingPlaceholder>
           ) : (
             <Text variant="display" accessibilityLabel={view.balanceLabel ?? undefined}>
               {view.balance}
@@ -78,9 +83,18 @@ export function FundingWalletScreen({ onMove, onShowAddress }: FundingWalletScre
           )}
           <Text tone="dim">{view.lead}</Text>
           {view.readFailed && (
-            <Text variant="note" tone="warning" accessibilityRole="alert">
-              {view.readFailed}
-            </Text>
+            <View style={styles.retry}>
+              <Text variant="note" tone="warning" accessibilityRole="alert">
+                {view.readFailed}
+              </Text>
+              {online && (
+                <Button
+                  label={phoneCopy.tryAgain}
+                  variant="quiet"
+                  onPress={() => setVersion((count) => count + 1)}
+                />
+              )}
+            </View>
           )}
         </View>
         <View style={styles.actions}>
@@ -101,5 +115,6 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.base },
   content: { padding: layout.gutter, gap: layout.section },
   hero: { gap: layout.tight, paddingTop: layout.section },
+  retry: { gap: layout.tight, alignItems: "flex-start" },
   actions: { gap: layout.tight },
 });

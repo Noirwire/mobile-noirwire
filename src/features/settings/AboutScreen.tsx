@@ -1,10 +1,10 @@
+import { mobileSettingsCopy } from "@noirwire/shared/copy";
 import * as Clipboard from "expo-clipboard";
 import { useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { ListRow, Mark, Panel, Screen, Text } from "@/ui";
 import { lightHaptic } from "@/ui/haptics";
 import { layout } from "@/ui/theme";
-import { mobileSettingsCopy } from "./copy";
 
 type AboutScreenProps = {
   version: string;

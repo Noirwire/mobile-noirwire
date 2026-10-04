@@ -7,6 +7,7 @@ import {
 import { activePortfolios, cashOf } from "@noirwire/shared/wallet";
 import { describeFailure } from "@noirwire/shared/presentation";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useWaiting, WAITING_LIMIT_MS, withinLimit } from "@/ui/useWaiting";
 import { useServices } from "../services";
 import { useMoney } from "../network/money";
 import { usePendingBlock } from "../network/usePendingBlock";
@@ -17,8 +18,6 @@ export type FundStep = "choose" | "amount" | "review" | "progress" | "result";
 /** The token the private route moves. */
 export const CASH = "USDC";
 const USDC_DECIMALS = 6;
-/** How long progress may run before it says that nothing more is needed (spec 3.2). */
-export const STILL_WORKING_MS = 20_000;
 
 type Result = {
   outcome: "done" | "pending" | "unknown";
@@ -45,13 +44,11 @@ export function useFundFlow(initialPortfolioId: string | null) {
     initialPortfolioId ?? (portfolios.length === 1 ? portfolios[0].id : null),
   );
   const [step, setStep] = useState<FundStep>(needsChoice ? "choose" : "amount");
-  const [amountText, setAmountText] = useState("");
+  const [amountText, setAmountTyped] = useState("");
+  const [touched, setTouched] = useState(false);
   const [read, setRead] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
   const [completed, setCompleted] = useState(0);
-  /** Each Confirm starts a run; the one whose progress has gone on long enough says so. */
-  const [run, setRun] = useState(0);
-  const [slowRun, setSlowRun] = useState<number | null>(null);
   const [result, setResult] = useState<Result | null>(null);
   const live = useRef(true);
   useEffect(
@@ -65,8 +62,7 @@ export function useFundFlow(initialPortfolioId: string | null) {
   useEffect(() => {
     if (!fundingAddress) return;
     let current = true;
-    money.refresh
-      .funding(fundingAddress, CASH)
+    withinLimit(money.refresh.funding(fundingAddress, CASH), WAITING_LIMIT_MS.content)
       .catch(() => undefined)
       .finally(() => current && setRead(true));
     return () => {
@@ -74,12 +70,8 @@ export function useFundFlow(initialPortfolioId: string | null) {
     };
   }, [money, fundingAddress]);
 
-  useEffect(() => {
-    if (step !== "progress") return;
-    const timer = setTimeout(() => setSlowRun(run), STILL_WORKING_MS);
-    return () => clearTimeout(timer);
-  }, [step, run]);
-  const slow = step === "progress" && slowRun === run;
+  const reading = useWaiting(!read, "content");
+  const working = useWaiting(step === "progress", "action");
 
   const portfolio = portfolios.find((entry) => entry.id === chosen) ?? null;
   const fundingBalance = read && wallet ? (wallet.funding.tokens[CASH] ?? 0) : null;
@@ -96,7 +88,6 @@ export function useFundFlow(initialPortfolioId: string | null) {
     const id = portfolio.id;
     setFailure(null);
     setCompleted(0);
-    setRun((count) => count + 1);
     setStep("progress");
     const deps = {
       ...money.deps,
@@ -104,7 +95,10 @@ export function useFundFlow(initialPortfolioId: string | null) {
       privateToken: money.privateToken,
       refresh: money.refresh,
     };
-    const sent = await fundPrivately(deps, { portfolioId: id, amount, symbol: CASH });
+    const sent = await fundPrivately(deps, { portfolioId: id, amount, symbol: CASH }).catch(
+      // Thrown past the use case's own answers: whether it was sent is not known.
+      () => ({ kind: "unknown" as const }),
+    );
     if (!live.current) return;
     if (sent.kind === "unknown") {
       setResult({ outcome: "unknown", amount, arrived: 0, fee: 0 });
@@ -122,7 +116,7 @@ export function useFundFlow(initialPortfolioId: string | null) {
       portfolioId: id,
       symbol: CASH,
       balanceBefore: sent.balanceBefore,
-    });
+    }).catch(() => null);
     if (!live.current) return;
     if (balance === null) {
       setResult({ outcome: "pending", amount, arrived: 0, fee });
@@ -149,12 +143,20 @@ export function useFundFlow(initialPortfolioId: string | null) {
     choose: setChosen,
     needsChoice,
     amountText,
-    setAmountText,
+    setAmountText(text: string) {
+      setAmountTyped(text);
+      setTouched(true);
+    },
+    touched,
+    decimals: USDC_DECIMALS,
     fundingBalance,
     draft,
     failure,
     completed,
-    slow,
+    /** The funding wallet's balance being read on opening. */
+    reading,
+    /** The progress step's wait: its calm line, and whether it has run past its limit. */
+    working,
     result,
     goTo: setStep,
     confirm,

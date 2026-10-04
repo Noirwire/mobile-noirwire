@@ -3,6 +3,7 @@ import { useRef } from "react";
 import { StyleSheet, View, type TextInput } from "react-native";
 import { Button, Field, Text } from "@/ui";
 import { layout } from "@/ui/theme";
+import { ProtectionRefused } from "@/ui/ProtectionRefused";
 import { useCaptureProtection } from "@/ui/useCaptureProtection";
 import type { NewPassword } from "./newPassword";
 
@@ -19,7 +20,9 @@ const REVEAL = { show: copy.show, hide: mobileOnboardingCopy.password.hide };
 /** "New password" with its strength line, "Confirm password" with its mismatch line, and the write-it-down line. */
 export function NewPasswordFields({ model, editable, onSubmit }: NewPasswordFieldsProps) {
   const confirmField = useRef<TextInput>(null);
-  useCaptureProtection(model.revealed);
+  const protection = useCaptureProtection(model.revealed);
+  // A password is drawn in the clear only once the system has confirmed the protection.
+  const revealed = model.revealed && protection.ready;
 
   return (
     <View style={styles.block}>
@@ -38,7 +41,7 @@ export function NewPasswordFields({ model, editable, onSubmit }: NewPasswordFiel
           value={model.password}
           onChangeText={model.setPassword}
           editable={editable}
-          revealed={model.revealed}
+          revealed={revealed}
           onRevealedChange={model.setRevealed}
           revealLabels={REVEAL}
           textContentType="newPassword"
@@ -61,7 +64,7 @@ export function NewPasswordFields({ model, editable, onSubmit }: NewPasswordFiel
           value={model.confirm}
           onChangeText={model.setConfirm}
           editable={editable}
-          revealed={model.revealed}
+          revealed={revealed}
           onRevealedChange={model.setRevealed}
           revealLabels={REVEAL}
           textContentType="newPassword"
@@ -75,7 +78,8 @@ export function NewPasswordFields({ model, editable, onSubmit }: NewPasswordFiel
           </Text>
         )}
       </View>
-      {model.revealed && <Text variant="faint">{copy.writeItDown}</Text>}
+      <ProtectionRefused protection={protection} />
+      {revealed && <Text variant="faint">{copy.writeItDown}</Text>}
     </View>
   );
 }

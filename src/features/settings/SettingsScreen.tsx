@@ -1,4 +1,4 @@
-import { settingsCopy } from "@noirwire/shared/copy";
+import { mobileSettingsCopy, mobileWalletCopy, settingsCopy } from "@noirwire/shared/copy";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { StyleSheet, View } from "react-native";
 import type { BiometricMethod } from "@/platform/biometricKeystore";
@@ -7,10 +7,8 @@ import { successHaptic } from "@/ui/haptics";
 import { layout } from "@/ui/theme";
 import { FUNDING_WALLET_SECTION, FundingWalletRow } from "../funding/FundingWalletRow";
 import { useServices } from "../services";
-import { mobileUnlockCopy } from "../unlock/copy";
 import { useStorageHealth } from "../wallet/useWallet";
 import { lockNow } from "../wallet/walletActions";
-import { mobileSettingsCopy } from "./copy";
 
 export type SettingsPage =
   "recovery-phrase" | "password" | "funding-wallet" | "privacy" | "risks" | "about" | "reset";
@@ -133,7 +131,7 @@ function BiometricRow() {
   async function turnOn() {
     if (!enabling) return;
     setEnabling({ ...enabling, busy: true, problem: null });
-    const result = await biometric.turnOn(enabling.password, mobileUnlockCopy.prompt);
+    const result = await biometric.turnOn(enabling.password, mobileWalletCopy.unlock.prompt);
     if (result === "on") {
       successHaptic();
       setEnabling(null);

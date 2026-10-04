@@ -23,12 +23,16 @@ import {
   Screen,
   Skeleton,
   Text,
+  useWaiting,
+  WaitingPlaceholder,
+  type Waiting,
 } from "@/ui";
 import { FittedFigure } from "@/ui/FittedFigure";
 import { RefreshScreen } from "@/ui/RefreshScreen";
 import { colors, fonts, layout, opacity, radius, size } from "@/ui/theme";
 import { ActivityDetailSheet } from "../activity/ActivityDetailSheet";
 import { ActivityRow } from "../activity/ActivityRow";
+import { phoneCopy } from "../phoneCopy";
 import { useServices } from "../services";
 import { useMoney } from "../network/money";
 import { FadeLayer } from "./FadeLayer";
@@ -89,6 +93,9 @@ export function PortfolioScreen(props: PortfolioScreenProps) {
     AccessibilityInfo.announceForAccessibility(copy.publicView.announce);
   }, []);
 
+  const firstRead = refresh.reading && !refresh.settled;
+  const waiting = useWaiting(firstRead, "content");
+
   if (!wallet) return null;
   const view = portfolioView(screenReads, wallet, id, updatedAt);
 
@@ -107,8 +114,7 @@ export function PortfolioScreen(props: PortfolioScreenProps) {
   const portfolio = wallet.portfolios.find((entry) => entry.id === id)!;
   const inPublic = unlocked && publicMode !== "off";
 
-  const loading =
-    refresh.reading && !refresh.settled && view.holdings === null && view.empty !== null;
+  const loading = firstRead && view.holdings === null && view.empty !== null;
 
   return (
     <View style={styles.safe}>
@@ -130,8 +136,9 @@ export function PortfolioScreen(props: PortfolioScreenProps) {
           <View style={styles.sections}>
             <Header
               view={view}
-              loading={loading}
+              loading={loading ? waiting : null}
               failed={refresh.failed}
+              onRetry={online ? refresh.retry : undefined}
               onEnterPublic={enterPublic}
               onRelease={() => setPublicMode((mode) => (mode === "held" ? "off" : mode))}
             />
@@ -170,11 +177,11 @@ export function PortfolioScreen(props: PortfolioScreenProps) {
               </Section>
             )}
             {loading && (
-              <View style={styles.group}>
+              <WaitingPlaceholder waiting={waiting}>
                 {[0, 1, 2, 3].map((index) => (
                   <Skeleton key={index} height={48} />
                 ))}
-              </View>
+              </WaitingPlaceholder>
             )}
             <Section
               title={view.activity.title}
@@ -268,12 +275,16 @@ function Header({
   view,
   loading,
   failed,
+  onRetry,
   onEnterPublic,
   onRelease,
 }: {
   view: PortfolioDetailView;
-  loading: boolean;
+  /** The first read's wait, while nothing is stored to show; null otherwise. */
+  loading: Waiting | null;
   failed: boolean;
+  /** Absent while offline: the banner says why nothing can be read. */
+  onRetry?: () => void;
   onEnterPublic: (mode: "button" | "held") => void;
   onRelease: () => void;
 }) {
@@ -303,7 +314,9 @@ function Header({
       <View style={styles.value}>
         <Text variant="faint">{view.valueLabel}</Text>
         {loading ? (
-          <Skeleton width="60%" height={42} />
+          <WaitingPlaceholder waiting={{ ...loading, stillWorking: null }}>
+            <Skeleton width="60%" height={42} />
+          </WaitingPlaceholder>
         ) : view.valueUnavailable ? (
           <Text>{view.value}</Text>
         ) : (
@@ -312,7 +325,21 @@ function Header({
           </View>
         )}
         <Text variant="note">{view.cashLine}</Text>
-        {failed && <Text variant="faint">{copy.detail.refreshFailed}</Text>}
+        {failed && (
+          <View style={styles.retry}>
+            <Text variant="faint" accessibilityLiveRegion="polite">
+              {copy.detail.refreshFailed}
+            </Text>
+            {onRetry && (
+              <Button
+                variant="quiet"
+                label={phoneCopy.tryAgain}
+                onPress={onRetry}
+                style={styles.compact}
+              />
+            )}
+          </View>
+        )}
       </View>
       {view.pending && <Notice tone="warning">{view.pending}</Notice>}
     </View>
@@ -531,6 +558,7 @@ const styles = StyleSheet.create({
   missing: { flexGrow: 1, alignItems: "center", justifyContent: "center", gap: layout.group },
   identity: { flexDirection: "row", alignItems: "center", gap: layout.inset },
   value: { gap: layout.tight, paddingTop: layout.tight },
+  retry: { gap: layout.tight, alignItems: "flex-start" },
   quietRow: { flexDirection: "row", flexWrap: "wrap", gap: layout.tight },
   quiet: { flexGrow: 1, flexBasis: 96, paddingHorizontal: layout.tight },
   empty: { alignItems: "center", gap: layout.inset, paddingVertical: layout.group },

@@ -1,4 +1,5 @@
 import { useRouter } from "expo-router";
+import { portfolioHref } from "@/navigation/detailRoutes";
 import { NewPortfolioSheet } from "@/features/portfolio/NewPortfolioSheet";
 import { SheetRoute } from "@/navigation/sheetRoute";
 
@@ -9,7 +10,7 @@ export default function NewPortfolio() {
       <SheetRoute />
       <NewPortfolioSheet
         onClose={() => router.back()}
-        onCreated={(id) => router.push({ pathname: "/portfolio/[id]", params: { id } })}
+        onCreated={(id) => router.push(portfolioHref("(home)", id))}
       />
     </>
   );

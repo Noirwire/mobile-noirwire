@@ -29,3 +29,11 @@ export { Stepper } from "./Stepper";
 export { StepList, type Step, type StepStatus } from "./StepList";
 export { Switch } from "./Switch";
 export { Text } from "./Text";
+export { StillWorking, WaitingLine, WaitingPlaceholder } from "./Waiting";
+export {
+  useWaiting,
+  withinLimit,
+  WaitOverdueError,
+  WAITING_LIMIT_MS,
+  type Waiting,
+} from "./useWaiting";

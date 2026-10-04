@@ -141,11 +141,13 @@ Sheet rules, one behaviour on both platforms:
 
 Scheme `noirwire://` and the app's universal link domain. The only accepted targets:
 
-| Link                              | Opens                                                                                                    |
-| --------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| `/markets`                        | Markets tab                                                                                              |
-| `/markets/[symbol]`               | Tracker detail, if the symbol is in the catalog; otherwise Markets with the Notice "No such investment." |
-| `/earn`, `/activity`, `/settings` | That tab                                                                                                 |
+| Link                | Opens                                                                                                    |
+| ------------------- | -------------------------------------------------------------------------------------------------------- |
+| `/markets`          | Markets tab                                                                                              |
+| `/markets/[symbol]` | Tracker detail, if the symbol is in the catalog; otherwise Markets with the Notice "No such investment." |
+
+One allow-list decides this for every link, before the router sees it: `src/navigation/deepLinks.ts`, called from `app/+native-intent.ts`.
+| `/earn`, `/activity`, `/settings` | That tab |
 
 Rules:
 
@@ -189,9 +191,9 @@ Thirty-five surfaces are specified, numbered 2.0 to 2.33. Steps inside a sheet (
 
 **States.**
 
-- Loading: the splash stays up. No spinner for the first 600 ms; after that a Text `caption` "Checking the network..." under the Mark.
-- Error, unreachable: "The network could not be reached, so balances cannot be shown safely." with "Try again".
-- Error, wrong network: "This app is built for Solana mainnet, but its network connection serves a different chain. Nothing can be sent until that is fixed." No button.
+- Loading: the splash stays up, and waits by the waiting standard (3.11): nothing for the first 300 ms, then a Text `caption` "Getting things ready..." under the Mark, then the calm "still checking" line. A check that has not answered after 20 seconds counts as unreachable.
+- Error, unreachable: "We can't show your balances right now. Your money has not moved. Try again." with "Try again".
+- Error, wrong network: "NoirWire is not connected to Solana mainnet as it should be. Your money has not moved, and nothing can be sent until this is fixed. Try again later." No button.
 - Offline: same as unreachable.
 - Empty, Populated, Price unavailable, Relayer unavailable, Locked mid-flow: not applicable.
 
@@ -381,21 +383,21 @@ There is no Copy button. The web app offers one and clears the clipboard after 3
 **States.**
 
 - Empty: as above.
-- Loading (after "Continue"): the button reads "Checking what this phrase holds..." and is disabled; the Field is read-only; Back is disabled. After three seconds a Text `caption` appears under the button: "Looking for portfolios this phrase already has. This can take a moment."
-- Error, validation: Text `caption` (danger) under the field, once the field has been left or the button pressed: "A recovery phrase is 12 or 24 words." or "Those words don't form a valid recovery phrase. Check the spelling and order."
-- Error, network: Notice `danger`: "Could not reach the network to check this phrase. Try again."
-- Offline: the button is disabled with Text `caption`: "You're offline. Importing needs the network to find what this phrase holds."
+- Loading (after "Continue"): the form gives way at once to a progress view: `display` "Importing your wallet", "Keep the app open. This usually takes a few seconds.", a StepList ("Reading your recovery phrase", "Finding your portfolios", "Getting everything ready") whose steps change only on evidence, and a Button `quiet` "Cancel". Back stays available. After eight seconds a Text `caption` appears under the list: "Still working. A wallet with many portfolios takes a little longer." Cancel and Back return to the form with the phrase kept; what the lookup answers afterwards is ignored.
+- Error, validation: Text `caption` (danger) under the field, once the field has been left, the keyboard closed or the button pressed, saying exactly what is wrong: "A recovery phrase is 12 or 24 words. This has 11.", "Word 7, \"abotu\", is not a recovery phrase word. Check its spelling." or "These are all real words, but together they are not a recovery phrase. Check that every word is the right one and in the right order."
+- Error, network, going offline while it runs, or a lookup that has not finished after three minutes: back to the form with a Notice `danger`: "We couldn't finish importing your wallet. Nothing was saved on this phone. Try again."
+- Offline: the button is disabled with Text `caption`: "You're offline. Nothing was saved on this phone. Go back online to import your wallet."
 - Price unavailable, Relayer unavailable: not applicable.
 - Locked mid-flow: not applicable. If the app leaves the foreground the field is cleared.
 
 **Interactions and rules.**
 
-- Input is trimmed, lower-cased and split on any whitespace. Exactly 12 or 24 words and a valid checksum are required.
+- Input is read as people paste a phrase: capitals, commas, line breaks, tabs and the numbers of a numbered list only separate words. Exactly 12 or 24 words and a valid checksum are required. The return key submits; it never adds a line.
 - "Paste" reads the clipboard once and fills the field. The clipboard is not read at any other time.
 - A phrase can open two different sets of addresses, because wallet apps do not all turn a phrase into addresses the same way. Both sets are checked, each candidate address in a request of its own and in shuffled order, so the two sets are never named together.
 - On success go to 2.6.
 
-**Disabled.** "Continue" while the phrase is invalid; the validation message is the reason.
+**Disabled.** "Continue" only while offline. For a phrase that is refused it stays pressable, and pressing it shows the reason.
 
 **Haptics.** Error notification on a failed check. None while typing.
 
@@ -459,6 +461,7 @@ There is no Copy button. The web app offers one and clears the clipboard after 3
 4. Button `primary`, full width: "Continue" (to 2.8).
 5. Button `quiet`, full width: "Open the other set instead" (back to 2.6).
 6. Button `quiet`, text only: "Show funding address". Tapped, the funding address appears beneath in groups of four characters, with "Hide". It is offered so a user can recognise their wallet; it is never shown unasked.
+7. Button `quiet`, text only: "Missing a portfolio? Look further". It scans on from where the import stopped, past up to a hundred unused addresses in a row. While it runs: "Looking further for your portfolios..." with "Cancel", and "Continue" waits. Afterwards a line says "Found 2 more portfolios.", "No more portfolios were found for this phrase." or "We couldn't finish looking. Nothing was changed. Try again." It needs the network.
 
 Recovered portfolios are named "Portfolio 1", "Portfolio 2" and so on; names live only on the device, so they cannot be recovered.
 
@@ -804,6 +807,8 @@ The watchlist and market shelves that sit on the web home live in the Markets ta
 ---
 
 ### 2.14 New portfolio and new pie (sheet)
+
+Three rules sit on top of what follows. The create button can always be pressed and says what is missing ("Type a name first.", or the mix's own problem). A name another portfolio already has, archived ones included, is refused as it is typed: "You already have a portfolio with that name. Choose another name."; renaming in Portfolio settings holds to the same. And once the wallet ends in ten portfolios in a row that were never used, no further one is created: "You have several portfolios that were never used. Use one of those first. An archived one can be restored.", because one made past them could be out of reach of an import.
 
 **Purpose.** Create a portfolio, or a pie, with a name only the user sees.
 
@@ -1994,17 +1999,17 @@ The idle timer does not fire while an action is in flight after Confirm; it is e
 
 ### 3.5 Offline
 
-- A thin banner sits under the top bar on every screen and at the top of every sheet while the device has no connection or the app's server cannot be reached: "You're offline. Balances and prices may be out of date, and nothing can be sent until you're back online." It is a Notice `warning` in compact form, with no close control. It disappears by itself.
+- A thin banner takes its own place at the top of the app, under the status bar, and at the top of every sheet, while the device has no connection or the app's server cannot be reached. The screens begin beneath it, so it never lies over a header, a title or a control: "You're offline. Balances and prices may be out of date, and nothing can be sent until you're back online." It is a Notice `warning` in compact form, with no close control. It disappears by itself.
 - While it is shown: every primary that starts or confirms a money action is disabled, with the banner as its reason. Pull to refresh does nothing.
 - Balances stay on screen as last read. Prices follow 3.7 and disappear two minutes after the last successful read.
 - These work offline: unlocking, viewing and hiding the phrase, changing the password, creating a wallet, creating and editing portfolios and mixes, archiving, the activity list, Receive, public view, all of Settings.
-- On reconnecting, the visible screen refreshes once, without a spinner.
+- On reconnecting, the visible screen refreshes once, without a spinner. While offline the connection is asked about again every few seconds, so the banner clears by itself.
 
 ### 3.6 Privacy cover and capture protection
 
 - **App switcher cover.** Whenever the app is not active, a cover (base colour with the Mark, centred) is drawn over the whole app before the system takes its snapshot. This applies to every screen and sheet.
 - **Capture protection** applies to: 2.3, 2.4, 2.5, 2.7 while the address is shown, 2.8 while the password is visible, 2.15, 2.29, public view while the address is shown, and the review address in 2.24.
-  - Android: these screens set the secure window flag, so screenshots, recordings and screen sharing show black. This is reliable.
+  - Android: these screens set the secure window flag, so screenshots, recordings and screen sharing show black. This is reliable. A sheet is a window of its own and takes the flag over only when it is created, so a sheet that can show an address (Receive, Send, Activity detail) asks for the flag before it opens and keeps it for as long as it is open.
   - iOS: best effort. The protected content is drawn in a layer the system normally leaves out of screenshots and recordings, and when a recording or mirroring session is detected the content is concealed and replaced by Text `body` "Hidden while the screen is being recorded." The system gives no guarantee for the screenshot technique, and it can stop working in a new system version. The build must be tested for it on each supported version.
   - Because of that, no string in the app promises that screenshots are blocked. On iOS, when a screenshot is detected on a phrase screen, a Notice `warning` appears: "A screenshot was just taken. If it shows your words, anyone with your photos can read them. Delete it."
 - Nothing sensitive is ever placed in a notification, a widget, a share sheet, or the system-wide search index.
@@ -2077,7 +2082,10 @@ Each portfolio has a glyph and a tint chosen by its owner (2.14, 2.17). To make 
 - **A spinner inside the button** when the user pressed something and is waiting for that press: "Getting a live price...", "Unlocking...", "Encrypting...". The button keeps its width and shows its busy label.
 - **StepList** for anything after Confirm.
 - No full-screen spinner, no blocking overlay, and no skeleton for content that is local (activity, settings).
-- Nothing appears for the first 300 ms of any wait, so fast responses do not flash.
+- Nothing appears for the first 300 ms of any wait, so fast responses do not flash. A button stops taking presses at once; its spinner and busy label follow after that moment.
+- Every wait takes its timing and its words from the shared waiting standard (`useWaiting` in `src/ui`): the quiet signal from 300 ms, then a calm "still working" line (after 4 seconds for content, a check or a review; 8 seconds for an action).
+- No wait is open-ended. A read that has not answered after 20 seconds counts as failed: the screen says what may be out of date and offers "Try again". A check or a review that has not answered after 20 or 30 seconds ends with a plain message and the form usable again. An action that has not answered after two minutes stops holding its sheet: "This is taking longer than it should. It may still go through, so check the balance and Activity before doing it again." with "Close"; the portfolio stays blocked for a repeat until the chain has settled it (3.3).
+- Loading never reads as failure, and a failure never names a request, a service or a timeout.
 
 ### 3.12 Haptics
 

@@ -9,7 +9,6 @@ import { useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { Button, Notice, Panel, QRCode, Sheet, Text } from "@/ui";
 import { layout } from "@/ui/theme";
-import { useCaptureProtection } from "@/ui/useCaptureProtection";
 import { noteAddressCopied, noteSheetOpened } from "../portfolio/portfolioActions";
 import { useWalletSnapshot } from "../portfolio/useWalletSnapshot";
 import { useCopied } from "./useCopied";
@@ -21,7 +20,7 @@ type ReceiveSheetProps = {
 
 /**
  * Spec 2.15: one address as text and as a QR code, with the one warning that
- * applies to it. Kept out of screen captures while the address shows. No
+ * applies to it. The whole sheet is kept out of screen captures. No
  * Share action: the system share sheet would hand the address to whichever
  * app is picked.
  */
@@ -35,11 +34,10 @@ export function ReceiveSheet({ target, onClose }: ReceiveSheetProps) {
   const clipboard = useCopied(() => {
     if (view?.kind === "address") noteAddressCopied(view.what);
   });
-  useCaptureProtection(shown);
   useEffect(() => noteSheetOpened("receive"), []);
 
   return (
-    <Sheet open={view !== null} onClose={onClose} title={view?.title ?? ""}>
+    <Sheet open={view !== null} onClose={onClose} title={view?.title ?? ""} secure>
       {view?.kind === "unavailable" && <Text tone="dim">{view.message}</Text>}
       {view?.kind === "address" && (
         <View style={styles.body}>

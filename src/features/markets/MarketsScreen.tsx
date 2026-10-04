@@ -1,22 +1,37 @@
 import { MARKET_PAGE_SIZE as PAGE, type MarketCategory } from "@noirwire/shared/application";
+import { marketsCopy } from "@noirwire/shared/copy";
 import { livePricesVersion } from "@noirwire/shared/infrastructure";
-import { marketsView } from "@noirwire/shared/presentation";
+import { marketsView, STILL_WORKING_AFTER_MS } from "@noirwire/shared/presentation";
 import { screenReads } from "@noirwire/shared/wallet";
 import { MagnifyingGlassIcon } from "phosphor-react-native/src/icons/MagnifyingGlass";
 import { XCircleIcon } from "phosphor-react-native/src/icons/XCircle";
 import { useState, type ReactNode } from "react";
 import { ScrollView, StyleSheet, TextInput, View } from "react-native";
 import { SafeAreaView, type Edge } from "react-native-safe-area-context";
-import { Button, Chip, EmptyState, IconButton, Skeleton, Text } from "@/ui";
+import {
+  Button,
+  Chip,
+  EmptyState,
+  IconButton,
+  Notice,
+  Skeleton,
+  Text,
+  useWaiting,
+  WaitingPlaceholder,
+  type Waiting,
+} from "@/ui";
 import { selectionHaptic } from "@/ui/haptics";
 import { colors, fonts, layout, radius, size } from "@/ui/theme";
 import { controlText, maxFontScale } from "@/ui/typography";
+import { phoneCopy } from "../phoneCopy";
 import { TrackerCard, TrackerRow } from "./TrackerRow";
 import { useLivePrices, useWalletSnapshot } from "./useMarketData";
 import { toggleWatch } from "./watchlist";
 
 type MarketsScreenProps = {
   onOpen: (symbol: string) => void;
+  /** A link from outside named a tracker that does not exist: Markets says so. */
+  unknownTracker?: boolean;
   /** Set for a visitor without a wallet: no watchlist, and one way forward. */
   visitor?: { onCreate: () => void; createLabel: string };
 };
@@ -24,13 +39,23 @@ type MarketsScreenProps = {
 const SKELETON_ROWS = 8;
 
 /** Spec 2.18, and 2.2 in visitor mode: find a tracker. */
-export function MarketsScreen({ onOpen, visitor }: MarketsScreenProps) {
+export function MarketsScreen({ onOpen, unknownTracker = false, visitor }: MarketsScreenProps) {
   const wallet = useWalletSnapshot();
   const updatedAt = useLivePrices();
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<MarketCategory>("all");
   const [shown, setShown] = useState(PAGE);
-  const firstLoad = updatedAt === null && livePricesVersion() === 0;
+  const waiting = useWaiting(updatedAt === null, "content");
+  // With no live price the list's place is held: until the limit while nothing
+  // at all has answered, and only for a moment once something has, since that
+  // may have been the prices failing. After that the trackers are listed
+  // without prices, and the screen says the prices are missing.
+  const firstLoad =
+    updatedAt === null &&
+    (livePricesVersion() === 0
+      ? !waiting.overdue
+      : waiting.elapsedMs < STILL_WORKING_AFTER_MS.content);
+  const pricesMissing = updatedAt === null && !firstLoad;
   const view = marketsView(screenReads, {
     query,
     category,
@@ -55,6 +80,7 @@ export function MarketsScreen({ onOpen, visitor }: MarketsScreenProps) {
   return (
     <Frame visitor={visitor}>
       {!visitor && <Text variant="h1">{view.title}</Text>}
+      {unknownTracker && <Notice>{marketsCopy.detail.notFound}</Notice>}
       <View style={styles.search}>
         <Text variant="label">{view.search.label}</Text>
         <View style={styles.searchBox}>
@@ -91,9 +117,10 @@ export function MarketsScreen({ onOpen, visitor }: MarketsScreenProps) {
           )}
         </View>
       ) : firstLoad ? (
-        <Loading />
+        <Loading waiting={waiting} />
       ) : (
         <>
+          {pricesMissing && <Notice tone="warning">{phoneCopy.overdue.prices}</Notice>}
           {view.moversWaiting && <Text variant="faint">{view.moversWaiting}</Text>}
           {view.shelves.map((shelf) => (
             <View key={shelf.key} style={styles.group}>
@@ -151,9 +178,9 @@ export function MarketsScreen({ onOpen, visitor }: MarketsScreenProps) {
   );
 }
 
-function Loading() {
+function Loading({ waiting }: { waiting: Waiting }) {
   return (
-    <View style={styles.group}>
+    <WaitingPlaceholder waiting={waiting}>
       <View style={styles.shelf}>
         <Skeleton width={152} height={112} />
         <Skeleton width={152} height={112} />
@@ -161,7 +188,7 @@ function Loading() {
       {Array.from({ length: SKELETON_ROWS }, (_, index) => (
         <Skeleton key={index} height={56} />
       ))}
-    </View>
+    </WaitingPlaceholder>
   );
 }
 

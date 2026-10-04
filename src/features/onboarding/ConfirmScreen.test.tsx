@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react-native";
+import { preventScreenCaptureAsync } from "expo-screen-capture";
 import { useState } from "react";
 import { ConfirmScreen } from "./ConfirmScreen";
 import type { PhraseQuiz } from "@noirwire/shared/application";
@@ -71,5 +72,18 @@ describe("ConfirmScreen", () => {
       await fireEvent.press(screen.getByRole("button", { name: word }));
     }
     expect(onPassed).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows no word to choose from when the screen cannot be kept out of captures", async () => {
+    (preventScreenCaptureAsync as jest.Mock).mockRejectedValueOnce(new Error("no"));
+    await render(<Harness />);
+    expect(
+      await screen.findByText(
+        "This can't be shown safely right now, so it is kept hidden. Try again.",
+      ),
+    ).toBeOnTheScreen();
+    for (const word of QUIZ.choices) expect(screen.queryByText(word)).toBeNull();
+    await fireEvent.press(screen.getByRole("button", { name: "Try again" }));
+    expect(await screen.findByText(QUIZ.choices[0])).toBeOnTheScreen();
   });
 });

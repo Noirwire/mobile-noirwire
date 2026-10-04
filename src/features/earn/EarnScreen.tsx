@@ -2,12 +2,23 @@ import { resolvePortfolioIcon } from "@noirwire/shared/domain";
 import { useState } from "react";
 import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Button, EmptyState, IdentityMark, Notice, Skeleton, Text } from "@/ui";
+import {
+  Button,
+  EmptyState,
+  IdentityMark,
+  Notice,
+  Skeleton,
+  Text,
+  useWaiting,
+  WaitingPlaceholder,
+  type Waiting,
+} from "@/ui";
 import { readAsOne } from "@/ui/accessibility";
 import { selectionHaptic } from "@/ui/haptics";
 import { colors, layout, opacity } from "@/ui/theme";
 import type { EarnAction } from "@noirwire/shared/application";
 import { earnScreenView, type EarnRowView } from "@noirwire/shared/presentation";
+import { phoneCopy } from "../phoneCopy";
 import { EarnSheet } from "./EarnSheet";
 import type { EarnOpening } from "./useEarnFlow";
 import { useEarnScreen } from "./useEarnScreen";
@@ -24,6 +35,13 @@ export function EarnScreen({ onReadRisks, onNewPortfolio, onMoveMoney }: EarnScr
   const state = useEarnScreen();
   const [opening, setOpening] = useState<EarnOpening | null>(null);
   const view = earnScreenView({ ...state, platform: "mobile" });
+  const reading = view.rate === null || view.rows.some((row) => row.inEarn === null);
+  const waiting = useWaiting(reading, "content");
+  /** A rate or a position that could not be read: said, with a way to ask again. */
+  const unread =
+    state.available &&
+    (view.rate?.unavailable === true ||
+      state.portfolios.some((portfolio) => portfolio.position === null));
 
   function open(action: EarnAction, portfolioId: string | null) {
     setOpening({ action, portfolioId });
@@ -58,7 +76,9 @@ export function EarnScreen({ onReadRisks, onNewPortfolio, onMoveMoney }: EarnScr
             <View style={styles.hero}>
               <Text variant="faint">{view.rateLabel}</Text>
               {view.rate === null ? (
-                <Skeleton width={140} height={46} />
+                <WaitingPlaceholder waiting={waiting}>
+                  <Skeleton width={140} height={46} />
+                </WaitingPlaceholder>
               ) : (
                 <Text
                   variant={view.rate.unavailable ? "body" : "display"}
@@ -69,6 +89,16 @@ export function EarnScreen({ onReadRisks, onNewPortfolio, onMoveMoney }: EarnScr
               )}
               {view.couldEarn && <Text tone="dim">{view.couldEarn}</Text>}
               {view.breakdown && <Text variant="faint">{view.breakdown}</Text>}
+              {unread && !reading && (
+                <View style={styles.risk}>
+                  <Text variant="faint" accessibilityLiveRegion="polite">
+                    {phoneCopy.overdue.earn}
+                  </Text>
+                  {state.online && (
+                    <Button variant="quiet" label={phoneCopy.tryAgain} onPress={state.reload} />
+                  )}
+                </View>
+              )}
             </View>
 
             {view.mainnetOnly && <Notice tone="warning">{view.mainnetOnly}</Notice>}
@@ -100,6 +130,7 @@ export function EarnScreen({ onReadRisks, onNewPortfolio, onMoveMoney }: EarnScr
                   row={row}
                   inEarnCaption={view.inEarn}
                   icon={state.icons[row.id]}
+                  waiting={waiting}
                   onOpen={(action) => open(action, row.id)}
                 />
               ))}
@@ -139,9 +170,11 @@ function PortfolioRow({
   row,
   inEarnCaption,
   icon,
+  waiting,
   onOpen,
 }: {
   row: EarnRowView;
+  waiting: Waiting;
   inEarnCaption: string;
   icon: Parameters<typeof resolvePortfolioIcon>[0];
   onOpen: (action: EarnAction) => void;
@@ -175,7 +208,9 @@ function PortfolioRow({
       </View>
       <View style={styles.trailing}>
         {row.inEarn === null ? (
-          <Skeleton width={64} />
+          <WaitingPlaceholder waiting={{ ...waiting, stillWorking: null }}>
+            <Skeleton width={64} />
+          </WaitingPlaceholder>
         ) : (
           <Text style={styles.figure}>{row.inEarn}</Text>
         )}

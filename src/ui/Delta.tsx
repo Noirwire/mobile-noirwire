@@ -1,4 +1,5 @@
-import { changeTone, deltaText } from "./format";
+import { deltaText } from "@noirwire/shared/domain";
+import { changeColor } from "./changeColor";
 import { Text, type TextProps } from "./Text";
 
 type DeltaProps = Omit<TextProps, "children" | "tone"> & {
@@ -11,7 +12,7 @@ export function Delta({ percent, gain, style, ...rest }: DeltaProps) {
   return (
     <Text
       {...rest}
-      tone={changeTone(gain ?? percent)}
+      tone={changeColor(gain ?? percent)}
       style={[{ fontVariant: ["tabular-nums"] }, style]}
     >
       {deltaText(percent, gain)}

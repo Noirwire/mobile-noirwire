@@ -23,6 +23,7 @@ import {
   Scanner,
   Sheet,
   StepList,
+  StillWorking,
   Text,
 } from "@/ui";
 import { ActingFor } from "@/ui/ActingFor";
@@ -30,7 +31,7 @@ import { confirmHaptic } from "@/ui/confirmHaptic";
 import { errorHaptic, lightHaptic, successHaptic, warningHaptic } from "@/ui/haptics";
 import { Terms } from "@/ui/Terms";
 import { colors, fonts, layout, size } from "@/ui/theme";
-import { useCaptureProtection } from "@/ui/useCaptureProtection";
+import { ActionOverdue } from "../network/ActionOverdue";
 import { OfflineBanner } from "../network/OfflineBanner";
 import { PendingNote } from "../network/PendingNote";
 import { useSendFlow, type SendFlow } from "./useSendFlow";
@@ -59,6 +60,7 @@ export function SendScreen({ portfolioId, onClose, onMoveMoney }: SendScreenProp
     symbol: flow.symbol,
     heldRaw: flow.heldRaw,
     unitsPerHeld: flow.units,
+    decimals: flow.decimals,
     destination: flow.destination,
     ownAddress: flow.ownAddress,
     offCurve: flow.offCurve,
@@ -93,7 +95,6 @@ export function SendScreen({ portfolioId, onClose, onMoveMoney }: SendScreenProp
     });
   const amountShown = symbolAmount(flow.symbol, (flow.review?.amount ?? 0) * (flow.units ?? 1));
 
-  useCaptureProtection(step === "review");
   const danger = Boolean(review && (review.linkWarning || review.lookalike));
   useEffect(() => {
     if (step === "review" && danger) warningHaptic();
@@ -124,7 +125,8 @@ export function SendScreen({ portfolioId, onClose, onMoveMoney }: SendScreenProp
       title={title}
       onBack={onBack}
       dirty={(flow.recipient !== "" || flow.amountText !== "") && step !== "result"}
-      busy={step === "progress"}
+      busy={step === "progress" && !flow.working.overdue}
+      secure
       footer={<Footer flow={flow} form={form} review={review} onClose={onClose} />}
     >
       {step !== "result" && <OfflineBanner />}
@@ -136,13 +138,21 @@ export function SendScreen({ portfolioId, onClose, onMoveMoney }: SendScreenProp
       {step === "review" && review && (
         <ReviewStep flow={flow} view={review} onMoveMoney={() => onMoveMoney(portfolioId)} />
       )}
-      {step === "progress" && <StepList steps={sendProgressView(flow.stage, amountShown).steps} />}
+      {step === "progress" && (
+        <>
+          <StepList steps={sendProgressView(flow.stage, amountShown).steps} />
+          {!flow.working.overdue && <StillWorking waiting={flow.working} />}
+          <ActionOverdue waiting={flow.working} />
+        </>
+      )}
       {step === "result" && flow.outcome && (
         <View style={styles.result} accessibilityLiveRegion="polite">
           <Text variant="display">
             {sendResultView(flow.outcome.kind, amountShown, name).title}
           </Text>
-          <Text tone="dim">{sendResultView(flow.outcome.kind, amountShown, name).body}</Text>
+          <Text tone="dim">
+            {sendResultView(flow.outcome.kind, amountShown, name, flow.outcome.balancesUnread).body}
+          </Text>
         </View>
       )}
     </Sheet>
@@ -227,6 +237,7 @@ function DetailsStep({
           />
         </View>
       </View>
+      {flow.prepareFailure && <Notice tone="danger">{flow.prepareFailure}</Notice>}
       <Row label={form.available.label} value={form.available.value} last />
       {form.balanceUnavailable && <Notice tone="warning">{form.balanceUnavailable}</Notice>}
       <Text variant="faint">{form.explainer}</Text>
@@ -360,6 +371,7 @@ function Footer({
           label={form.review.label}
           loading={flow.preparing}
           loadingLabel={form.review.label}
+          waitingFor="review"
           disabled={form.review.disabled}
           onPress={() => void flow.openReview()}
         />
@@ -374,6 +386,10 @@ function Footer({
             void flow.confirm();
           }}
         />
+      ) : null;
+    case "progress":
+      return flow.working.overdue ? (
+        <Button label={commonCopy.close} variant="quiet" onPress={onClose} />
       ) : null;
     case "result":
       return flow.outcome ? (

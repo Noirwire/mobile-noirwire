@@ -106,6 +106,7 @@ describe("TrackerScreen", () => {
     await walletWith([{ label: "Investing" }]);
     const onIntent = await show("NOPEx");
     expect(screen.getByText("No such investment.")).toBeOnTheScreen();
+    expect(screen.queryByText("No matching investment.")).toBeNull();
     await fireEvent.press(screen.getByRole("button", { name: "Back to Markets" }));
     expect(onIntent).toHaveBeenCalledWith({ kind: "markets" });
   });

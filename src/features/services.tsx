@@ -1,7 +1,13 @@
-import { useNetInfo } from "@react-native-community/netinfo";
+import { refresh as refreshNetInfo, useNetInfo } from "@react-native-community/netinfo";
 import * as Clipboard from "expo-clipboard";
-import { resolveImportedWallet, type ImportResolution } from "@noirwire/shared/infrastructure";
-import { createContext, useContext, type ReactNode } from "react";
+import type { DerivationScheme } from "@noirwire/shared/domain";
+import {
+  lookFurtherForPortfolios,
+  resolveImportedWallet,
+  type ImportResolution,
+  type SchemeActivity,
+} from "@noirwire/shared/infrastructure";
+import { createContext, useContext, useEffect, type ReactNode } from "react";
 import type { Installed } from "@/platform/install";
 import type { Preferences } from "@/platform/preferences";
 import { biometricUnlock, type BiometricUnlock } from "./biometric/biometricUnlock";
@@ -16,6 +22,12 @@ export type AppServices = {
   biometric: BiometricUnlock;
   preferences: Preferences;
   resolveImport(mnemonic: string): Promise<ImportResolution>;
+  /** A second, longer scan for a phrase's portfolios, carrying on from where the first stopped. */
+  lookFurther(
+    mnemonic: string,
+    scheme: DerivationScheme,
+    activity: SchemeActivity,
+  ): Promise<SchemeActivity>;
   /** Reads the clipboard once, on an explicit Paste. */
   readClipboard(): Promise<string>;
   useOnline(): boolean;
@@ -39,8 +51,25 @@ export function useServices(): AppServices {
   return services;
 }
 
+/** How often the connection is asked about again while the phone reads as offline. */
+export const OFFLINE_RECHECK_MS = 3_000;
+
+/**
+ * Whether the phone has a connection. The system does not always say when
+ * one comes back, so while it reads as offline the state is asked for again
+ * every few seconds: the offline banner clears by itself on reconnecting.
+ */
 function useDeviceOnline(): boolean {
-  return useNetInfo().isConnected !== false;
+  const online = useNetInfo().isConnected !== false;
+  useEffect(() => {
+    if (online) return;
+    const timer = setInterval(
+      () => void refreshNetInfo().catch(() => undefined),
+      OFFLINE_RECHECK_MS,
+    );
+    return () => clearInterval(timer);
+  }, [online]);
+  return online;
 }
 
 export function deviceServices({ preferences, biometrics }: Installed): AppServices {
@@ -48,6 +77,7 @@ export function deviceServices({ preferences, biometrics }: Installed): AppServi
     biometric: biometricUnlock({ keystore: biometrics, preferences, access: sharedVaultKeyAccess }),
     preferences,
     resolveImport: resolveImportedWallet,
+    lookFurther: lookFurtherForPortfolios,
     readClipboard: () => Clipboard.getStringAsync(),
     useOnline: useDeviceOnline,
   };

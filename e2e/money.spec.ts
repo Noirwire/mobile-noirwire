@@ -34,9 +34,11 @@ test("fund privately reviews what leaves the funding wallet, fees included", asy
   await expect(sheet.getByRole("heading", { name: "Add money privately" })).toBeVisible();
   await expect(sheet).toContainText(/Available in funding wallet\s*500\.00 USDC/);
   const amount = sheet.getByRole("textbox", { name: "Amount in USDC" });
-  // A comma typed as the decimal separator is read as one.
+  // A comma typed as the decimal separator stays as typed and is read as one.
   await amount.fill("0,5");
-  await expect(amount).toHaveValue("0.5");
+  await expect(amount).toHaveValue("0,5");
+  await expect(sheet).toContainText(/Arrives in Investing\s*0\.50 USDC/);
+  await expect(sheet.getByRole("alert")).toHaveCount(0);
   await amount.fill("100");
   await sheet.getByRole("button", { name: "Review" }).click();
 

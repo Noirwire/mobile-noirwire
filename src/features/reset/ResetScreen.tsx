@@ -1,4 +1,4 @@
-import { commonCopy, settingsCopy, walletCopy } from "@noirwire/shared/copy";
+import { commonCopy, mobileWalletCopy, settingsCopy, walletCopy } from "@noirwire/shared/copy";
 import { useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { Button, Field, Notice, Screen, Text } from "@/ui";
@@ -6,7 +6,6 @@ import { heavyHaptic, warningHaptic } from "@/ui/haptics";
 import { layout } from "@/ui/theme";
 import { useServices } from "../services";
 import { deleteWallet } from "../wallet/walletActions";
-import { mobileResetCopy } from "./copy";
 
 type ResetScreenProps = {
   onCancel: () => void;
@@ -51,7 +50,7 @@ export function ResetScreen({ onCancel, onRefused, underHeader = false }: ResetS
           {settingsCopy.reset.title}
         </Text>
       )}
-      <Notice tone="danger">{mobileResetCopy.warning}</Notice>
+      <Notice tone="danger">{mobileWalletCopy.resetConfirm.warning}</Notice>
       <Field
         label={confirm.typeToConfirm(confirm.word)}
         value={typed}
@@ -62,13 +61,13 @@ export function ResetScreen({ onCancel, onRefused, underHeader = false }: ResetS
         spellCheck={false}
         autoComplete="off"
       />
-      {refused && <Notice tone="danger">{mobileResetCopy.notRemoved}</Notice>}
+      {refused && <Notice tone="danger">{mobileWalletCopy.reset.notRemoved}</Notice>}
       <View style={styles.actions}>
         <Button
           label={confirm.delete}
           variant="danger"
           loading={deleting}
-          loadingLabel={mobileResetCopy.deleting}
+          loadingLabel={mobileWalletCopy.reset.deleting}
           disabled={!confirmsReset(typed)}
           onPress={() => void remove()}
         />

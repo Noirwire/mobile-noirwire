@@ -1,6 +1,8 @@
 import { walletCopy } from "@noirwire/shared/copy";
 import { assessPassword, suggestPassphrase } from "@noirwire/shared/wallet";
 import { useCallback, useEffect, useState } from "react";
+import { phoneCopy } from "../phoneCopy";
+import "./strengthChecker";
 
 /** The strength line updates this long after typing stops. */
 export const STRENGTH_DELAY_MS = 200;
@@ -59,7 +61,7 @@ export function useNewPassword(): NewPassword {
         .then((result) =>
           settle(result.ok ? { kind: "strong" } : { kind: "weak", reason: result.reason }),
         )
-        .catch(() => settle({ kind: "weak", reason: walletCopy.newPassword.checkFailed }));
+        .catch(() => settle({ kind: "weak", reason: phoneCopy.passwordCheckFailed }));
     }, STRENGTH_DELAY_MS);
     return () => {
       current = false;

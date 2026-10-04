@@ -1,4 +1,4 @@
-import { mobileFundingCopy as copy } from "@noirwire/shared/copy";
+import { commonCopy, mobileFundingCopy as copy } from "@noirwire/shared/copy";
 import { resolvePortfolioIcon } from "@noirwire/shared/domain";
 import {
   FUND_PRESETS,
@@ -24,6 +24,7 @@ import {
   Skeleton,
   StepList,
   Text,
+  WaitingPlaceholder,
   type StepStatus,
 } from "@/ui";
 import { ActingFor } from "@/ui/ActingFor";
@@ -33,6 +34,7 @@ import { PortfolioChoice } from "@/ui/PortfolioChoice";
 import { PresetChip } from "@/ui/PresetChip";
 import { Terms } from "@/ui/Terms";
 import { layout } from "@/ui/theme";
+import { ActionOverdue } from "../network/ActionOverdue";
 import { OfflineBanner } from "../network/OfflineBanner";
 import { PendingNote } from "../network/PendingNote";
 import { CASH, useFundFlow, type FundFlow } from "./useFundFlow";
@@ -50,7 +52,7 @@ const progressOf = (flow: FundFlow, label: string) =>
     portfolioLabel: label,
     completed: flow.completed,
     platform: "mobile",
-    slow: flow.slow,
+    slow: flow.working.stillWorking !== null,
   });
 
 const outcomeOf = (result: NonNullable<FundFlow["result"]>, label: string) =>
@@ -95,6 +97,8 @@ export function FundScreen({
     privateRoute: true,
     fundingBalance: flow.fundingBalance,
     amountText: flow.amountText,
+    touched: flow.touched,
+    decimals: flow.decimals,
     presets: FUND_PRESETS,
     pending: flow.pending,
     platform: "mobile",
@@ -133,7 +137,7 @@ export function FundScreen({
       title={title}
       onBack={onBack}
       dirty={flow.amountText !== "" && (step === "amount" || step === "review")}
-      busy={step === "progress"}
+      busy={step === "progress" && !flow.working.overdue}
       footer={<Footer flow={flow} amountView={amount} reviewView={review} onClose={onClose} />}
     >
       {step !== "result" && <OfflineBanner />}
@@ -201,7 +205,9 @@ function AmountStep({
         label={view.available.label}
         value={
           view.available.value === null ? (
-            <Skeleton width={96} />
+            <WaitingPlaceholder waiting={{ ...flow.reading, stillWorking: null }}>
+              <Skeleton width={96} />
+            </WaitingPlaceholder>
           ) : (
             <Text style={styles.figure}>{view.available.value}</Text>
           )
@@ -258,7 +264,10 @@ function ProgressStep({ flow, label }: { flow: FundFlow; label: string }) {
           status: STEP_STATUS[stage.status],
         }))}
       />
-      {view.stillWorking && <Text variant="faint">{view.stillWorking}</Text>}
+      {view.stillWorking && !flow.working.overdue && (
+        <Text variant="faint">{view.stillWorking}</Text>
+      )}
+      <ActionOverdue waiting={flow.working} />
     </>
   );
 }
@@ -327,7 +336,9 @@ function Footer({
         />
       );
     case "progress":
-      return null;
+      return flow.working.overdue ? (
+        <Button label={commonCopy.close} variant="quiet" onPress={onClose} />
+      ) : null;
     case "result":
       return flow.result ? (
         <Button label={outcomeOf(flow.result, "").close} onPress={onClose} />

@@ -55,6 +55,7 @@ The platform adapters:
 
 - **Vault**: `fileVault.ts` keeps one encrypted file per key under the app's documents directory, written atomically so a crash never leaves half a record. The directory carries the iOS do-not-backup flag, set by the local module in `modules/backup-exclusion` and read back to confirm it held; Android backups are off for the whole app (`allowBackup: false`).
 - **Biometric key store**: `biometricKeystore.ts` keeps the vault key, and nothing else, in the Keychain or Keystore behind biometric access control, on this device only, destroyed when the enrolment changes.
+- **Recovery phrase seed**: on a phone, the bundler hands out `@scure/bip39` with its seed step done by native crypto (`metro.config.js`, `src/platform/bip39.ts`). In JavaScript that step takes seconds per key on a phone, and an import derives dozens of keys. The start-up checks hold it to a known answer.
 - **Relay**: every network request goes to a NoirWire relay route (`/api/rpc`, `/api/prices`, `/api/jupiter`, `/api/relayer`, `/api/private-payments`) under one origin, and carries `X-NoirWire-Client: mobile/<app version>`.
 - **Activity, preferences, analytics**: the idle lock's activity source, the analytics and biometric settings outside the encrypted record, and the closed event list, sent only while Usage analytics is on.
 
@@ -183,6 +184,7 @@ Journeys covered:
 - Fund privately: a comma is read as the decimal separator, and the review shows both fees and the total leaving the funding wallet.
 - Earn: a deposit from a chosen portfolio reaches its review.
 - Settings reset: Delete stays disabled until RESET is typed, and the vault is empty afterwards.
+- Waiting and failing (`e2e/waiting.spec.ts`): the relay is made slow, failing or silent for import, Home and Markets. A signal appears, nothing technical is shown, and nothing waits for ever.
 
 `E2E_SKIP_EXPORT=1 npm run test:e2e` reuses an existing `dist/e2e`. On failure, CI uploads the Playwright report and traces.
 
@@ -233,6 +235,7 @@ What the code guarantees, and every change has to keep true:
 
 - **Keys never leave the device.** Nothing that can sign is sent anywhere.
 - **Addresses are secrets.** An address is never put in a route, a log, an analytics event or an error report. Route parameters carry portfolio ids and tracker symbols only, written and read with the shared package's route helpers, which refuse anything shaped like an address.
+- **Links from outside open only what is on one list.** `src/navigation/deepLinks.ts` lets a link reach a tab or a tracker's page and nothing else: never a sheet, never a shown address, never a prefilled amount or recipient. Every parameter a link carries is dropped.
 - **Costs are shown in USDC** before any action is confirmed.
 - **A broken runtime does not run a wallet** (`src/boot/`).
 

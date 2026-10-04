@@ -1,4 +1,5 @@
-import { fireEvent, render, screen } from "@testing-library/react-native";
+import { STILL_WORKING_AFTER_MS, WAITING_DELAY_MS } from "@noirwire/shared/presentation";
+import { act, fireEvent, render, screen } from "@testing-library/react-native";
 import * as Haptics from "expo-haptics";
 import { Button } from "./Button";
 
@@ -30,13 +31,28 @@ describe("Button", () => {
     expect(button).toBeDisabled();
   });
 
-  it("replaces its label with a spinner while loading and ignores presses", async () => {
+  it("stops taking presses at once while loading, and shows its spinner only after a moment", async () => {
+    jest.useFakeTimers();
     const onPress = jest.fn();
-    await render(<Button label="Continue" loading onPress={onPress} />);
+    await render(<Button label="Continue" loading loadingLabel="Saving..." onPress={onPress} />);
     const button = screen.getByRole("button", { name: "Continue" });
     await fireEvent.press(button);
     expect(onPress).not.toHaveBeenCalled();
     expect(button).toBeBusy();
+    expect(screen.getByText("Continue")).toBeOnTheScreen();
+    await act(() => jest.advanceTimersByTimeAsync(WAITING_DELAY_MS));
     expect(screen.queryByText("Continue")).toBeNull();
+    expect(screen.getByRole("button", { name: "Saving..." })).toBeBusy();
+    jest.useRealTimers();
+  });
+
+  it("adds a calm line under itself when the wait runs long", async () => {
+    jest.useFakeTimers();
+    await render(<Button label="Review" loading waitingFor="review" />);
+    await act(() => jest.advanceTimersByTimeAsync(STILL_WORKING_AFTER_MS.review));
+    expect(
+      screen.getByText("Still preparing your review. Nothing has been sent."),
+    ).toBeOnTheScreen();
+    jest.useRealTimers();
   });
 });

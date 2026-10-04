@@ -1,4 +1,4 @@
-import type { ImportResolution } from "@noirwire/shared/infrastructure";
+import type { ImportResolution, SchemeActivity } from "@noirwire/shared/infrastructure";
 import { createWallet, createWalletFromMnemonic, type WalletDraft } from "@noirwire/shared/wallet";
 import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
 import type { SaveOrigin } from "../wallet/walletActions";
@@ -38,6 +38,8 @@ export type OnboardingFlow = FlowState & {
   startImport(words: string[], resolution: ImportResolution): void;
   /** Opens one set of the imported phrase's addresses as the draft wallet. */
   choose(choice: ImportSourceChoice): void;
+  /** A further scan found more for the opened set: the draft is made again with what it found. */
+  lookedFurther(activity: SchemeActivity): void;
   /** After the wallet is stored: the phrase and draft are dropped, the password kept for the biometric offer. */
   saved(password: string): void;
 };
@@ -75,6 +77,22 @@ export function OnboardingFlowProvider({
             found.portfolios,
           );
           return { ...current, choice, draft };
+        });
+      },
+      lookedFurther(activity) {
+        setState((current) => {
+          if (!current.importWords || !current.resolution || !current.choice) return current;
+          const scheme = importSchemeFor(current.choice, current.resolution);
+          return {
+            ...current,
+            resolution: { ...current.resolution, [scheme]: activity },
+            draft: createWalletFromMnemonic(
+              current.importWords,
+              scheme,
+              activity.balanceSol,
+              activity.portfolios,
+            ),
+          };
         });
       },
       saved: (savedPassword) => setState({ ...EMPTY, savedPassword }),

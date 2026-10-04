@@ -6,6 +6,7 @@ import {
 import { useRouter } from "expo-router";
 import { HomeScreen } from "@/features/home/HomeScreen";
 import { lockNow } from "@/features/wallet/walletActions";
+import { portfolioHref, trackerHref } from "@/navigation/detailRoutes";
 
 export default function Home() {
   const router = useRouter();
@@ -28,8 +29,8 @@ export default function Home() {
   return (
     <HomeScreen
       onNavigate={navigate}
-      onOpenPortfolio={(id) => router.push({ pathname: "/portfolio/[id]", params: { id } })}
-      onOpenTracker={(symbol) => router.push({ pathname: "/markets/[symbol]", params: { symbol } })}
+      onOpenPortfolio={(id) => router.push(portfolioHref("(home)", id))}
+      onOpenTracker={(symbol) => router.push(trackerHref("(home)", symbol))}
       onNewPortfolio={() => router.push("/new-portfolio")}
       onSeeAllActivity={() => router.navigate("/activity")}
       onOpenEarn={() => router.navigate("/earn")}

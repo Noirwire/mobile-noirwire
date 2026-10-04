@@ -4,9 +4,6 @@ export type NetworkCheck = "ok" | "wrongNetwork" | "unreachable";
 
 export type GateState = "checking" | NetworkCheck;
 
-/** How long the splash stays quiet before it says what it is waiting for. */
-export const QUIET_CHECK_MS = 600;
-
 /**
  * Which chain the RPC serves, by its genesis hash. A URL is only a claim;
  * the genesis hash cannot lie, so a build pointed at another network never

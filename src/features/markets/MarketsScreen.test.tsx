@@ -54,13 +54,21 @@ describe("MarketsScreen", () => {
     installFakeRelay({ prices: null });
     await walletWith([{ label: "Investing" }]);
     await show();
+    // The list's place is held for a moment first, in case the prices are only late.
     expect(
-      await screen.findByText("Top movers appear when current prices load."),
+      await screen.findByText("Top movers appear when current prices load.", undefined, {
+        timeout: 8_000,
+      }),
+    ).toBeOnTheScreen();
+    expect(
+      screen.getByText(
+        "We couldn't load prices. They are missing or out of date here, and are asked for again every half minute.",
+      ),
     ).toBeOnTheScreen();
     expect(screen.getAllByText("At review").length).toBeGreaterThan(0);
     expect(screen.getAllByText("No live price").length).toBeGreaterThan(0);
     expect(screen.queryByText("$235.91")).toBeNull();
-  });
+  }, 15_000);
 
   it("searches by ticker without its trailing x, by name, and says when nothing matches", async () => {
     installTestPlatform();
@@ -69,7 +77,7 @@ describe("MarketsScreen", () => {
     await show();
     const search = screen.getByLabelText("Search trackers");
     await fireEvent.changeText(search, "nvda");
-    expect(screen.getByText("1 results")).toBeOnTheScreen();
+    expect(screen.getByText("1 result")).toBeOnTheScreen();
     expect(screen.getByRole("button", { name: /^NVIDIA, NVDAx/ })).toBeOnTheScreen();
     await fireEvent.changeText(search, "zzzz");
     expect(screen.getByText("No matching investment.")).toBeOnTheScreen();
@@ -118,5 +126,13 @@ describe("MarketsScreen", () => {
     expect(screen.queryByText(/^Buy$|^Sell$/)).toBeNull();
     await fireEvent.press(screen.getByRole("button", { name: "Create a wallet to invest" }));
     expect(onCreate).toHaveBeenCalledTimes(1);
+  });
+
+  it("says when a link named a tracker that does not exist", async () => {
+    installTestPlatform();
+    installFakeRelay();
+    await walletWith([{ label: "Investing" }]);
+    await renderWith(await testServices(), <MarketsScreen onOpen={jest.fn()} unknownTracker />);
+    expect(screen.getByText("No such investment.")).toBeOnTheScreen();
   });
 });

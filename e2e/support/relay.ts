@@ -29,6 +29,9 @@ const CORS = {
   "access-control-allow-methods": "GET, POST, OPTIONS",
 };
 
+type Trouble =
+  { kind: "slow"; ms: number } | { kind: "failing"; status: number } | { kind: "silent" };
+
 type RpcCall = { jsonrpc: "2.0"; id: unknown; method: string; params?: unknown[] };
 type AccountValue = {
   data: [string, "base64"];
@@ -125,8 +128,30 @@ export class FixtureRelay {
   readonly outsiders: string[] = [];
   /** Relay routes the fixtures do not cover, answered with 503. */
   readonly unanswered: string[] = [];
+  /** How each relay route misbehaves, by the start of its path. A test sets and clears these. */
+  private readonly troubles = new Map<string, Trouble>();
 
   constructor(private readonly appOrigin: string) {}
+
+  /** From now on, every request to a path starting with `path` waits `ms` before it is answered. */
+  slow(path: string, ms: number): void {
+    this.troubles.set(path, { kind: "slow", ms });
+  }
+
+  /** From now on, every request to a path starting with `path` is answered with `status` and no data. */
+  failing(path: string, status = 503): void {
+    this.troubles.set(path, { kind: "failing", status });
+  }
+
+  /** From now on, a request to a path starting with `path` is never answered at all. */
+  silent(path: string): void {
+    this.troubles.set(path, { kind: "silent" });
+  }
+
+  /** The relay answers `path` as the fixtures say again. */
+  healthy(path: string): void {
+    this.troubles.delete(path);
+  }
 
   /** Gives `owner` a USDC token account holding `usdc`. */
   holdUsdc(owner: string, usdc: number): void {
@@ -245,9 +270,22 @@ export class FixtureRelay {
     };
   }
 
-  private answer(route: Route) {
+  private async answer(route: Route) {
     const request = route.request();
     const { pathname } = new URL(request.url());
+    if (request.method() !== "OPTIONS") {
+      const trouble = [...this.troubles].find(([path]) => pathname.startsWith(path))?.[1];
+      if (trouble?.kind === "silent") return;
+      if (trouble?.kind === "failing") {
+        return route.fulfill({
+          status: trouble.status,
+          headers: CORS,
+          contentType: "text/plain",
+          body: `${trouble.status} upstream request failed`,
+        });
+      }
+      if (trouble?.kind === "slow") await new Promise((resolve) => setTimeout(resolve, trouble.ms));
+    }
     const json = (value: unknown, status = 200) =>
       route.fulfill({
         status,

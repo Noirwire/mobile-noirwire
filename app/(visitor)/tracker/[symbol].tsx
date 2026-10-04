@@ -14,7 +14,7 @@ export default function VisitorTracker() {
       onIntent={(intent) =>
         intent.kind === "markets"
           ? router.replace("/look-around")
-          : followTrackerIntent(router, safe, intent)
+          : followTrackerIntent(router, "(home)", safe, intent)
       }
     />
   );

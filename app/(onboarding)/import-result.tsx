@@ -1,17 +1,25 @@
 import { Redirect, useRouter } from "expo-router";
 import { useOnboardingFlow } from "@/features/onboarding/OnboardingFlow";
 import { ResultScreen } from "@/features/onboarding/ResultScreen";
+import { useServices } from "@/features/services";
 
 export default function ImportResult() {
   const router = useRouter();
-  const { draft, resolution } = useOnboardingFlow();
-  if (!draft || !resolution) return <Redirect href="/import" />;
+  const flow = useOnboardingFlow();
+  const { lookFurther, useOnline } = useServices();
+  const online = useOnline();
+  const { draft, resolution, importWords } = flow;
+  if (!draft || !resolution || !importWords) return <Redirect href="/import" />;
+  const scheme = draft.wallet.derivationScheme;
   return (
     <ResultScreen
-      activity={resolution[draft.wallet.derivationScheme]}
+      activity={resolution[scheme]}
       fundingAddress={draft.wallet.funding.address}
       onContinue={() => router.push("/set-password")}
       onOtherSet={() => router.back()}
+      lookFurther={(activity) => lookFurther(importWords.join(" "), scheme, activity)}
+      onFoundMore={flow.lookedFurther}
+      online={online}
     />
   );
 }

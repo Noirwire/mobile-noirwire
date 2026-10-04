@@ -1,3 +1,4 @@
+import { commonCopy, mobileSettingsCopy } from "@noirwire/shared/copy";
 import { resolvePortfolioIcon, type PortfolioIcon } from "@noirwire/shared/domain";
 import type { EarnPosition } from "@noirwire/shared/infrastructure";
 import {
@@ -11,16 +12,16 @@ import {
 } from "@noirwire/shared/presentation";
 import { useEffect } from "react";
 import { StyleSheet, View } from "react-native";
-import { Button, Field, Notice, Row, Sheet, StepList, Text } from "@/ui";
+import { Button, Field, Notice, Row, Sheet, StepList, StillWorking, Text } from "@/ui";
 import { ActingFor } from "@/ui/ActingFor";
 import { confirmHaptic } from "@/ui/confirmHaptic";
 import { errorHaptic, successHaptic, warningHaptic } from "@/ui/haptics";
 import { PortfolioChoice } from "@/ui/PortfolioChoice";
 import { Terms } from "@/ui/Terms";
 import { layout } from "@/ui/theme";
+import { ActionOverdue } from "../network/ActionOverdue";
 import { OfflineBanner } from "../network/OfflineBanner";
 import { PendingNote } from "../network/PendingNote";
-import { mobileSettingsCopy } from "../settings/copy";
 import { useEarnFlow, type EarnFlow, type EarnOpening } from "./useEarnFlow";
 
 type EarnSheetProps = {
@@ -98,7 +99,7 @@ export function EarnSheet(props: EarnSheetProps) {
       title={title}
       onBack={onBack}
       dirty={flow.amountText !== "" && (step === "amount" || step === "review" || step === "risks")}
-      busy={step === "progress"}
+      busy={step === "progress" && !flow.working.overdue}
       footer={
         <Footer
           flow={flow}
@@ -194,7 +195,13 @@ export function EarnSheet(props: EarnSheetProps) {
             <Text tone="dim">{section.body}</Text>
           </View>
         ))}
-      {step === "progress" && <StepList steps={progress.steps} />}
+      {step === "progress" && (
+        <>
+          <StepList steps={progress.steps} />
+          {!flow.working.overdue && <StillWorking waiting={flow.working} />}
+          <ActionOverdue waiting={flow.working} />
+        </>
+      )}
       {step === "result" && flow.result && (
         <View style={styles.result} accessibilityLiveRegion="polite">
           <Text variant="display">
@@ -249,6 +256,10 @@ function Footer({
             void flow.confirm();
           }}
         />
+      ) : null;
+    case "progress":
+      return flow.working.overdue ? (
+        <Button label={commonCopy.close} variant="quiet" onPress={onClose} />
       ) : null;
     case "result":
       return flow.result ? (

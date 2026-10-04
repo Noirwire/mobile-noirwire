@@ -21,4 +21,11 @@ jest.mock("expo-screen-capture", () => ({
   addScreenshotListener: jest.fn(() => ({ remove: jest.fn() })),
 }));
 
+// The native crypto module does not exist under Jest. Node's own PBKDF2 stands
+// in for it, so the code that calls it runs against a real implementation.
+jest.mock("react-native-quick-crypto", () => ({
+  pbkdf2Sync: jest.requireActual("crypto").pbkdf2Sync,
+  install: () => undefined,
+}));
+
 setUpTests();

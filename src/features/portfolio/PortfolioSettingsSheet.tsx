@@ -1,4 +1,6 @@
-import type { Portfolio } from "@noirwire/shared/domain";
+import { portfolioNameTaken } from "@noirwire/shared/application";
+import { errorsCopy } from "@noirwire/shared/copy";
+import type { Portfolio, Wallet } from "@noirwire/shared/domain";
 import {
   NAME_MAX,
   draftChanged,
@@ -32,19 +34,24 @@ type PortfolioSettingsSheetProps = {
 export function PortfolioSettingsSheet(props: PortfolioSettingsSheetProps) {
   const wallet = useWalletSnapshot();
   const portfolio = wallet?.portfolios.find((entry) => entry.id === props.portfolioId);
-  if (!props.open || !portfolio) return null;
-  return <OpenSettings {...props} portfolio={portfolio} />;
+  if (!props.open || !portfolio || !wallet) return null;
+  return <OpenSettings {...props} portfolio={portfolio} wallet={wallet} />;
 }
 
 function OpenSettings({
   portfolio,
+  wallet,
   onClose,
   pricesUpdatedAt,
-}: PortfolioSettingsSheetProps & { portfolio: Portfolio }) {
+}: PortfolioSettingsSheetProps & { portfolio: Portfolio; wallet: Wallet }) {
   const [draft, setDraft] = useState<SettingsDraft>(() => settingsDraft(portfolio));
   const view = portfolioSettingsView(screenReads, portfolio, draft, pricesUpdatedAt);
 
+  /** A name another portfolio has, archived ones included, is refused here as it is on creation. */
+  const nameTaken = portfolioNameTaken(wallet, draft.name.trim(), portfolio.id);
+
   function save() {
+    if (nameTaken) return;
     lightHaptic();
     void savePortfolioSettings(portfolio.id, draft.name, draft.icon);
     onClose();
@@ -65,9 +72,10 @@ function OpenSettings({
         maxLength={NAME_MAX}
         onChangeText={(name) => setDraft({ ...draft, name })}
         autoCapitalize="sentences"
+        error={nameTaken ? errorsCopy.duplicateName : undefined}
       />
       <IconPicker value={draft.icon} onChange={(icon) => setDraft({ ...draft, icon })} />
-      <Button label={view.save} disabled={!view.canSave} onPress={save} />
+      <Button label={view.save} disabled={!view.canSave || nameTaken} onPress={save} />
       <Divider />
       <View style={styles.archive}>
         <Text style={styles.title}>{view.sectionTitle}</Text>

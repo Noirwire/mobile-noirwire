@@ -9,7 +9,19 @@ import { screenReads } from "@noirwire/shared/wallet";
 import { LockIcon } from "phosphor-react-native/src/icons/Lock";
 import { useEffect, useRef, useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
-import { BalanceHeader, Button, IconButton, Mark, Panel, Row, Skeleton, Text } from "@/ui";
+import {
+  BalanceHeader,
+  Button,
+  IconButton,
+  Mark,
+  Panel,
+  Row,
+  Skeleton,
+  Text,
+  useWaiting,
+  WaitingPlaceholder,
+  type Waiting,
+} from "@/ui";
 import { ActionNotice } from "@/ui/ActionNotice";
 import { RefreshScreen } from "@/ui/RefreshScreen";
 import { colors, layout, opacity, size } from "@/ui/theme";
@@ -22,6 +34,7 @@ import { PortfolioRow } from "../portfolio/PortfolioRow";
 import { TrackerMark } from "@/ui/TrackerMark";
 import { useBalanceRefresh } from "../portfolio/useBalanceRefresh";
 import { useLivePrices, useWalletSnapshot } from "../portfolio/useWalletSnapshot";
+import { phoneCopy } from "../phoneCopy";
 import { useServices } from "../services";
 import { TextToggle } from "./TextToggle";
 
@@ -53,12 +66,14 @@ export function HomeScreen(props: HomeScreenProps) {
   const refresh = useBalanceRefresh(useMoney().refresh.everything, online);
   const earnTotal = useEarnTotal();
   const [opened, setOpened] = useState<string | null>(null);
+  const firstRead = refresh.reading && !refresh.settled;
+  const waiting = useWaiting(firstRead, "content");
 
   if (!wallet) return null;
   const view = homeView(screenReads, wallet, updatedAt, earnTotal);
   const storedNothing =
     view.empty && wallet.activity.length === 0 && view.archived.rows.length === 0;
-  const loading = refresh.reading && !refresh.settled && storedNothing;
+  const loading = firstRead && storedNothing;
 
   return (
     <RefreshScreen refreshing={refresh.refreshing} onRefresh={refresh.pull}>
@@ -73,9 +88,14 @@ export function HomeScreen(props: HomeScreenProps) {
       </View>
 
       {loading ? (
-        <BalanceSkeleton />
+        <BalanceSkeleton waiting={waiting} />
       ) : (
-        <Balance view={view} failed={refresh.failed} onOpenEarn={props.onOpenEarn} />
+        <Balance
+          view={view}
+          failed={refresh.failed}
+          onRetry={online ? refresh.retry : undefined}
+          onOpenEarn={props.onOpenEarn}
+        />
       )}
 
       {view.waiting && (
@@ -99,7 +119,7 @@ export function HomeScreen(props: HomeScreenProps) {
 
       <Portfolios
         view={view}
-        loading={loading}
+        loading={loading ? waiting : null}
         onOpen={props.onOpenPortfolio}
         onNew={props.onNewPortfolio}
       />
@@ -169,10 +189,13 @@ export function HomeScreen(props: HomeScreenProps) {
 function Balance({
   view,
   failed,
+  onRetry,
   onOpenEarn,
 }: {
   view: HomeView;
   failed: boolean;
+  /** Absent while offline: the banner says why nothing can be read. */
+  onRetry?: () => void;
   onOpenEarn: () => void;
 }) {
   const [explained, setExplained] = useState(false);
@@ -194,9 +217,19 @@ function Balance({
         {explained && <Text variant="faint">{copy.togetherExplained}</Text>}
       </View>
       {failed && (
-        <Text variant="faint" accessibilityLiveRegion="polite">
-          {copy.refreshFailed}
-        </Text>
+        <View style={styles.together}>
+          <Text variant="faint" accessibilityLiveRegion="polite">
+            {copy.refreshFailed}
+          </Text>
+          {onRetry && (
+            <Button
+              variant="quiet"
+              label={phoneCopy.tryAgain}
+              onPress={onRetry}
+              style={styles.compact}
+            />
+          )}
+        </View>
       )}
       <Row label={view.cash.label} value={view.cash.value} last={view.earning === null} />
       {view.earning && (
@@ -213,12 +246,14 @@ function Balance({
   );
 }
 
-function BalanceSkeleton() {
+function BalanceSkeleton({ waiting }: { waiting: Waiting }) {
   return (
     <View style={styles.skeleton}>
-      <Skeleton width="30%" height={14} />
-      <Skeleton width="70%" height={42} />
-      <Skeleton width="100%" height={20} />
+      <WaitingPlaceholder waiting={waiting}>
+        <Skeleton width="30%" height={14} />
+        <Skeleton width="70%" height={42} />
+        <Skeleton width="100%" height={20} />
+      </WaitingPlaceholder>
     </View>
   );
 }
@@ -290,7 +325,8 @@ function Portfolios({
   onNew,
 }: {
   view: HomeView;
-  loading: boolean;
+  /** The first read's wait, while nothing is stored to show; null otherwise. */
+  loading: Waiting | null;
   onOpen: (id: string) => void;
   onNew: () => void;
 }) {
@@ -325,7 +361,11 @@ function Portfolios({
       }
     >
       {loading ? (
-        [0, 1, 2].map((index) => <Skeleton key={index} height={64} />)
+        <WaitingPlaceholder waiting={{ ...loading, stillWorking: null }}>
+          {[0, 1, 2].map((index) => (
+            <Skeleton key={index} height={64} />
+          ))}
+        </WaitingPlaceholder>
       ) : view.portfolios.length === 0 ? (
         <View style={styles.noPortfolios}>
           <Text tone="dim">{copy.createToStart}</Text>
@@ -402,10 +442,10 @@ const styles = StyleSheet.create({
   brand: { flexDirection: "row", alignItems: "center", gap: layout.tight },
   balance: { gap: layout.tight },
   together: { gap: layout.tight, alignItems: "flex-start" },
-  skeleton: { gap: layout.inset, paddingTop: layout.section },
+  skeleton: { paddingTop: layout.section },
   actions: { flexDirection: "row", flexWrap: "wrap", gap: layout.tight },
   action: { flexGrow: 1, flexBasis: 150 },
-  stacked: { flexDirection: "column" },
+  stacked: { flexDirection: "column", flexWrap: "nowrap", alignItems: "stretch" },
   howTo: { gap: layout.tight, alignItems: "stretch" },
   steps: { gap: layout.group },
   step: { gap: layout.hairline },
