@@ -89,10 +89,10 @@ describe("TrackerScreen", () => {
       (getByGestureTestId(CHART_HOLD_TEST_ID) as unknown as { handlers: HoldHandlers }).handlers;
     await act(async () => held().onStart({ x: 158 }));
     expect(screen.getByText("$229.90")).toBeOnTheScreen();
-    expect(announce).toHaveBeenLastCalledWith(expect.stringMatching(/^\$229\.90, /));
+    expect(announce).toHaveBeenLastCalledWith(expect.stringMatching(/^\$229\.90 · /));
     await act(async () => held().onUpdate({ x: 308 }));
     expect(screen.getByText("$235.89")).toBeOnTheScreen();
-    expect(announce).toHaveBeenLastCalledWith(expect.stringMatching(/^\$235\.89, /));
+    expect(announce).toHaveBeenLastCalledWith(expect.stringMatching(/^\$235\.89 · /));
     await act(async () => held().onFinalize({ x: 308 }, true));
     expect(screen.queryByText("$235.89")).toBeNull();
   });
@@ -105,9 +105,9 @@ describe("TrackerScreen", () => {
     const chart = await screen.findByRole("adjustable", { name: /^1 day price chart/ });
     await fireEvent(chart, "accessibilityAction", { nativeEvent: { actionName: "decrement" } });
     expect(screen.getByText("$233.40")).toBeOnTheScreen();
-    expect(chart).toHaveAccessibilityValue({ text: /^\$233\.40, / });
+    expect(chart).toHaveAccessibilityValue({ text: /^\$233\.40 · / });
     await fireEvent(chart, "accessibilityAction", { nativeEvent: { actionName: "increment" } });
-    expect(chart).toHaveAccessibilityValue({ text: /^\$235\.89, / });
+    expect(chart).toHaveAccessibilityValue({ text: /^\$235\.89 · / });
   });
 
   it("offers Buy alone and says nothing is owned when nothing is held", async () => {

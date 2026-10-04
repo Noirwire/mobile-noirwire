@@ -1,6 +1,7 @@
+import { commonCopy } from "@noirwire/shared/copy";
 import { Alert, Platform } from "react-native";
 
-export const DISCARD_TITLE = "Discard this?";
+export const DISCARD_TITLE = commonCopy.discardThis;
 
 /**
  * Asks before throwing away what someone has entered in a sheet. This and the
@@ -13,7 +14,7 @@ export function confirmDiscard(onDiscard: () => void) {
     return;
   }
   Alert.alert(DISCARD_TITLE, undefined, [
-    { text: "Keep editing", style: "cancel" },
-    { text: "Discard", style: "destructive", onPress: onDiscard },
+    { text: commonCopy.keepEditing, style: "cancel" },
+    { text: commonCopy.discard, style: "destructive", onPress: onDiscard },
   ]);
 }

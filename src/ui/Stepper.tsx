@@ -1,3 +1,4 @@
+import { commonCopy } from "@noirwire/shared/copy";
 import { MinusIcon } from "phosphor-react-native/src/icons/Minus";
 import { PlusIcon } from "phosphor-react-native/src/icons/Plus";
 import { useEffect, useRef, useState, type ReactNode } from "react";
@@ -73,7 +74,7 @@ export function Stepper({ label, value, onChange, min = 0, max = 100, step = 5 }
       {...readAsOne}
       accessibilityRole="adjustable"
       accessibilityLabel={label}
-      accessibilityValue={{ min, max, now: value, text: `${value} percent` }}
+      accessibilityValue={{ min, max, now: value, text: commonCopy.percentSpoken(value) }}
       accessibilityActions={[{ name: "increment" }, { name: "decrement" }]}
       onAccessibilityAction={(event) =>
         nudge(event.nativeEvent.actionName === "increment" ? step : -step)
@@ -81,7 +82,7 @@ export function Stepper({ label, value, onChange, min = 0, max = 100, step = 5 }
       style={styles.stepper}
     >
       <StepButton
-        label={`Decrease ${label}`}
+        label={commonCopy.decreaseLabel(label)}
         disabled={value <= min}
         onPress={() => nudge(-step)}
         onLongPress={() => startRepeat(-step)}
@@ -111,7 +112,7 @@ export function Stepper({ label, value, onChange, min = 0, max = 100, step = 5 }
         </Text>
       </View>
       <StepButton
-        label={`Increase ${label}`}
+        label={commonCopy.increaseLabel(label)}
         disabled={value >= max}
         onPress={() => nudge(step)}
         onLongPress={() => startRepeat(step)}

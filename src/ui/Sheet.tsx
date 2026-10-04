@@ -1,3 +1,4 @@
+import { commonCopy } from "@noirwire/shared/copy";
 import { useCallback, type ReactNode } from "react";
 import { Modal, Pressable, StyleSheet, View } from "react-native";
 import { GestureDetector, GestureHandlerRootView } from "react-native-gesture-handler";
@@ -116,7 +117,7 @@ export function Sheet({
         <Animated.View entering={DIM} style={styles.overlay}>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Close"
+            accessibilityLabel={commonCopy.close}
             disabled={busy}
             onPress={requestClose}
             style={StyleSheet.absoluteFill}

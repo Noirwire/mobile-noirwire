@@ -1,3 +1,4 @@
+import { commonCopy } from "@noirwire/shared/copy";
 import { CaretLeftIcon } from "phosphor-react-native/src/icons/CaretLeft";
 import { XIcon } from "phosphor-react-native/src/icons/X";
 import { StyleSheet, View } from "react-native";
@@ -23,7 +24,7 @@ export function SheetHeader({ title, onBack, onClose }: SheetHeaderProps) {
       <View aria-hidden style={styles.grabber} />
       <View style={styles.bar}>
         {onBack && (
-          <IconButton label="Back" onPress={onBack}>
+          <IconButton label={commonCopy.back} onPress={onBack}>
             <CaretLeftIcon size={size.icon} color={colors.ink} />
           </IconButton>
         )}
@@ -31,7 +32,7 @@ export function SheetHeader({ title, onBack, onClose }: SheetHeaderProps) {
           {title}
         </Text>
         {onClose && !onBack && (
-          <IconButton label={`Close ${title}`} onPress={onClose}>
+          <IconButton label={commonCopy.closeLabel(title)} onPress={onClose}>
             <XIcon size={size.iconSmall} color={colors.dim} />
           </IconButton>
         )}

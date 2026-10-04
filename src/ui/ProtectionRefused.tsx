@@ -1,3 +1,4 @@
+import { commonCopy, mobileWalletCopy } from "@noirwire/shared/copy";
 import { StyleSheet, View } from "react-native";
 import { Button } from "./Button";
 import { Notice } from "./Notice";
@@ -6,8 +7,8 @@ import type { CaptureProtection } from "./useCaptureProtection";
 
 /** What is said where a secret is held back because it could not be kept out of screen captures. */
 export const protectionCopy = {
-  refused: "This can't be shown safely right now, so it is kept hidden. Try again.",
-  tryAgain: "Try again",
+  refused: mobileWalletCopy.protection.refused,
+  tryAgain: commonCopy.tryAgain,
 } as const;
 
 /** Stands where the secret would be when the system refused to protect it. Nothing otherwise. */

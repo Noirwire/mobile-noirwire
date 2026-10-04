@@ -10,8 +10,8 @@ import { changeColor } from "./changeColor";
 import { Text } from "./Text";
 import { colors, layout, size } from "./theme";
 
-/** What a held point reads: its price and its date, already formatted. */
-export type ChartReading = { price: string; date: string };
+/** What a held point reads: its price and its date, already formatted, and the two already joined for speech. */
+export type ChartReading = { price: string; date: string; text: string };
 
 type ChartProps = {
   points: number[];
@@ -114,7 +114,7 @@ function HeldChart({ last, width, height, label, readout, onLayout, children }: 
   const cursor = useSharedValue(0);
   const step = width > 0 ? (width - PAD * 2) / last : 0;
   const reading = held === null ? null : readout(held.index / last);
-  const spoken = reading ? `${reading.price}, ${reading.date}` : null;
+  const spoken = reading ? reading.text : null;
 
   // A screen reader says its own adjustment; a point held by touch is said here.
   const touched = held?.by === "touch" ? spoken : null;

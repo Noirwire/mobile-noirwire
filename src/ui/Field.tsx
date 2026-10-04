@@ -1,3 +1,4 @@
+import { commonCopy } from "@noirwire/shared/copy";
 import { EyeIcon } from "phosphor-react-native/src/icons/Eye";
 import { EyeSlashIcon } from "phosphor-react-native/src/icons/EyeSlash";
 import { useState, type Ref } from "react";
@@ -28,7 +29,7 @@ export function Field({
   secure = false,
   revealed: controlledRevealed,
   onRevealedChange,
-  revealLabels = { show: `Show ${label}`, hide: `Hide ${label}` },
+  revealLabels = { show: commonCopy.showLabel(label), hide: commonCopy.hideLabel(label) },
   lines,
   ref,
   ...input

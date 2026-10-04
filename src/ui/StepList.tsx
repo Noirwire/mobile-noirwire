@@ -1,3 +1,4 @@
+import { commonCopy } from "@noirwire/shared/copy";
 import { CheckIcon } from "phosphor-react-native/src/icons/Check";
 import { XIcon } from "phosphor-react-native/src/icons/X";
 import { useEffect, useRef } from "react";
@@ -20,13 +21,7 @@ export type Step = {
   reason?: string;
 };
 
-const STATUS_WORD: Record<StepStatus, string> = {
-  waiting: "Waiting",
-  current: "In progress",
-  done: "Done",
-  failed: "Failed",
-  skipped: "Not done",
-};
+const STATUS_WORD: Record<StepStatus, string> = commonCopy.stepStatus;
 
 const STATUS_TONE: Record<StepStatus, ColorToken> = {
   waiting: "faint",

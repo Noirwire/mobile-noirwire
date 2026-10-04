@@ -1,3 +1,4 @@
+import { commonCopy, mobileOnboardingCopy } from "@noirwire/shared/copy";
 import { useEffect, useRef, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { Button } from "./Button";
@@ -11,6 +12,7 @@ type CopyState = "idle" | "confirming" | "copied" | "failed";
 /** How long the button reads "Copied" before it returns to "Copy". */
 export const COPIED_LABEL_MS = 2000;
 const CLEAR_SECONDS = Math.round(SECRET_CLIPBOARD_MS / 1000);
+const phraseCopy = mobileOnboardingCopy.phrase.copy;
 
 /**
  * The one way a recovery phrase can be copied: an explicit Copy that first
@@ -44,11 +46,11 @@ export function PhraseCopy({ phrase }: { phrase: string }) {
   if (state === "confirming") {
     return (
       <View style={styles.copy}>
-        <Notice tone="warning" title="Copy the recovery phrase?">
-          {`Other apps and keyboards on this phone can read the clipboard, and it may sync to your other devices. It is cleared after ${CLEAR_SECONDS} seconds.`}
+        <Notice tone="warning" title={phraseCopy.confirmTitle}>
+          {phraseCopy.confirmBody(CLEAR_SECONDS)}
         </Notice>
-        <Button label="Copy anyway" variant="danger" onPress={copy} />
-        <Button label="Cancel" variant="quiet" onPress={() => setState("idle")} />
+        <Button label={phraseCopy.copyAnyway} variant="danger" onPress={copy} />
+        <Button label={commonCopy.cancel} variant="quiet" onPress={() => setState("idle")} />
       </View>
     );
   }
@@ -56,18 +58,18 @@ export function PhraseCopy({ phrase }: { phrase: string }) {
   return (
     <View style={styles.copy}>
       <Button
-        label={labelCopied ? "Copied" : "Copy"}
+        label={labelCopied ? phraseCopy.copied : commonCopy.copy}
         variant="quiet"
         onPress={() => setState("confirming")}
       />
       {state === "copied" && (
         <Text variant="note" accessibilityLiveRegion="polite" style={styles.centred}>
-          {`Copied. The clipboard is cleared in ${CLEAR_SECONDS} seconds; copy something else to be sure.`}
+          {phraseCopy.copiedNote(CLEAR_SECONDS)}
         </Text>
       )}
       {state === "failed" && (
         <Text variant="note" tone="danger" accessibilityRole="alert" style={styles.centred}>
-          Copy failed. Write the words down instead.
+          {phraseCopy.failed}
         </Text>
       )}
     </View>

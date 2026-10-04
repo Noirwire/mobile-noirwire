@@ -9,7 +9,7 @@ import { expect, expectNothingTechnical, test } from "./support/test";
 
 const STEP_TITLES = ["Get USDC", "Send it to your funding wallet", "Move it into a portfolio"];
 const CANNOT_REACH = "Can't reach NoirWire. Check your connection and try again.";
-const A_PRICE_AND_A_DATE = /^\$\d[\d,]*\.\d\d, .+\d/;
+const A_PRICE_AND_A_DATE = /^\$\d[\d,]*\.\d\d · .+\d/;
 
 test("a new user goes from Welcome to the add-money sheet, with the funding wallet address already shown", async ({
   page,
@@ -43,6 +43,10 @@ test("a new user goes from Welcome to the add-money sheet, with the funding wall
   for (const title of STEP_TITLES) {
     await expect(sheet.getByRole("heading", { name: title, exact: true })).toBeVisible();
   }
+  // The product never volunteers a limitation in the main path.
+  const sheetText = (await sheet.textContent()) ?? "";
+  expect(sheetText).not.toMatch(/cannot/i);
+  expect(sheetText).not.toMatch(/\byet\b/i);
   // The address is on the sheet as it opens: two lines of groups of four, with nothing to tap first.
   await expect(
     sheet.getByText(/^([1-9A-HJ-NP-Za-km-z]{1,4} ){5}[1-9A-HJ-NP-Za-km-z]{1,4}\n/),

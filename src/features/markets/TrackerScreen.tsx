@@ -1,4 +1,4 @@
-import { mobileSettingsCopy } from "@noirwire/shared/copy";
+import { mobileMarketsCopy, mobileSettingsCopy } from "@noirwire/shared/copy";
 import { PRICE_RANGES, type PriceRange } from "@noirwire/shared/domain";
 import { chartReadout, trackerView, type TrackerAction } from "@noirwire/shared/presentation";
 import { screenReads } from "@noirwire/shared/wallet";
@@ -190,6 +190,7 @@ export function TrackerScreen({ symbol, visitor = false, onIntent }: TrackerScre
                   {view.chart.source}
                 </Text>
               </View>
+              <Text variant="faint">{mobileMarketsCopy.detail.chartHint}</Text>
             </>
           ) : view.chart.kind === "loading" ? (
             <View style={styles.chartEmpty}>

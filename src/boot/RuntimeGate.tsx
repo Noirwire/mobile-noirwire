@@ -1,7 +1,10 @@
+import { mobileAppCopy } from "@noirwire/shared/copy";
 import { useEffect, useState, type ReactNode } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { colors, layout } from "@/ui/theme";
 import { failedRuntimeChecks } from "./runtimeChecks";
+
+const runtimeFailureCopy = mobileAppCopy.runtimeFailure;
 
 /**
  * Renders the app only once the runtime has passed its checks. A wallet on a
@@ -15,7 +18,7 @@ type RuntimeGateProps = {
 };
 
 /** What a failed `prepare` is listed as on the failure screen. */
-export const PREPARE_FAILURE = "App configuration";
+export const PREPARE_FAILURE = runtimeFailureCopy.configFailure;
 
 export function RuntimeGate({ children, prepare }: RuntimeGateProps) {
   const [failures, setFailures] = useState<string[] | null>(null);
@@ -57,22 +60,16 @@ export function RuntimeFailure({ failures, detail }: { failures: string[]; detai
   return (
     <ScrollView style={styles.blank} contentContainerStyle={styles.failure}>
       <Text accessibilityRole="header" style={styles.title}>
-        NoirWire cannot run safely on this device
+        {runtimeFailureCopy.title}
       </Text>
-      <Text style={styles.detail}>
-        The app checks its security features every time it starts. These did not work as expected,
-        so nothing was opened and no keys were read:
-      </Text>
+      <Text style={styles.detail}>{runtimeFailureCopy.detail}</Text>
       {failures.map((name) => (
         <View key={name}>
           <Text style={styles.failed}>{name}</Text>
           {name === PREPARE_FAILURE && detail ? <Text style={styles.detail}>{detail}</Text> : null}
         </View>
       ))}
-      <Text style={styles.detail}>
-        Update the app and try again. Your wallet is not affected: it can always be restored with
-        its recovery phrase.
-      </Text>
+      <Text style={styles.detail}>{runtimeFailureCopy.closing}</Text>
     </ScrollView>
   );
 }

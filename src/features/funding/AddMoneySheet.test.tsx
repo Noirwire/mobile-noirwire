@@ -25,7 +25,7 @@ describe("AddMoneySheet", () => {
     ]);
     expect(
       screen.getByText(
-        "USDC is a digital dollar: 1 USDC = $1. NoirWire cannot take card payments yet. Buy USDC in any app or service that can send it on the Solana network. No account with us is needed.",
+        "USDC is a digital dollar: 1 USDC = $1. Send it from any app or wallet that supports USDC on the Solana network. You do not need an account with us.",
       ),
     ).toBeOnTheScreen();
     expect(

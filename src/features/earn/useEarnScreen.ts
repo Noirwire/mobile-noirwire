@@ -2,7 +2,12 @@ import { WAIT_LIMIT_MS } from "@noirwire/shared/presentation";
 import { cashOf } from "@noirwire/shared/wallet";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { EarnPosition } from "@noirwire/shared/infrastructure";
-import type { EarnPortfolio, EarnRateRead, EarnTotal } from "@noirwire/shared/presentation";
+import type {
+  ArchivedHeldState,
+  EarnPortfolio,
+  EarnRateRead,
+  EarnTotal,
+} from "@noirwire/shared/presentation";
 import { useMoney } from "../network/money";
 import { useWalletSnapshot } from "../network/useWalletSnapshot";
 import { useServices } from "../services";
@@ -51,21 +56,33 @@ function useEarnPositions(version: number, onSettled?: () => void, only?: string
 }
 
 /**
- * What every portfolio has in Earn together, for Home, which shows it only
- * when there is something in Earn: undefined where Earn is not offered,
- * while it is still read and when nothing is lent, null when a position
- * could not be read.
+ * What every portfolio has in Earn together, and what an archived portfolio
+ * alone still holds, for Home: the combined total is undefined where Earn is
+ * not offered, while it is still read and when nothing is lent, null when a
+ * position could not be read. `archivedHeld` is Home's emptiness check: a
+ * tracker or money moved into an archived portfolio, and whether an archived
+ * portfolio's own Earn position has not yet been confirmed as zero (still
+ * loading, or its read failed), apart from the combined total above.
  */
-export function useEarnTotal(): EarnTotal {
+export function useHomeEarn(): { total: EarnTotal; archivedHeld: ArchivedHeldState } {
   // Every money move is logged, so the positions are read again after one.
   const moves = useWalletSnapshot()?.activity.length ?? 0;
   const { wallet, available, positions } = useEarnPositions(moves);
-  if (!available || !wallet) return undefined;
+  if (!available || !wallet) {
+    return { total: undefined, archivedHeld: { holds: false, earnUnknown: false } };
+  }
   const read = wallet.portfolios.map((portfolio) => positions[portfolio.id]);
-  if (read.some((position) => position === undefined)) return undefined;
-  if (read.some((position) => position === null)) return null;
-  const total = read.reduce((sum, position) => sum + (position?.deposited ?? 0), 0);
-  return total > 0 ? total : undefined;
+  const total = read.some((position) => position === undefined)
+    ? undefined
+    : read.some((position) => position === null)
+      ? null
+      : read.reduce((sum, position) => sum + (position?.deposited ?? 0), 0) || undefined;
+  const archived = wallet.portfolios.filter((portfolio) => portfolio.archivedAt !== null);
+  const archivedHeld: ArchivedHeldState = {
+    holds: archived.some((portfolio) => portfolio.holdings.some((holding) => holding.amount > 0)),
+    earnUnknown: archived.some((portfolio) => positions[portfolio.id] == null),
+  };
+  return { total, archivedHeld };
 }
 
 /**

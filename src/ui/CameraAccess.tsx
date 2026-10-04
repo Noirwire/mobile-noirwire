@@ -1,3 +1,4 @@
+import { mobileSendCopy } from "@noirwire/shared/copy";
 import { Linking, Platform, StyleSheet, View } from "react-native";
 import { Button } from "./Button";
 import { Mark } from "./Mark";
@@ -6,7 +7,8 @@ import { layout } from "./theme";
 
 export type CameraAccessState = "ask" | "blocked";
 
-export const CAMERA_PURPOSE = "NoirWire uses the camera only to scan a QR code you point it at.";
+const cameraCopy = mobileSendCopy.camera;
+export const CAMERA_PURPOSE = cameraCopy.purpose;
 
 type CameraAccessProps = {
   state: CameraAccessState;
@@ -26,16 +28,20 @@ export function CameraAccess({ state, onAllow }: CameraAccessProps) {
       {state === "ask" ? (
         <>
           <Text style={styles.centred}>{CAMERA_PURPOSE}</Text>
-          <Button label="Allow camera" onPress={onAllow} />
+          <Button label={cameraCopy.allow} onPress={onAllow} />
         </>
       ) : (
         <>
-          <Text style={styles.centred}>Camera access is off.</Text>
+          <Text style={styles.centred}>{cameraCopy.off}</Text>
           <Text variant="note" style={styles.centred}>
-            Allow the camera in system settings to scan a code, or paste the address instead.
+            {cameraCopy.offDetail}
           </Text>
           {Platform.OS !== "web" && (
-            <Button label="Open settings" variant="quiet" onPress={() => Linking.openSettings()} />
+            <Button
+              label={cameraCopy.openSettings}
+              variant="quiet"
+              onPress={() => Linking.openSettings()}
+            />
           )}
         </>
       )}

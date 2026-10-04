@@ -1,3 +1,4 @@
+import { commonCopy } from "@noirwire/shared/copy";
 import type { ReactNode } from "react";
 import { EmptyState, Screen, Text } from "@/ui";
 
@@ -15,7 +16,7 @@ export function Placeholder({ title, detail, underHeader = false, action }: Plac
   return (
     <Screen edges={underHeader ? ["right", "bottom", "left"] : undefined}>
       {!underHeader && <Text variant="h1">{title}</Text>}
-      <EmptyState title="Nothing here yet" detail={detail} action={action} />
+      <EmptyState title={commonCopy.nothingHereYet} detail={detail} action={action} />
     </Screen>
   );
 }

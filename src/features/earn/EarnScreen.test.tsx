@@ -61,7 +61,7 @@ describe("EarnScreen", () => {
     chain.earn.available = false;
     await walletWith(chain);
     await openEarn(chain);
-    expect(screen.getByText("Earn is available on Solana mainnet only.")).toBeOnTheScreen();
+    expect(screen.getByText("Earn runs on Solana mainnet.")).toBeOnTheScreen();
     expect(screen.getByRole("button", { name: "Deposit" })).toBeDisabled();
   });
 

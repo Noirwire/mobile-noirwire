@@ -1,3 +1,4 @@
+import { mobileOnboardingCopy, onboardingCopy } from "@noirwire/shared/copy";
 import { StyleSheet, useWindowDimensions, View } from "react-native";
 import { readAsOne } from "./accessibility";
 import { Button } from "./Button";
@@ -20,7 +21,7 @@ type PhraseGridProps = {
   copyable?: boolean;
 };
 
-const CONCEALED_WORD = "••••••";
+const CONCEALED_WORD = onboardingCopy.phrase.hidden;
 /** Past this text size two columns no longer fit a word, so the grid becomes one column. */
 const ONE_COLUMN_FONT_SCALE = 1.35;
 /** Two cells and the gap between them share a row. */
@@ -57,7 +58,9 @@ export function PhraseGrid({
               key={index}
               {...readAsOne}
               aria-hidden={!revealed}
-              accessibilityLabel={revealed ? `Word ${index + 1}, ${word}` : undefined}
+              accessibilityLabel={
+                revealed ? mobileOnboardingCopy.phrase.wordLabel(index + 1, word) : undefined
+              }
               style={[styles.cell, columns === 2 ? styles.half : styles.whole]}
             >
               <Text variant="faint" selectable={false} style={[styles.number, styles.unselectable]}>
@@ -71,7 +74,7 @@ export function PhraseGrid({
         </View>
         {!revealed && (
           <View style={styles.cover}>
-            {!asked && <Button label="Reveal phrase" onPress={onReveal} />}
+            {!asked && <Button label={onboardingCopy.phrase.reveal} onPress={onReveal} />}
           </View>
         )}
       </View>

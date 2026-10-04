@@ -27,7 +27,7 @@ import { RefreshScreen } from "@/ui/RefreshScreen";
 import { colors, layout, opacity, size } from "@/ui/theme";
 import { ActivityDetailSheet } from "../activity/ActivityDetailSheet";
 import { ActivityRow } from "../activity/ActivityRow";
-import { useEarnTotal } from "../earn/useEarnScreen";
+import { useHomeEarn } from "../earn/useEarnScreen";
 import { useMoney } from "../network/money";
 import { setArchived } from "../portfolio/portfolioActions";
 import { PortfolioRow } from "../portfolio/PortfolioRow";
@@ -63,14 +63,14 @@ export function HomeScreen(props: HomeScreenProps) {
   const { useOnline } = useServices();
   const online = useOnline();
   const refresh = useBalanceRefresh(useMoney().refresh.everything, online);
-  const earnTotal = useEarnTotal();
+  const { total: earnTotal, archivedHeld } = useHomeEarn();
   const [opened, setOpened] = useState<string | null>(null);
   const firstRead = refresh.reading && !refresh.settled;
   const waiting = useWaiting(firstRead, "content");
   useTopLoader(refresh.reading);
 
   if (!wallet) return null;
-  const view = homeView(screenReads, wallet, updatedAt, earnTotal);
+  const view = homeView(screenReads, wallet, updatedAt, earnTotal, archivedHeld);
   const storedNothing =
     view.empty && wallet.activity.length === 0 && view.archived.rows.length === 0;
   const loading = firstRead && storedNothing;
