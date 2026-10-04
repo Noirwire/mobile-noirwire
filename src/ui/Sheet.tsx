@@ -7,6 +7,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { confirmDiscard } from "./confirmDiscard";
 import { SheetHeader } from "./SheetHeader";
 import { colors, layout, motion, overlayColor, radius } from "./theme";
+import { ProtectionRefused } from "./ProtectionRefused";
+import { useCaptureProtection } from "./useCaptureProtection";
 import { useSheetSwipe } from "./useSheetSwipe";
 
 type SheetProps = {
@@ -22,6 +24,14 @@ type SheetProps = {
   dirty?: boolean;
   /** An action is in flight after Confirm: the sheet cannot be dismissed or stepped back. */
   busy?: boolean;
+  /**
+   * The sheet can show an address or another secret: it is kept out of
+   * screenshots and recordings for as long as it is open. A sheet is a window
+   * of its own, so this is asked for before the sheet opens; protection asked
+   * for later would not reach it. If the system refuses, the sheet does not
+   * open: a plain notice with "Try again" stands in its place.
+   */
+  secure?: boolean;
 };
 
 const RISE = SlideInDown.duration(motion.sheetMs).easing(Easing.bezier(0.16, 1, 0.3, 1));
@@ -44,8 +54,10 @@ export function Sheet({
   onBack,
   dirty = false,
   busy = false,
+  secure = false,
 }: SheetProps) {
   const insets = useSafeAreaInsets();
+  const protection = useCaptureProtection(open && secure);
 
   const requestClose = useCallback(() => {
     if (busy) return;
@@ -67,6 +79,29 @@ export function Sheet({
   }
 
   if (!open) return null;
+  if (secure && !protection.ready) {
+    // Refused: this window holds no secret, only the reason and the way out.
+    if (!protection.refused) return null;
+    return (
+      <Modal
+        transparent
+        statusBarTranslucent
+        navigationBarTranslucent
+        animationType="none"
+        onRequestClose={onClose}
+      >
+        <View style={[styles.overlay, styles.avoider]}>
+          <View
+            accessibilityViewIsModal
+            style={[styles.sheet, styles.refused, { paddingBottom: insets.bottom + layout.group }]}
+          >
+            <SheetHeader title={title} onClose={onClose} />
+            <ProtectionRefused protection={protection} />
+          </View>
+        </View>
+      </Modal>
+    );
+  }
 
   return (
     <Modal
@@ -132,6 +167,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: radius.sheet,
     backgroundColor: colors.surface,
   },
+  refused: { gap: layout.group },
   scroll: { flexGrow: 0, flexShrink: 1 },
   content: { gap: layout.group, paddingTop: layout.tight, paddingBottom: layout.group },
   footer: { gap: layout.tight, paddingTop: layout.tight },

@@ -1,4 +1,5 @@
-import { fireEvent, render, screen } from "@testing-library/react-native";
+import { act, fireEvent, render, screen } from "@testing-library/react-native";
+import { allowScreenCaptureAsync, preventScreenCaptureAsync } from "expo-screen-capture";
 import type { ComponentProps } from "react";
 import { Alert, type AlertButton } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -6,6 +7,7 @@ import { Button } from "./Button";
 import { DISCARD_TITLE } from "./confirmDiscard";
 import { Sheet } from "./Sheet";
 import { Text } from "./Text";
+import { CAPTURE_PROTECTION_LIMIT_MS } from "./useCaptureProtection";
 
 const METRICS = {
   frame: { x: 0, y: 0, width: 390, height: 844 },
@@ -137,5 +139,64 @@ describe("Sheet", () => {
     await fireEvent.press(backdrop());
     expect(alert).toHaveBeenCalledTimes(1);
     expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("opens a sheet that can show a secret only once its window is kept out of captures", async () => {
+    let protect!: () => void;
+    (preventScreenCaptureAsync as jest.Mock).mockImplementationOnce(
+      () => new Promise<void>((resolve) => (protect = resolve)),
+    );
+    (allowScreenCaptureAsync as jest.Mock).mockClear();
+    const view = await renderStep({ secure: true });
+    expect(screen.queryByText("Step body")).toBeNull();
+    await act(async () => protect());
+    expect(screen.getByText("Step body")).toBeOnTheScreen();
+    expect(allowScreenCaptureAsync).not.toHaveBeenCalled();
+    await view.unmount();
+    expect(allowScreenCaptureAsync).toHaveBeenCalledTimes(1);
+  });
+
+  it("stays closed when the system refuses the protection, and opens on a Try again that succeeds", async () => {
+    (preventScreenCaptureAsync as jest.Mock).mockRejectedValueOnce(new Error("unsupported"));
+    const onClose = jest.fn();
+    await renderStep({ secure: true, onClose });
+    expect(
+      await screen.findByText(
+        "This can't be shown safely right now, so it is kept hidden. Try again.",
+      ),
+    ).toBeOnTheScreen();
+    expect(screen.queryByText("Step body")).toBeNull();
+    await fireEvent.press(screen.getByRole("button", { name: "Try again" }));
+    expect(await screen.findByText("Step body")).toBeOnTheScreen();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("can be closed from the refusal, which never shows the secret", async () => {
+    (preventScreenCaptureAsync as jest.Mock).mockRejectedValue(new Error("unsupported"));
+    const onClose = jest.fn();
+    await renderStep({ secure: true, onClose });
+    await fireEvent.press(await screen.findByRole("button", { name: "Close Send" }));
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText("Step body")).toBeNull();
+    (preventScreenCaptureAsync as jest.Mock).mockImplementation(() => Promise.resolve());
+  });
+
+  it("stays closed when the system never answers, and says so after the limit", async () => {
+    jest.useFakeTimers();
+    (preventScreenCaptureAsync as jest.Mock).mockReturnValueOnce(new Promise(() => undefined));
+    await renderStep({ secure: true });
+    expect(screen.queryByText("Step body")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
+    await act(() => jest.advanceTimersByTimeAsync(CAPTURE_PROTECTION_LIMIT_MS));
+    expect(screen.getByRole("button", { name: "Try again" })).toBeOnTheScreen();
+    expect(screen.queryByText("Step body")).toBeNull();
+    jest.useRealTimers();
+  });
+
+  it("asks for no protection for a sheet that shows no secret", async () => {
+    (preventScreenCaptureAsync as jest.Mock).mockClear();
+    await renderStep({});
+    expect(screen.getByText("Step body")).toBeOnTheScreen();
+    expect(preventScreenCaptureAsync).not.toHaveBeenCalled();
   });
 });

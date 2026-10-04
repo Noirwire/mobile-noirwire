@@ -58,15 +58,22 @@ export function resumesAfterUnlock(segments: readonly string[]): boolean {
   return placeOf(segments) === "app" && !SHEETS.has(segments[0] ?? "");
 }
 
-/** Where to go instead, or null to stay. `resume` is the screen an unlocked wallet was on before it locked. */
+/**
+ * Where to go instead, or null to stay. `resume` is the screen an unlocked
+ * wallet was on before it locked, or the link that arrived while it was
+ * locked. `visitor` is what the path asked for opens with no wallet stored:
+ * the two markets links, as a visitor sees them (spec 1.4).
+ */
 export function gateRedirect(
   state: WalletState,
   place: Place,
   resume: string | null,
+  visitor: string | null = null,
 ): string | null {
   if (state.exists === undefined || place === "dev") return null;
   if (!state.exists) {
-    return place === "onboarding" || place === "finishing" || place === "visitor" ? null : WELCOME;
+    if (place === "onboarding" || place === "finishing" || place === "visitor") return null;
+    return place === "app" && visitor ? visitor : WELCOME;
   }
   if (!state.unlocked) return place === "unlock" || place === "reset" ? null : UNLOCK;
   if (place === "app" || place === "finishing") return null;

@@ -29,8 +29,8 @@ describe("resumesAfterUnlock", () => {
   it("comes back to a tab or a stack screen", () => {
     expect(resumesAfterUnlock(["(tabs)"])).toBe(true);
     expect(resumesAfterUnlock(["(tabs)", "settings", "about"])).toBe(true);
-    expect(resumesAfterUnlock(["portfolio", "[id]"])).toBe(true);
-    expect(resumesAfterUnlock(["markets", "[symbol]"])).toBe(true);
+    expect(resumesAfterUnlock(["(tabs)", "(home)", "portfolio", "[id]"])).toBe(true);
+    expect(resumesAfterUnlock(["(tabs)", "(markets)", "markets", "[symbol]"])).toBe(true);
   });
 
   it("never reopens a sheet: Receive, New portfolio and every money sheet stay closed", () => {
@@ -70,5 +70,17 @@ describe("gateRedirect", () => {
     expect(gateRedirect(open, "onboarding", null)).toBe(HOME);
     expect(gateRedirect(open, "finishing", null)).toBeNull();
     expect(gateRedirect(open, "app", null)).toBeNull();
+  });
+
+  it("with no wallet, opens a markets link as a visitor sees it and Welcome for any other", () => {
+    expect(gateRedirect(none, "app", null, "/look-around")).toBe("/look-around");
+    expect(gateRedirect(none, "app", null, "/tracker/NVDAx")).toBe("/tracker/NVDAx");
+    expect(gateRedirect(none, "app", null, null)).toBe(WELCOME);
+    expect(gateRedirect(none, "unlock", null, "/look-around")).toBe(WELCOME);
+  });
+
+  it("holds a link that arrived while locked, and follows it once unlocked", () => {
+    expect(gateRedirect(locked, "app", "/earn")).toBe(UNLOCK);
+    expect(gateRedirect(open, "unlock", "/earn")).toBe("/earn");
   });
 });
