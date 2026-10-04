@@ -1,3 +1,4 @@
+import { importSourceView } from "@noirwire/shared/presentation";
 import { Redirect, useRouter } from "expo-router";
 import { useOnboardingFlow } from "@/features/onboarding/OnboardingFlow";
 import { ResultScreen } from "@/features/onboarding/ResultScreen";
@@ -16,7 +17,7 @@ export default function ImportResult() {
       activity={resolution[scheme]}
       fundingAddress={draft.wallet.funding.address}
       onContinue={() => router.push("/set-password")}
-      onOtherSet={() => router.back()}
+      onOtherSet={importSourceView(resolution).skipped ? undefined : () => router.back()}
       lookFurther={(activity) => lookFurther(importWords.join(" "), scheme, activity)}
       onFoundMore={flow.lookedFurther}
       online={online}

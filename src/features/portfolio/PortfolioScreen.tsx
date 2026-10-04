@@ -168,6 +168,7 @@ export function PortfolioScreen(props: PortfolioScreenProps) {
                   label={view.empty.button.label}
                   disabled={!online}
                   onPress={() => props.onAction(view.empty!.button.action)}
+                  style={styles.stretch}
                 />
                 {view.empty.caption && <Text variant="faint">{view.empty.caption}</Text>}
               </View>
@@ -375,17 +376,22 @@ function Actions({
       )}
       <View style={styles.quietRow}>
         {view.quiet.map((button) => (
-          <Button
-            key={button.label}
-            variant="quiet"
-            label={button.label}
-            disabled={!online || button.disabled}
-            onPress={press(button)}
-            style={styles.quiet}
-          />
+          <View key={button.label} style={styles.quiet}>
+            <Button
+              variant="quiet"
+              label={button.label}
+              disabled={!online || button.disabled}
+              onPress={press(button)}
+              style={styles.quietButton}
+            />
+            {button.action.to === "send" && view.sendReason && (
+              <Text variant="faint" style={styles.reason}>
+                {view.sendReason}
+              </Text>
+            )}
+          </View>
         ))}
       </View>
-      {view.sendReason && <Text variant="faint">{view.sendReason}</Text>}
     </View>
   );
 }
@@ -564,8 +570,11 @@ const styles = StyleSheet.create({
   value: { gap: layout.tight, paddingTop: layout.tight },
   retry: { gap: layout.tight, alignItems: "flex-start" },
   quietRow: { flexDirection: "row", flexWrap: "wrap", gap: layout.tight },
-  quiet: { flexGrow: 1, flexBasis: 96, paddingHorizontal: layout.tight },
+  quiet: { flexGrow: 1, flexBasis: 96, gap: layout.hairline },
+  quietButton: { paddingHorizontal: layout.tight },
+  reason: { textAlign: "center" },
   empty: { alignItems: "center", gap: layout.inset, paddingVertical: layout.group },
+  stretch: { alignSelf: "stretch" },
   ring: { alignItems: "center", paddingVertical: layout.tight },
   centreValue: { fontVariant: ["tabular-nums"] },
   slice: { gap: layout.hairline, paddingVertical: layout.tight },

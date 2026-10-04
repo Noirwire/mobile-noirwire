@@ -175,6 +175,11 @@ export function ImportScreen({ onFound }: ImportScreenProps) {
           disabled={!online || !protection.ready || importing}
           onPress={() => void submit()}
         />
+        {importing && (
+          <Text variant="faint" accessibilityLiveRegion="polite">
+            {progress.note}
+          </Text>
+        )}
         {importing && progress.stillWorking !== null && (
           <Text variant="faint" accessibilityLiveRegion="polite">
             {progress.stillWorking}

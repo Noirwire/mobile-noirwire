@@ -1,4 +1,5 @@
 import { onboardingCopy, walletCopy, mobileOnboardingCopy } from "@noirwire/shared/copy";
+import { newPasswordView } from "@noirwire/shared/presentation";
 import type { WalletDraft } from "@noirwire/shared/wallet";
 import { useState } from "react";
 import { StyleSheet, View } from "react-native";
@@ -56,26 +57,23 @@ export function SetPasswordScreen({ draft, origin, onSaved }: SetPasswordScreenP
     }
   }
 
+  const view = newPasswordView("mobile");
   return (
     <Screen edges={["right", "bottom", "left"]}>
-      <View style={styles.intro}>
-        <Text variant="display" accessibilityRole="header">
-          {copy.title}
-        </Text>
-        <Text tone="dim">{mobile.intro}</Text>
-      </View>
+      <Text variant="display" accessibilityRole="header">
+        {view.title}
+      </Text>
       <NewPasswordFields model={model} editable={!saving} onSubmit={() => void save()} />
       {problem && <Notice tone="danger">{problem}</Notice>}
       <View style={styles.actions}>
         <Button label={copy.finish} disabled={!model.ready || saving} onPress={() => void save()} />
         <StillWorking waiting={waiting} />
-        <Text variant="faint">{copy.forgotten}</Text>
+        <Text variant="faint">{view.forgotten}</Text>
       </View>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  intro: { gap: layout.group },
   actions: { gap: layout.tight },
 });

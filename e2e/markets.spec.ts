@@ -17,9 +17,9 @@ test("Markets leads to a tracker and a buy order's review, priced from the quote
     .click();
 
   await expect(page).toHaveURL(/\/markets\/NVDAx$/);
-  await expect(page.getByText("Historical prices · Jupiter")).toBeVisible();
+  await expect(page.getByText("Historical prices")).toBeVisible();
   await page.getByRole("radio", { name: "1W" }).click();
-  await expect(page.getByRole("img", { name: /^1 week price chart\./ })).toBeVisible();
+  await expect(page.getByRole("slider", { name: /^1 week price chart\./ })).toBeVisible();
 
   await page.getByRole("button", { name: "Buy", exact: true }).click();
   const sheet = page.getByRole("dialog");

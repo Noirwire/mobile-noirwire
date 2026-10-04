@@ -5,10 +5,12 @@ import { AboutScreen } from "./AboutScreen";
 jest.mock("expo-clipboard", () => ({ setStringAsync: jest.fn(() => Promise.resolve(true)) }));
 
 describe("AboutScreen", () => {
-  it("shows the version, build and network, and copies the version on a long press", async () => {
+  it("shows the version, build, network, help contact and website, and copies the version on a long press", async () => {
     const onOpenRisks = jest.fn();
     await render(<AboutScreen version="1.0.0" build="12" onOpenRisks={onOpenRisks} />);
     expect(screen.getByText("Solana")).toBeOnTheScreen();
+    expect(screen.getByLabelText("Help, ph1l1ph@proton.me")).toBeOnTheScreen();
+    expect(screen.getByLabelText("Website, noirwire.com")).toBeOnTheScreen();
     await fireEvent(screen.getByLabelText("Version, 1.0.0"), "longPress");
     expect(Clipboard.setStringAsync).toHaveBeenCalledWith("1.0.0 (12)");
     expect(screen.getByText("Copied")).toBeOnTheScreen();

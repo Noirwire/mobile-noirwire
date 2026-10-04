@@ -3,7 +3,7 @@ import { expect, type Page } from "@playwright/test";
 /** Creates a wallet through the real onboarding, passing the phrase check. Returns the password. */
 export async function createWallet(page: Page): Promise<string> {
   await page.goto("/");
-  await page.getByRole("button", { name: "Create my wallet" }).click();
+  await page.getByRole("button", { name: "Create a wallet" }).click();
   await page.getByRole("button", { name: "Reveal phrase" }).click();
   const labels = await page
     .locator('[aria-label^="Word "]')

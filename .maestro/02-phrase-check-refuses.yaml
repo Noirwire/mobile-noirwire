@@ -6,7 +6,7 @@ tags:
   - onboarding
 ---
 - runFlow: subflows/launch-fresh.yaml
-- tapOn: "Create my wallet"
+- tapOn: "Create a wallet"
 - runFlow: subflows/remember-phrase.yaml
 - tapOn: "I have saved these words for the next step."
 - tapOn: "Continue"

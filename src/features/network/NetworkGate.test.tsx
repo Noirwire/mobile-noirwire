@@ -6,9 +6,17 @@ import {
 import { act, fireEvent, render, screen } from "@testing-library/react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { Text } from "@/ui";
-import { renderWith, testServices } from "../testServices";
+import {
+  STRONG_PASSWORD,
+  forgetWallet,
+  installTestPlatform,
+  renderWith,
+  storedLockedWallet,
+  testServices,
+} from "../testServices";
+import { unlockWithPassword } from "../wallet/walletActions";
 import { checkNetwork } from "./gateCheck";
-import { NetworkGate } from "./NetworkGate";
+import { NetworkGate, RECHECK_MS, useUnreachable } from "./NetworkGate";
 import { OfflineBanner } from "./OfflineBanner";
 
 const MAINNET = "5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d";
@@ -25,7 +33,19 @@ describe("checkNetwork", () => {
   });
 });
 
+const CANNOT_REACH = "Can't reach NoirWire. Check your connection and try again.";
+
+function Inside() {
+  const unreachable = useUnreachable();
+  return <Text>{unreachable ? `Open, notice: ${unreachable.message}` : "The wallet"}</Text>;
+}
+
 describe("NetworkGate", () => {
+  beforeEach(() => {
+    installTestPlatform();
+  });
+  afterEach(() => forgetWallet());
+
   it("opens the app once the network is the expected one", async () => {
     await render(
       <NetworkGate check={async () => "ok"} network={network}>
@@ -60,14 +80,70 @@ describe("NetworkGate", () => {
         <Text>The wallet</Text>
       </NetworkGate>,
     );
-    expect(
-      await screen.findByText(
-        "We can't show your balances right now. Your money has not moved. Try again.",
-      ),
-    ).toBeOnTheScreen();
+    expect(await screen.findByText(CANNOT_REACH)).toBeOnTheScreen();
+    expect(screen.queryByText(/balances/)).toBeNull();
+    expect(screen.queryByText("The wallet")).toBeNull();
     await fireEvent.press(screen.getByRole("button", { name: "Try again" }));
     expect(await screen.findByText("The wallet")).toBeOnTheScreen();
     expect(check).toHaveBeenCalledTimes(2);
+  });
+
+  it("lets a stored, locked wallet through to its unlock screen, with the message as a notice", async () => {
+    await storedLockedWallet();
+    await render(
+      <NetworkGate check={async () => "unreachable"} network={network}>
+        <Inside />
+      </NetworkGate>,
+    );
+    expect(await screen.findByText(`Open, notice: ${CANNOT_REACH}`)).toBeOnTheScreen();
+  });
+
+  it("stays open after the unlock, asks again by itself, and drops the notice on an answer", async () => {
+    await storedLockedWallet();
+    jest.useFakeTimers();
+    try {
+      const check = jest
+        .fn<Promise<"ok" | "unreachable">, []>()
+        .mockResolvedValueOnce("unreachable")
+        .mockResolvedValueOnce("ok");
+      await render(
+        <NetworkGate check={check} network={network}>
+          <Inside />
+        </NetworkGate>,
+      );
+      await act(() => jest.advanceTimersByTimeAsync(0));
+      expect(screen.getByText(`Open, notice: ${CANNOT_REACH}`)).toBeOnTheScreen();
+      await act(async () => {
+        await unlockWithPassword(STRONG_PASSWORD);
+      });
+      expect(screen.getByText(/^Open, notice: We can't show your balances/)).toBeOnTheScreen();
+      await act(() => jest.advanceTimersByTimeAsync(RECHECK_MS));
+      expect(screen.getByText("The wallet")).toBeOnTheScreen();
+      expect(check).toHaveBeenCalledTimes(2);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it("closes an app opened for an unlock as soon as the network turns out to be the wrong one", async () => {
+    await storedLockedWallet();
+    jest.useFakeTimers();
+    try {
+      const check = jest
+        .fn<Promise<"wrongNetwork" | "unreachable">, []>()
+        .mockResolvedValueOnce("unreachable")
+        .mockResolvedValueOnce("wrongNetwork");
+      await render(
+        <NetworkGate check={check} network={network}>
+          <Inside />
+        </NetworkGate>,
+      );
+      await act(() => jest.advanceTimersByTimeAsync(RECHECK_MS));
+      expect(screen.queryByText(/^Open/)).toBeNull();
+      expect(screen.getByText(/is not connected to Solana mainnet/)).toBeOnTheScreen();
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   it("stays quiet for a moment, then says it is checking", async () => {
@@ -104,11 +180,7 @@ describe("NetworkGate", () => {
         </NetworkGate>,
       );
       await act(() => jest.advanceTimersByTimeAsync(WAIT_LIMIT_MS.check));
-      expect(
-        screen.getByText(
-          "We can't show your balances right now. Your money has not moved. Try again.",
-        ),
-      ).toBeOnTheScreen();
+      expect(screen.getByText(CANNOT_REACH)).toBeOnTheScreen();
       await fireEvent.press(screen.getByRole("button", { name: "Try again" }));
       await act(() => jest.advanceTimersByTimeAsync(0));
       expect(screen.getByText("The wallet")).toBeOnTheScreen();

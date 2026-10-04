@@ -25,7 +25,7 @@ async function openFund(
 ) {
   const handlers = {
     onClose: jest.fn(),
-    onShowFundingAddress: jest.fn(),
+    onAddMoney: jest.fn(),
     onSeePublicView: jest.fn(),
   };
   const money = testMoney(chain);
@@ -45,7 +45,7 @@ describe("FundScreen", () => {
     const chain = fakeChain();
     await walletWith(chain);
     await openFund(chain);
-    expect(screen.getByText("Add money privately")).toBeOnTheScreen();
+    expect(screen.getByText("Move to portfolio")).toBeOnTheScreen();
     expect(screen.getByText("Arrives in Investing")).toBeOnTheScreen();
     expect(screen.getByText("+ 0.00 USDC")).toBeOnTheScreen();
     expect(screen.getByText("+ 0.20 USDC")).toBeOnTheScreen();
@@ -84,7 +84,7 @@ describe("FundScreen", () => {
       <FundScreen
         portfolioId={getSnapshot()!.portfolios[0].id}
         onClose={jest.fn()}
-        onShowFundingAddress={jest.fn()}
+        onAddMoney={jest.fn()}
         onSeePublicView={jest.fn()}
       />,
     );
@@ -94,7 +94,7 @@ describe("FundScreen", () => {
     expect(screen.getByRole("button", { name: "100" })).toBeDisabled();
 
     await fireEvent.changeText(amountField(), "0.3");
-    expect(screen.getByText("A private transfer has to be at least 0.50 USDC.")).toBeOnTheScreen();
+    expect(screen.getByText("A private move has to be at least 0.50 USDC.")).toBeOnTheScreen();
     expect(screen.getByRole("button", { name: "Review" })).toBeDisabled();
 
     await fireEvent.changeText(amountField(), "50");
@@ -132,7 +132,7 @@ describe("FundScreen", () => {
       screen.getByText("If the transfer would take more than this total, it is not signed."),
     ).toBeOnTheScreen();
 
-    await fireEvent.press(screen.getByRole("button", { name: "Confirm" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Move privately" }));
     expect(await screen.findByText("Funds arrived", undefined, ARRIVAL_WAIT)).toBeOnTheScreen();
     expect(
       screen.getByText(
@@ -157,7 +157,7 @@ describe("FundScreen", () => {
     await openFund(chain);
     await fireEvent.changeText(amountField(), "25");
     await fireEvent.press(screen.getByRole("button", { name: "Review" }));
-    await fireEvent.press(screen.getByRole("button", { name: "Confirm" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Move privately" }));
 
     expect(await screen.findByText("Sent, but not confirmed")).toBeOnTheScreen();
     expect(screen.getByText("Close")).toBeOnTheScreen();
@@ -184,7 +184,7 @@ describe("FundScreen", () => {
     await openFund(chain);
     await fireEvent.changeText(amountField(), "10");
     await fireEvent.press(screen.getByRole("button", { name: "Review" }));
-    await fireEvent.press(screen.getByRole("button", { name: "Confirm" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Move privately" }));
     expect(
       await screen.findByText(
         "This transfer would name one of your portfolios on chain next to your funding wallet. Not signed.",
@@ -198,21 +198,21 @@ describe("FundScreen", () => {
     installTestPlatform();
     const chain = fakeChain();
     await walletWith(chain, { funding: 0 });
-    const onShowFundingAddress = jest.fn();
+    const onAddMoney = jest.fn();
     await renderWithMoney(
       await testServices(),
       testMoney(chain),
       <FundScreen
         portfolioId={getSnapshot()!.portfolios[0].id}
         onClose={jest.fn()}
-        onShowFundingAddress={onShowFundingAddress}
+        onAddMoney={onAddMoney}
         onSeePublicView={jest.fn()}
       />,
     );
     expect(await screen.findByText("Your funding wallet is empty.")).toBeOnTheScreen();
     expect(screen.queryByLabelText("Amount in USDC")).toBeNull();
-    await fireEvent.press(screen.getByRole("button", { name: "Show my funding address" }));
-    expect(onShowFundingAddress).toHaveBeenCalled();
+    await fireEvent.press(screen.getByRole("button", { name: "Add money" }));
+    expect(onAddMoney).toHaveBeenCalled();
   });
 
   it("starts with a choice of portfolio when opened for none", async () => {
@@ -231,13 +231,15 @@ describe("FundScreen", () => {
       <FundScreen
         portfolioId={null}
         onClose={jest.fn()}
-        onShowFundingAddress={jest.fn()}
+        onAddMoney={jest.fn()}
         onSeePublicView={jest.fn()}
       />,
     );
-    expect(await screen.findByText("Add money to")).toBeOnTheScreen();
+    expect(await screen.findByText("Choose a portfolio")).toBeOnTheScreen();
     expect(screen.getByRole("button", { name: "Continue" })).toBeDisabled();
-    await fireEvent.press(screen.getByRole("radio", { name: "Long term, 312.40 USDC cash" }));
+    await fireEvent.press(
+      screen.getByRole("radio", { name: "Long term, 312.40 USDC ready to invest" }),
+    );
     await fireEvent.press(screen.getByRole("button", { name: "Continue with Long term" }));
     expect(
       screen.getByText(
@@ -264,7 +266,7 @@ describe("FundScreen", () => {
     const { money } = await openFund(chain);
     await fireEvent.changeText(amountField(), "10");
     await fireEvent.press(screen.getByRole("button", { name: "Review" }));
-    await fireEvent.press(screen.getByRole("button", { name: "Confirm" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Move privately" }));
     await screen.findByText("Sent, but not confirmed");
     chain.settles = "landed";
     await act(async () => {
@@ -295,7 +297,7 @@ describe("FundScreen", () => {
     await fireEvent.changeText(amountField(), "100");
     await fireEvent.press(screen.getByRole("button", { name: "Review" }));
     jest.useFakeTimers();
-    await fireEvent.press(screen.getByRole("button", { name: "Confirm" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Move privately" }));
     await act(() => jest.advanceTimersByTimeAsync(STILL_WORKING_AFTER_MS.action));
     expect(
       screen.getByText("Still working. You can leave this open; nothing more is needed from you."),

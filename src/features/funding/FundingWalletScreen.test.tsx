@@ -12,21 +12,21 @@ describe("FundingWalletScreen", () => {
     const chain = fakeChain();
     const wallet = await walletWith(chain, { funding: 250 });
     const onMove = jest.fn();
-    const onShowAddress = jest.fn();
+    const onAddMoney = jest.fn();
     await renderWithMoney(
       await testServices(),
       testMoney(chain),
-      <FundingWalletScreen onMove={onMove} onShowAddress={onShowAddress} />,
+      <FundingWalletScreen onMove={onMove} onAddMoney={onAddMoney} />,
     );
     expect(await screen.findByLabelText("250.00 USDC waiting to be moved")).toBeOnTheScreen();
     expect(
       screen.getByText("Money sent here must be moved into a portfolio before you can invest."),
     ).toBeOnTheScreen();
     expect(screen.queryByText(wallet.funding.address)).toBeNull();
-    await fireEvent.press(screen.getByRole("button", { name: "Move to a portfolio" }));
-    await fireEvent.press(screen.getByRole("button", { name: "Show my funding address" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Move to portfolio" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Add money" }));
     expect(onMove).toHaveBeenCalled();
-    expect(onShowAddress).toHaveBeenCalled();
+    expect(onAddMoney).toHaveBeenCalled();
   });
 
   it("says nothing is waiting and holds Move back at a zero balance", async () => {
@@ -36,14 +36,12 @@ describe("FundingWalletScreen", () => {
     await renderWithMoney(
       await testServices(),
       testMoney(chain),
-      <FundingWalletScreen onMove={jest.fn()} onShowAddress={jest.fn()} />,
+      <FundingWalletScreen onMove={jest.fn()} onAddMoney={jest.fn()} />,
     );
     expect(
-      await screen.findByText(
-        "Nothing is waiting. Send USDC on Solana to your funding address to add money.",
-      ),
+      await screen.findByText("Nothing is waiting. Add money to your funding wallet first."),
     ).toBeOnTheScreen();
-    expect(screen.getByRole("button", { name: "Move to a portfolio" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Move to portfolio" })).toBeDisabled();
   });
 
   it("is reached from Settings by a row carrying the funding wallet's cash", async () => {

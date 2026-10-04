@@ -12,13 +12,13 @@ import { useWalletSnapshot } from "../network/useWalletSnapshot";
 
 type FundingWalletScreenProps = {
   onMove: () => void;
-  onShowAddress: () => void;
+  onAddMoney: () => void;
 };
 
 const CASH = "USDC";
 
-/** Spec 2.31: what is waiting in the funding wallet, and where to send more. Never its address. */
-export function FundingWalletScreen({ onMove, onShowAddress }: FundingWalletScreenProps) {
+/** Spec 2.31: what is waiting in the funding wallet, and the way to add more. */
+export function FundingWalletScreen({ onMove, onAddMoney }: FundingWalletScreenProps) {
   const money = useMoney();
   const online = useServices().useOnline();
   const wallet = useWalletSnapshot();
@@ -104,7 +104,7 @@ export function FundingWalletScreen({ onMove, onShowAddress }: FundingWalletScre
             disabled={view.move.disabled}
             onPress={onMove}
           />
-          <Button label={view.showAddress} variant="quiet" onPress={onShowAddress} />
+          <Button label={view.addMoney} variant="quiet" onPress={onAddMoney} />
         </View>
       </ScrollView>
     </SafeAreaView>

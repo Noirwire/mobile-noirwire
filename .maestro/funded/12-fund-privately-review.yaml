@@ -7,8 +7,8 @@ tags:
   - funded
 ---
 - runFlow: ../subflows/import-funded.yaml
-- tapOn: "Move money to .*"
-- assertVisible: "Add money privately"
+- tapOn: "Move to .*"
+- assertVisible: "Move to portfolio"
 - tapOn: "Amount in USDC"
 - inputText: "1"
 - hideKeyboard
@@ -16,4 +16,4 @@ tags:
 - extendedWaitUntil:
     visible: "Total leaving your funding wallet"
     timeout: 30000
-- assertVisible: "Confirm"
+- assertVisible: "Move privately"

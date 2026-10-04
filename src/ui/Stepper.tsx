@@ -171,15 +171,17 @@ const styles = StyleSheet.create({
   pressed: { backgroundColor: colors.elevated, opacity: opacity.pressed },
   inert: { opacity: opacity.inert },
   field: {
-    width: size.stepperField,
+    minWidth: size.stepperField,
     height: size.minTarget,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
+    paddingHorizontal: layout.tight,
     borderRadius: radius.tile,
     backgroundColor: colors.elevated,
   },
   input: {
+    flexShrink: 1,
     minWidth: 0,
     padding: 0,
     textAlign: "right",

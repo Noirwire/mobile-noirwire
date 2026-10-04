@@ -66,7 +66,7 @@ async function mounted(other: "send" | "fund") {
         symbol="NVDAx"
         portfolioId={portfolio.id}
         onClose={noop}
-        onAddMoney={noop}
+        onNoMoney={noop}
       />
       {other === "send" ? (
         <SendScreen portfolioId={portfolio.id} onClose={noop} onMoveMoney={noop} />
@@ -74,7 +74,7 @@ async function mounted(other: "send" | "fund") {
         <FundScreen
           portfolioId={portfolio.id}
           onClose={noop}
-          onShowFundingAddress={noop}
+          onAddMoney={noop}
           onSeePublicView={noop}
         />
       )}
@@ -99,7 +99,7 @@ async function confirmFund() {
   const amount = (await screen.findAllByLabelText("Amount in USDC"))[0];
   await fireEvent.changeText(amount, "10");
   await fireEvent.press(screen.getByRole("button", { name: "Review" }));
-  await fireEvent.press(await screen.findByRole("button", { name: "Confirm" }));
+  await fireEvent.press(await screen.findByRole("button", { name: "Move privately" }));
 }
 
 const pendingOf = (id: string) =>

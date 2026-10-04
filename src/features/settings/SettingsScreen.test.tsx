@@ -28,6 +28,7 @@ describe("SettingsScreen", () => {
     for (const [label, page] of [
       ["Recovery phrase", "recovery-phrase"],
       ["Password", "password"],
+      ["Costs", "costs"],
       ["Privacy and your funds", "privacy"],
       ["Risks", "risks"],
       ["About NoirWire, 1.0.0", "about"],

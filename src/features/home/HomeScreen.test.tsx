@@ -15,7 +15,10 @@ import {
   withHolding,
 } from "../portfolio/testWallet";
 import { forgetWallet, installTestPlatform, testServices } from "../testServices";
+import { SIGNATURE_ARC_TEST_ID } from "@/ui/SignatureArc";
 import { HomeScreen, RESTORED_MS } from "./HomeScreen";
+
+const HIDDEN = { includeHiddenElements: true };
 
 let updatedAt: number;
 
@@ -68,13 +71,16 @@ describe("HomeScreen", () => {
       balances,
     );
     expect(
-      screen.getByLabelText("Total value, $968.08, +$10.22 (2.0%) held trackers · 24h indicative"),
+      screen.getByLabelText("Total value, $968.08, +$10.22 (2.0%) held trackers · 24h approximate"),
     ).toBeOnTheScreen();
-    expect(screen.getByText("Cash available to invest")).toBeOnTheScreen();
+    expect(screen.getByText("Ready to invest")).toBeOnTheScreen();
+    expect(screen.getByTestId(SIGNATURE_ARC_TEST_ID, HIDDEN)).toBeOnTheScreen();
     expect(screen.getByRole("button", { name: "Find trackers" })).toBeOnTheScreen();
     expect(screen.getByRole("button", { name: "Add money" })).toBeOnTheScreen();
     await fireEvent.press(
-      screen.getByRole("button", { name: /^Investing, \$457\.33 cash · 1 holding, \$968\.08/ }),
+      screen.getByRole("button", {
+        name: /^Investing, \$457\.33 to invest · 1 holding, \$968\.08/,
+      }),
     );
     expect(on.onOpenPortfolio).toHaveBeenCalledWith(getSnapshot()!.portfolios[0].id);
     await fireEvent.press(
@@ -148,21 +154,22 @@ describe("HomeScreen", () => {
     expect(screen.queryByText("Earning")).toBeNull();
   });
 
-  it("leads an empty wallet with Add USDC and the funding address, and How to add money", async () => {
+  it("leads an empty wallet with one Add money button, the line under it, and no arc", async () => {
     await unlockedWallet();
     const on = handlers();
     await renderScreen(await testServices(), <HomeScreen {...on} pricesUpdatedAt={updatedAt} />);
     expect(screen.getByLabelText("Total value, $0.00")).toBeOnTheScreen();
-    await fireEvent.press(screen.getByRole("button", { name: "Add USDC" }));
-    expect(on.onNavigate).toHaveBeenLastCalledWith({ to: "receive", reveal: false });
-    await fireEvent.press(screen.getByRole("button", { name: "Show funding address" }));
-    expect(on.onNavigate).toHaveBeenLastCalledWith({ to: "receive", reveal: true });
-    expect(screen.queryByText("1. Get USDC on Solana")).toBeNull();
-    await fireEvent.press(screen.getByRole("button", { name: "How to add money" }));
-    expect(screen.getByText("1. Get USDC on Solana")).toBeOnTheScreen();
+    expect(screen.getByText("Ready to invest")).toBeOnTheScreen();
+    expect(screen.getAllByRole("button", { name: /Add money|funding/i })).toHaveLength(1);
     expect(
-      screen.getByText("This first transfer is public and may link the sending address to you."),
+      screen.getByText(
+        "Your money arrives in your funding wallet. Then you move it into a portfolio.",
+      ),
     ).toBeOnTheScreen();
+    expect(screen.queryByRole("button", { name: "Find trackers" })).toBeNull();
+    expect(screen.queryByTestId(SIGNATURE_ARC_TEST_ID, HIDDEN)).toBeNull();
+    await fireEvent.press(screen.getByRole("button", { name: "Add money" }));
+    expect(on.onNavigate).toHaveBeenLastCalledWith({ to: "addMoney" });
     await fireEvent.press(screen.getByRole("button", { name: "Look at trackers first" }));
     expect(on.onNavigate).toHaveBeenLastCalledWith({ to: "markets" });
   });
@@ -173,7 +180,7 @@ describe("HomeScreen", () => {
       await testServices(),
       <HomeScreen {...handlers()} pricesUpdatedAt={updatedAt} />,
     );
-    await fireEvent.press(screen.getByRole("button", { name: "Shown together only here" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Only you see this total" }));
     expect(screen.getByText(/This total is added up on this phone/)).toBeOnTheScreen();
   });
 
@@ -264,7 +271,7 @@ describe("HomeScreen", () => {
     const on = handlers();
     await renderScreen(await testServices(), <HomeScreen {...on} pricesUpdatedAt={updatedAt} />);
     expect(screen.getByText(/250\.00 USDC has arrived in your funding wallet/)).toBeOnTheScreen();
-    await fireEvent.press(screen.getByRole("button", { name: "Move money to Investing" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Move to Investing" }));
     expect(on.onNavigate).toHaveBeenCalledWith({
       to: "fund",
       portfolioId: wallet.portfolios[0].id,

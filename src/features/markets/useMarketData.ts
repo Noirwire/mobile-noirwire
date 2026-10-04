@@ -8,7 +8,6 @@ import {
   type Visibility,
 } from "@noirwire/shared/infrastructure";
 import type { PriceRange, Wallet } from "@noirwire/shared/domain";
-import type { PriceHistory } from "@noirwire/shared/presentation";
 import { getSnapshot, subscribe } from "@noirwire/shared/wallet";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { AppState } from "react-native";
@@ -44,10 +43,16 @@ export function useWalletSnapshot(): Wallet | null {
   return useSyncExternalStore(subscribe, getSnapshot) ?? null;
 }
 
+/** A price history as far as it has been read, with the moment a series arrived: its last point is from then. */
+export type ReadHistory =
+  | { status: "loading" }
+  | { status: "ready"; points: number[]; readAt: number }
+  | { status: "none" };
+
 /** A tracker's real price history for one range. Nothing is drawn from anything else. */
-export function usePriceHistory(symbol: string, range: PriceRange, enabled = true): PriceHistory {
+export function usePriceHistory(symbol: string, range: PriceRange, enabled = true): ReadHistory {
   const key = `${symbol}:${range}`;
-  const [answer, setAnswer] = useState<{ key: string; history: PriceHistory } | null>(null);
+  const [answer, setAnswer] = useState<{ key: string; history: ReadHistory } | null>(null);
   useEffect(() => {
     if (!enabled) return;
     let current = true;
@@ -57,7 +62,10 @@ export function usePriceHistory(symbol: string, range: PriceRange, enabled = tru
       .catch(() => null)
       .then((points) => {
         if (current)
-          setAnswer({ key, history: points ? { status: "ready", points } : { status: "none" } });
+          setAnswer({
+            key,
+            history: points ? { status: "ready", points, readAt: Date.now() } : { status: "none" },
+          });
       });
     return () => {
       current = false;

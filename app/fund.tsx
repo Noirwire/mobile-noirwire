@@ -1,8 +1,4 @@
-import {
-  fundingReceiveParams,
-  publicViewParams,
-  readPortfolioParam,
-} from "@noirwire/shared/presentation";
+import { publicViewParams, readPortfolioParam } from "@noirwire/shared/presentation";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { FundScreen } from "@/features/funding/FundScreen";
 import { portfolioHref } from "@/navigation/detailRoutes";
@@ -18,9 +14,7 @@ export default function Fund() {
       <FundScreen
         portfolioId={readPortfolioParam(portfolio)}
         onClose={() => router.back()}
-        onShowFundingAddress={() =>
-          router.replace({ pathname: "/receive", params: fundingReceiveParams(false) })
-        }
+        onAddMoney={() => router.replace("/add-money")}
         onSeePublicView={(id) => {
           // The sheet closes first, so the portfolio opens inside its tab, not over it.
           router.back();

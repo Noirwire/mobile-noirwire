@@ -10,12 +10,17 @@ const newField = () => screen.getByLabelText("New password");
 const confirmField = () => screen.getByLabelText("Confirm password");
 
 describe("SetPasswordScreen", () => {
-  it("holds a short or guessable password back, with the reason", async () => {
+  it("says the rule before anything is typed, and holds a short or guessable password back", async () => {
     installTestPlatform();
     await renderWith(
       await testServices(),
       <SetPasswordScreen draft={createWallet()} origin="create" onSaved={jest.fn()} />,
     );
+    expect(
+      screen.getByText(
+        "Choose a password of at least 12 characters. It locks the wallet on this phone. We never see it.",
+      ),
+    ).toBeOnTheScreen();
     await fireEvent.changeText(newField(), "short");
     expect(await screen.findByText("Use at least 12 characters.")).toBeOnTheScreen();
     await fireEvent.changeText(newField(), "password1234");

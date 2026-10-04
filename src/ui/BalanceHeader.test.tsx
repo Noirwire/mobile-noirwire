@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react-native";
 import { BalanceHeader } from "./BalanceHeader";
+import { SIGNATURE_ARC_TEST_ID } from "./SignatureArc";
 import { layout } from "./theme";
 
 function layoutEvent(width: number) {
@@ -10,6 +11,14 @@ describe("BalanceHeader", () => {
   it("reads label, figure and change together", async () => {
     await render(<BalanceHeader label="Total value" value="$8,729.89" change="+$98.79 (1.2%)" />);
     expect(screen.getByLabelText("Total value, $8,729.89, +$98.79 (1.2%)")).toBeOnTheScreen();
+  });
+
+  it("draws the arc unless told there is nothing to draw it for", async () => {
+    const hidden = { includeHiddenElements: true };
+    const view = await render(<BalanceHeader label="Total value" value="$8,729.89" />);
+    expect(screen.getByTestId(SIGNATURE_ARC_TEST_ID, hidden)).toBeOnTheScreen();
+    await view.rerender(<BalanceHeader label="Total value" value="$0.00" arc={false} />);
+    expect(screen.queryByTestId(SIGNATURE_ARC_TEST_ID, hidden)).toBeNull();
   });
 
   it("leaves the change line out when there is none", async () => {

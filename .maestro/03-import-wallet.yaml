@@ -8,17 +8,17 @@ tags:
   - onboarding
 ---
 - runFlow: subflows/launch-fresh.yaml
-- tapOn: "Import an existing wallet"
+- tapOn: "Restore a wallet"
 - tapOn: "Recovery phrase"
 - inputText: "${TEST_PHRASE}"
 - hideKeyboard
 - tapOn: "Continue"
+- assertVisible: "Checking what this phrase holds.*"
 - extendedWaitUntil:
-    visible: "Where did this phrase come from?"
+    # Nothing is found for this phrase, so there is no choice of addresses: the result says it opens a new, empty wallet.
+    visible: "Nothing found yet. This phrase will open a new, empty wallet."
     # The form stays up with Continue disabled and the top loader running while it looks; a slow device takes a while.
     timeout: 180000
-- tapOn: "NoirWire\\..*"
-- tapOn: "Open this wallet"
 - tapOn: "Continue"
 - runFlow: subflows/set-password.yaml
-- assertVisible: "How to add money"
+- assertVisible: "Add money"

@@ -14,7 +14,6 @@ import {
   Button,
   IconButton,
   Mark,
-  Panel,
   Row,
   Skeleton,
   Text,
@@ -116,8 +115,6 @@ export function HomeScreen(props: HomeScreenProps) {
 
       <Actions view={view} onNavigate={props.onNavigate} />
 
-      {view.empty && <HowTo view={view} />}
-
       <Portfolios
         view={view}
         loading={loading ? waiting : null}
@@ -208,10 +205,11 @@ function Balance({
         unavailable={view.total.unavailable}
         change={view.total.change}
         changeTone={view.total.changeTone}
+        arc={view.showArc}
       />
       <View style={styles.together}>
         <TextToggle
-          label={copy.togetherOnlyHere}
+          label={view.total.explainer}
           expanded={explained}
           onPress={() => setExplained(!explained)}
         />
@@ -282,39 +280,24 @@ function ActionButton({
 
 function Actions({ view, onNavigate }: { view: HomeView; onNavigate: (t: HomeTarget) => void }) {
   return (
-    <View style={[styles.actions, view.empty && styles.stacked]}>
-      <ActionButton
-        action={view.primary}
-        variant={view.actionsQuiet ? "quiet" : "primary"}
-        stacked={view.empty}
-        onNavigate={onNavigate}
-      />
-      <ActionButton
-        action={view.secondary}
-        variant="quiet"
-        stacked={view.empty}
-        onNavigate={onNavigate}
-      />
-    </View>
-  );
-}
-
-function HowTo({ view }: { view: HomeView }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <View style={styles.howTo}>
-      <TextToggle label={copy.howToAddMoney} expanded={open} onPress={() => setOpen(!open)} />
-      {open && (
-        <Panel style={styles.steps}>
-          {view.howTo.steps.map((step) => (
-            <View key={step.title} style={styles.step}>
-              <Text>{step.title}</Text>
-              <Text variant="note">{step.detail}</Text>
-            </View>
-          ))}
-          <Text variant="faint">{view.howTo.footnote}</Text>
-        </Panel>
-      )}
+    <View style={styles.actionsBlock}>
+      <View style={[styles.actions, view.empty && styles.stacked]}>
+        <ActionButton
+          action={view.primary}
+          variant={view.actionsQuiet ? "quiet" : "primary"}
+          stacked={view.empty}
+          onNavigate={onNavigate}
+        />
+        {view.secondary && (
+          <ActionButton
+            action={view.secondary}
+            variant="quiet"
+            stacked={view.empty}
+            onNavigate={onNavigate}
+          />
+        )}
+      </View>
+      {view.explanation && <Text variant="note">{view.explanation}</Text>}
     </View>
   );
 }
@@ -444,12 +427,10 @@ const styles = StyleSheet.create({
   balance: { gap: layout.tight },
   together: { gap: layout.tight, alignItems: "flex-start" },
   skeleton: { paddingTop: layout.section },
+  actionsBlock: { gap: layout.tight },
   actions: { flexDirection: "row", flexWrap: "wrap", gap: layout.tight },
   action: { flexGrow: 1, flexBasis: 150 },
   stacked: { flexDirection: "column", flexWrap: "nowrap", alignItems: "stretch" },
-  howTo: { gap: layout.tight, alignItems: "stretch" },
-  steps: { gap: layout.group },
-  step: { gap: layout.hairline },
   section: { gap: layout.tight },
   sectionHead: { flexDirection: "row", alignItems: "center", gap: layout.tight },
   compact: { minHeight: size.minTarget, paddingHorizontal: layout.inset },

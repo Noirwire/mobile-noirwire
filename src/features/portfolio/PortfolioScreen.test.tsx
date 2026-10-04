@@ -1,6 +1,6 @@
 import type { Portfolio } from "@noirwire/shared/domain";
 import { getSnapshot, updateWallet } from "@noirwire/shared/wallet";
-import { act, fireEvent, screen, waitFor } from "@testing-library/react-native";
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react-native";
 import { AccessibilityInfo } from "react-native";
 import { copySecret } from "@/ui/secretClipboard";
 import { forgetWallet, installTestPlatform, testServices } from "../testServices";
@@ -73,10 +73,10 @@ describe("PortfolioScreen", () => {
     const { on, balances } = await show(portfolio.id);
     expect(screen.getByText("Investing")).toBeOnTheScreen();
     expect(screen.getByLabelText("Portfolio value, $968.08")).toBeOnTheScreen();
-    expect(screen.getByText("457.33 USDC cash to invest")).toBeOnTheScreen();
+    expect(screen.getByText("457.33 USDC ready to invest")).toBeOnTheScreen();
     await fireEvent.press(screen.getByRole("button", { name: "Buy a tracker" }));
     expect(on.onAction).toHaveBeenLastCalledWith({ to: "buy" });
-    await fireEvent.press(screen.getByRole("button", { name: "Add money" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Move to portfolio" }));
     expect(on.onAction).toHaveBeenLastCalledWith({ to: "fund" });
     await fireEvent.press(screen.getByRole("button", { name: "Receive" }));
     expect(on.onAction).toHaveBeenLastCalledWith({ to: "receive" });
@@ -113,21 +113,30 @@ describe("PortfolioScreen", () => {
     const portfolio = await walletWith((p) => p);
     const { on } = await show(portfolio.id);
     expect(screen.getByText("Nothing here yet.")).toBeOnTheScreen();
-    expect(screen.getAllByRole("button", { name: "Move money here" })).toHaveLength(1);
-    expect(screen.getByText("Add money first, then choose a tracker.")).toBeOnTheScreen();
+    expect(screen.getAllByRole("button", { name: "Move to portfolio" })).toHaveLength(1);
+    expect(screen.getByText("Move money in first, then choose a tracker.")).toBeOnTheScreen();
     expect(screen.getByRole("button", { name: "Send" })).toBeDisabled();
-    expect(screen.getByText("Nothing to send yet.")).toBeOnTheScreen();
+    // The reason sits in Send's own column, under Send, and not under Receive.
+    const reason = screen.getByText("Nothing to send yet.");
+    expect(within(reason.parent!).getByRole("button", { name: "Send" })).toBeOnTheScreen();
+    expect(within(reason.parent!).queryByRole("button", { name: "Receive" })).toBeNull();
     expect(
-      screen.getByText("Nothing has moved yet. Fund or receive into this portfolio to begin."),
+      screen.getByText("Nothing has moved yet. Move money into this portfolio to begin."),
     ).toBeOnTheScreen();
-    await fireEvent.press(screen.getByRole("button", { name: "Move money here" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Move to portfolio" }));
     expect(on.onAction).toHaveBeenCalledWith({ to: "fund" });
   });
 
   it("disables every action while offline", async () => {
     const portfolio = await walletWith(invested);
     const { balances } = await show(portfolio.id, { online: false });
-    for (const name of ["Buy a tracker", "Receive", "Send", "Add money", "Sell NVIDIA tracker"]) {
+    for (const name of [
+      "Buy a tracker",
+      "Receive",
+      "Send",
+      "Move to portfolio",
+      "Sell NVIDIA tracker",
+    ]) {
       expect(screen.getByRole("button", { name })).toBeDisabled();
     }
     expect(screen.getByRole("button", { name: "See public view" })).toBeEnabled();

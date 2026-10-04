@@ -9,14 +9,14 @@ test("creates a wallet after the phrase check and lands on an empty Home", async
   await createWallet(page);
 
   await expect(page).toHaveURL(/\/$/);
-  await expect(page.getByRole("button", { name: "How to add money" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Add money" })).toBeVisible();
   await expect(page.getByText("No investments yet", { exact: false }).first()).toBeVisible();
   await expect(page.getByRole("tab", { name: "Home" })).toHaveAttribute("aria-selected", "true");
 });
 
 test("refuses a wrong word in the phrase check", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "Create my wallet" }).click();
+  await page.getByRole("button", { name: "Create a wallet" }).click();
   await page.getByRole("button", { name: "Reveal phrase" }).click();
   const labels = await page
     .locator('[aria-label^="Word "]')
@@ -41,21 +41,21 @@ test("refuses a wrong word in the phrase check", async ({ page }) => {
 
 test("imports a wallet from a recovery phrase", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "Import an existing wallet" }).click();
+  await page.getByRole("button", { name: "Restore a wallet" }).click();
   await page.getByRole("textbox", { name: "Recovery phrase" }).fill(TEST_ONLY_PHRASE);
   await page.getByRole("button", { name: "Continue" }).click();
 
+  // Nothing was found under either set of addresses, so there is no choice to make.
+  await expect(page.getByRole("heading", { name: "Wallet imported." })).toBeVisible({
+    timeout: 60_000,
+  });
   await expect(
-    page.getByRole("heading", { name: "Where did this phrase come from?" }),
+    page.getByText("Nothing found yet. This phrase will open a new, empty wallet."),
   ).toBeVisible();
-  await expect(
-    page.getByRole("radio", { name: /^NoirWire\. Nothing found on chain yet/ }),
-  ).toBeVisible();
-  await page.getByRole("radio", { name: /^NoirWire\./ }).click();
-  await page.getByRole("button", { name: "Open this wallet" }).click();
-
-  await expect(page.getByText(/Nothing was found on chain for these addresses yet/)).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Where did this phrase come from?" })).toHaveCount(
+    0,
+  );
   await page.getByRole("button", { name: "Continue" }).click();
   await finishWithSuggestedPassword(page);
-  await expect(page.getByRole("button", { name: "How to add money" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Add money" })).toBeVisible();
 });

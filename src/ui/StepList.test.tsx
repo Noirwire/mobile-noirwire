@@ -3,7 +3,7 @@ import { AccessibilityInfo } from "react-native";
 import { StepList, type Step } from "./StepList";
 
 const STEPS: Step[] = [
-  { key: "a", title: "Sent to the private route", status: "done" },
+  { key: "a", title: "Private move sent", status: "done" },
   { key: "b", title: "Waiting in the queue", status: "current" },
   { key: "c", title: "Arrived in Investing", status: "waiting" },
 ];
@@ -14,7 +14,7 @@ describe("StepList", () => {
 
   it("names each step with its status", async () => {
     await render(<StepList steps={STEPS} />);
-    expect(screen.getByLabelText("Sent to the private route, Done")).toBeOnTheScreen();
+    expect(screen.getByLabelText("Private move sent, Done")).toBeOnTheScreen();
     expect(screen.getByLabelText("Waiting in the queue, In progress")).toBeOnTheScreen();
     expect(screen.getByLabelText("Arrived in Investing, Waiting")).toBeOnTheScreen();
   });

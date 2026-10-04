@@ -25,6 +25,7 @@ export const SHEET_ROUTES = [
   "send",
   "receive",
   "fund",
+  "add-money",
   "new-portfolio",
   "pie-builder",
   "pie-order",

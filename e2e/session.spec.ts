@@ -6,7 +6,7 @@ import { expect, expectNothingTechnical, test } from "./support/test";
  * by itself: a person is never asked for anything and never told about it.
  */
 
-const CANNOT_REACH = "We can't show your balances right now. Your money has not moved. Try again.";
+const CANNOT_REACH = "Can't reach NoirWire. Check your connection and try again.";
 const BALANCES_STALE =
   "We couldn't update your balances. What you see may be out of date. Pull down to try again.";
 
@@ -20,7 +20,7 @@ async function expectNoWordOfTheSession(page: import("@playwright/test").Page) {
 
 test("a first launch obtains a session, then loads prices with it", async ({ page, api }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "Look around first" }).click();
+  await page.getByRole("button", { name: "Explore trackers" }).click();
   await expect(page.getByRole("heading", { name: "Top movers" })).toBeVisible();
   await expect(page.getByText("$235.91").first()).toBeVisible();
   await expectNoWordOfTheSession(page);
@@ -77,7 +77,7 @@ test("an API that is down at first launch gets the plain message, and Try again 
   await expect(page.getByRole("alert")).toHaveText(CANNOT_REACH, { timeout: 40_000 });
   await expectNoWordOfTheSession(page);
   await expectNothingTechnical(page);
-  await expect(page.getByRole("button", { name: "Create my wallet" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Create a wallet" })).toHaveCount(0);
 
   // Still down: the same plain message, never a blank screen.
   await page.getByRole("button", { name: "Try again" }).click();
@@ -88,7 +88,7 @@ test("an API that is down at first launch gets the plain message, and Try again 
   // session again, so the press that recovers may not be the first.
   await expect(async () => {
     await page.getByRole("button", { name: "Try again" }).click();
-    await expect(page.getByRole("button", { name: "Create my wallet" })).toBeVisible({
+    await expect(page.getByRole("button", { name: "Create a wallet" })).toBeVisible({
       timeout: 3_000,
     });
   }).toPass({ timeout: 60_000 });

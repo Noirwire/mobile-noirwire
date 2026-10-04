@@ -16,6 +16,7 @@ import { networkLabel, type TradePlan } from "@noirwire/shared/infrastructure";
 import { getPlatform } from "@noirwire/shared/platform";
 import {
   amountFloor,
+  noMoneyView,
   portfolioChoices,
   tradeFormView,
   tradeOutcome,
@@ -47,6 +48,7 @@ import {
 } from "@/ui";
 import { errorHaptic, heavyHaptic, successHaptic, warningHaptic } from "@/ui/haptics";
 import { fonts, layout } from "@/ui/theme";
+import type { MoneyTarget } from "@/navigation/moneyRoutes";
 import { useLivePrices, useWalletSnapshot } from "../markets/useMarketData";
 import { ActionOverdue } from "../network/ActionOverdue";
 import { assetDecimals } from "../network/decimals";
@@ -63,8 +65,8 @@ type TradeSheetProps = {
   symbol: string | null;
   portfolioId: string | null;
   onClose: () => void;
-  /** No cash to invest: this sheet closes and money is moved in instead. */
-  onAddMoney: (portfolioId: string) => void;
+  /** Nothing to invest: this sheet closes and the way to bring money in opens instead. */
+  onNoMoney: (target: MoneyTarget) => void;
 };
 
 /** Read when a review is shown and once a second after, for the price countdown. */
@@ -79,7 +81,7 @@ export function TradeSheet({
   symbol: initialSymbol,
   portfolioId: initialPortfolio,
   onClose,
-  onAddMoney,
+  onNoMoney,
 }: TradeSheetProps) {
   const service = useTrading();
   const online = useServices().useOnline();
@@ -204,7 +206,7 @@ export function TradeSheet({
     }
     if (side === "buy" && quoted.plan.spend > cash) {
       setQuoting(false);
-      setFormError(copy.priceAboveCash);
+      setFormError(copy.priceAboveReady);
       return setStep("amount");
     }
     try {
@@ -323,10 +325,23 @@ export function TradeSheet({
     </>
   );
 
+  // Said on the first step, whichever it is, and not three steps in. Before a
+  // portfolio is chosen it is said only when none of them has anything to invest.
+  const choosing = step === "portfolio" || step === "tracker" || step === "amount";
+  const noMoney =
+    side === "buy" && choosing
+      ? noMoneyView(screenReads, wallet, step === "portfolio" ? initialPortfolio : portfolioId)
+      : null;
+
   let body: React.ReactNode = null;
   let footer: React.ReactNode = undefined;
 
-  if (step === "portfolio") {
+  if (noMoney) {
+    body = <EmptyState title={noMoney.title} detail={noMoney.detail} />;
+    footer = (
+      <Button label={noMoney.action.label} onPress={() => onNoMoney(noMoney.action.target)} />
+    );
+  } else if (step === "portfolio") {
     const chosen = choices.find((choice) => choice.id === portfolioId) ?? null;
     body = (
       <>
@@ -376,73 +391,64 @@ export function TradeSheet({
         {!tradable && (
           <Notice tone="warning">{commonCopy.tradingUnavailableOn(networkLabel())}</Notice>
         )}
-        {form.action.kind === "addMoney" ? (
-          <EmptyState title={copy.noCash} detail={copy.noCashDetail} />
+        <Segmented
+          label={copy.amountIn}
+          options={form.denominations.map((option) => option.label)}
+          value={form.denominations.find((option) => option.denom === denom)?.label ?? ""}
+          onChange={(label) => {
+            const option = form.denominations.find((candidate) => candidate.label === label);
+            if (!option || option.disabled) return;
+            setDenom(option.denom);
+            setAmountText("");
+          }}
+        />
+        {disabledDenom && <Text variant="faint">{copy.noLiveToConvert}</Text>}
+        {form.balanceUnavailable ? (
+          <Text tone="dim">{form.balanceUnavailable}</Text>
         ) : (
-          <>
-            <Segmented
-              label={copy.amountIn}
-              options={form.denominations.map((option) => option.label)}
-              value={form.denominations.find((option) => option.denom === denom)?.label ?? ""}
-              onChange={(label) => {
-                const option = form.denominations.find((candidate) => candidate.label === label);
-                if (!option || option.disabled) return;
-                setDenom(option.denom);
-                setAmountText("");
-              }}
+          <View style={styles.amountRow}>
+            <View style={styles.grow}>
+              <AmountField
+                label={form.amountLabel}
+                value={amountText}
+                onChange={setAmountText}
+                placeholder={commonCopy.amountPlaceholder}
+              />
+            </View>
+            <Button
+              variant="quiet"
+              label={form.maxLabel}
+              onPress={() => setAmountText(String(draft.cap))}
             />
-            {disabledDenom && <Text variant="faint">{copy.noLiveToConvert}</Text>}
-            {form.balanceUnavailable ? (
-              <Text tone="dim">{form.balanceUnavailable}</Text>
-            ) : (
-              <View style={styles.amountRow}>
-                <View style={styles.grow}>
-                  <AmountField
-                    label={form.amountLabel}
-                    value={amountText}
-                    onChange={setAmountText}
-                    placeholder={commonCopy.amountPlaceholder}
-                  />
-                </View>
-                <Button
-                  variant="quiet"
-                  label={form.maxLabel}
-                  onPress={() => setAmountText(String(draft.cap))}
-                />
-              </View>
-            )}
-            <Text tone="dim">{form.available}</Text>
-            <Text tone="dim">{form.estimate}</Text>
-            {form.tooPrecise && (
-              <Text variant="note" tone="danger" accessibilityRole="alert">
-                {form.tooPrecise}
-              </Text>
-            )}
-            {form.overCap && (
-              <Text variant="note" tone="danger" accessibilityRole="alert">
-                {form.overCap}
-              </Text>
-            )}
-            <Text variant="faint">{floor.below ?? floor.caption}</Text>
-            {formError && <Notice tone="danger">{formError}</Notice>}
-            {!online && <Notice tone="warning">{mobileTradeCopy.offline}</Notice>}
-          </>
+          </View>
         )}
+        <Text tone="dim">{form.available}</Text>
+        <Text tone="dim">{form.estimate}</Text>
+        {form.tooPrecise && (
+          <Text variant="note" tone="danger" accessibilityRole="alert">
+            {form.tooPrecise}
+          </Text>
+        )}
+        {form.overCap && (
+          <Text variant="note" tone="danger" accessibilityRole="alert">
+            {form.overCap}
+          </Text>
+        )}
+        <Text variant="faint">{floor.below ?? floor.caption}</Text>
+        {formError && <Notice tone="danger">{formError}</Notice>}
+        {!online && <Notice tone="warning">{mobileTradeCopy.offline}</Notice>}
       </>
     );
-    footer =
-      form.action.kind === "addMoney" ? (
-        <Button label={form.action.label} onPress={() => portfolio && onAddMoney(portfolio.id)} />
-      ) : (
-        <>
-          <Button
-            label={form.action.label}
-            disabled={reviewDisabled || quoting}
-            onPress={() => void review()}
-          />
-          <StillWorking waiting={quotingWait} />
-        </>
-      );
+    footer = (
+      <>
+        <Button
+          label={form.action.label}
+          disabled={reviewDisabled || quoting}
+          onPress={() => void review()}
+        />
+        <StillWorking waiting={quotingWait} />
+      </>
+    );
   } else if ((step === "review" || step === "risks") && plan && network && portfolio && symbol) {
     const model = tradeReviewView({
       platform: "mobile",

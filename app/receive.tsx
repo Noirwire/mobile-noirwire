@@ -1,19 +1,20 @@
-import { readReceiveTarget } from "@noirwire/shared/presentation";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { readPortfolioParam } from "@noirwire/shared/presentation";
+import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
 import { ReceiveSheet } from "@/features/receive/ReceiveSheet";
 import { SheetRoute } from "@/navigation/sheetRoute";
 
 /**
- * Params: `portfolio`, "funding" (the default) or a portfolio's local id, and
- * `reveal=1` to show the funding address at once. Never an address.
+ * Params: `portfolio`, the receiving portfolio's local id. Never an address.
+ * The funding wallet's own address is in the add-money sheet.
  */
 export default function Receive() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ portfolio?: string; reveal?: string }>();
+  const portfolioId = readPortfolioParam(useLocalSearchParams<{ portfolio?: string }>().portfolio);
+  if (!portfolioId) return <Redirect href="/add-money" />;
   return (
     <>
       <SheetRoute />
-      <ReceiveSheet target={readReceiveTarget(params)} onClose={() => router.back()} />
+      <ReceiveSheet portfolioId={portfolioId} onClose={() => router.back()} />
     </>
   );
 }

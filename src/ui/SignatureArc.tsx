@@ -15,6 +15,8 @@ const AnimatedPath = Animated.createAnimatedComponent(Path);
 
 const STROKE_WIDTH = 1;
 
+export const SIGNATURE_ARC_TEST_ID = "signature-arc";
+
 /**
  * The quiet arc along the trailing edge of Home's balance, in the zone the
  * text never enters. On first reveal it closes its last twenty degrees, once,
@@ -45,6 +47,7 @@ export function SignatureArc() {
   return (
     <View
       aria-hidden
+      testID={SIGNATURE_ARC_TEST_ID}
       style={styles.layer}
       onLayout={(event) => {
         const { width, height } = event.nativeEvent.layout;

@@ -36,14 +36,14 @@ async function open(
     portfolios: [{ label: "Core", cash: 500, pie: TWO, ...spec }],
   });
   const [{ id }] = wallet.portfolios;
-  const onAddMoney = jest.fn();
+  const onNoMoney = jest.fn();
   const onClose = jest.fn();
   await renderWithMoney(
     await testServices(),
     testMoney(chain),
-    <PieOrderSheet portfolioId={id} mode={mode} onClose={onClose} onAddMoney={onAddMoney} />,
+    <PieOrderSheet portfolioId={id} mode={mode} onClose={onClose} onNoMoney={onNoMoney} />,
   );
-  return { id, chain, onAddMoney, onClose };
+  return { id, chain, onNoMoney, onClose };
 }
 
 /** A pie that has never held its trackers: the relayer opens each holding first. */
@@ -162,11 +162,11 @@ describe("PieOrderSheet", () => {
     expect(await screen.findByText(`SPYx: ${errorsCopy.chain.noQuote}`)).toBeOnTheScreen();
   });
 
-  it("leads to adding money when the pie has no cash", async () => {
-    const { onAddMoney, id } = await open({ cash: 0 });
-    expect(screen.getByText("This pie has no cash to invest.")).toBeOnTheScreen();
-    await press("Add money");
-    expect(onAddMoney).toHaveBeenCalledWith(id);
+  it("leads to moving money in when the pie has nothing to invest", async () => {
+    const { onNoMoney, id } = await open({ cash: 0 });
+    expect(screen.getByText("No money in this pie yet")).toBeOnTheScreen();
+    await press("Move to portfolio");
+    expect(onNoMoney).toHaveBeenCalledWith({ to: "fund", portfolioId: id });
   });
 
   it("sells only what sits above target on a rebalance, and says when nothing does", async () => {

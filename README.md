@@ -180,13 +180,14 @@ Full setup detail, including running against a local API instead of the deployed
 Journeys covered:
 
 - Create a wallet with the three-word phrase check, landing on an empty Home; a wrong word is refused.
-- Import a wallet from a recovery phrase through the source choice.
+- Import a wallet from a recovery phrase with nothing found: the source choice is skipped and the result says it opens a new, empty wallet.
 - Unlock, a wrong password refused, lock, unlock again.
 - Home with a funded portfolio, what it has in Earn and USDC waiting in the funding wallet, then the portfolio.
 - Markets, search, a tracker, its chart range, and a buy order's review priced from the quote.
 - Send to the wallet's own funding address: the review warns that it links the two and gates Send on it.
-- Fund privately: a comma is read as the decimal separator, and the review shows both fees and the total leaving the funding wallet.
+- Move to portfolio: a comma is read as the decimal separator, and the review shows both fees and the total leaving the funding wallet.
 - Earn: a deposit from a chosen portfolio reaches its review.
+- A first-time user (`e2e/first-time.spec.ts`): Welcome's headline and three ways in, the one Add money button and the add-money sheet with its three steps and the address already shown, Costs, a tracker's lead and its chart's press-and-hold readout, a buy with nothing to invest, and an unlock while the API cannot be reached.
 - Settings reset: Delete stays disabled until RESET is typed, and the vault is empty afterwards.
 - Waiting and failing (`e2e/waiting.spec.ts`): the API is made slow, failing or silent for import, Home and Markets. A signal appears, nothing technical is shown, and nothing waits for ever.
 - The session (`e2e/session.spec.ts`): a first launch obtains one before anything else is asked and then loads prices; an expired one is renewed without a word on screen; an API that is down at first launch gets the plain message, and Try again recovers.

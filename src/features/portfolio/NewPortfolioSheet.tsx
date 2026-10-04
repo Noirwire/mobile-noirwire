@@ -115,7 +115,10 @@ export function NewPortfolioSheet({ onClose, onCreated }: NewPortfolioSheetProps
           label={view.kindsLabel}
           options={NEW_KINDS.map((option) => view.kindLabels[option])}
           value={view.kindLabels[kind]}
-          onChange={(label) => setKind(labelToKind.get(label) ?? "portfolio")}
+          onChange={(label) => {
+            setKind(labelToKind.get(label) ?? "portfolio");
+            setAsked(false);
+          }}
         />
         <Text variant="faint">{view.description}</Text>
       </View>
@@ -169,7 +172,6 @@ export function NewPortfolioSheet({ onClose, onCreated }: NewPortfolioSheetProps
         }
       />
       {pie && <PieMixEditor mix={mix} onChange={setMix} />}
-      {pie && asked && mixProblem && <Notice tone="warning">{mixProblem}</Notice>}
       {error && <Notice tone="danger">{error}</Notice>}
     </Sheet>
   );

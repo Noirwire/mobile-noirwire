@@ -60,7 +60,7 @@ describe("ResultScreen", () => {
       screen.getByText("Found 1 portfolio this phrase already had on chain."),
     ).toBeOnTheScreen();
     expect(screen.queryByText(/5aqY/)).toBeNull();
-    await fireEvent.press(screen.getByRole("button", { name: "Show funding address" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Show my funding wallet address" }));
     expect(screen.getByText(/^5aqY NsJs mRua/)).toBeOnTheScreen();
     await fireEvent.press(screen.getByRole("button", { name: "Hide" }));
     expect(screen.queryByText(/5aqY/)).toBeNull();
@@ -74,10 +74,21 @@ describe("ResultScreen", () => {
     await show({ activity: FOUND_NOTHING }).view;
     expect(screen.getByText("Wallet imported.")).toBeOnTheScreen();
     expect(
-      screen.getByText(
-        "Nothing was found on chain for these addresses yet. Add money whenever you're ready.",
-      ),
+      screen.getByText("Nothing found yet. This phrase will open a new, empty wallet."),
     ).toBeOnTheScreen();
+  });
+
+  it("offers no other set when there was no choice of addresses to make", async () => {
+    await show({ activity: FOUND_NOTHING, onOtherSet: undefined }).view;
+    expect(
+      screen.getByText("Nothing found yet. This phrase will open a new, empty wallet."),
+    ).toBeOnTheScreen();
+    expect(screen.getByRole("button", { name: "Continue" })).toBeEnabled();
+    expect(screen.getAllByRole("button").map((button) => button.props.accessibilityLabel)).toEqual([
+      "Continue",
+      "Show my funding wallet address",
+      "Missing a portfolio? Look further",
+    ]);
   });
 
   it("looks further when asked, and hands on the portfolios it found beyond the first scan", async () => {
@@ -112,6 +123,7 @@ describe("ResultScreen", () => {
     await act(() => jest.advanceTimersByTimeAsync(WAITING_DELAY_MS));
     expect(screen.getByText("Looking further for your portfolios...")).toBeOnTheScreen();
     expect(screen.getByRole("button", { name: "Continue" })).toBeDisabled();
+    expect(screen.getByText("Continue is paused while we look.")).toBeOnTheScreen();
     await act(() => jest.advanceTimersByTimeAsync(STILL_WORKING_AFTER_MS.action));
     expect(
       screen.getByText("Still working. You can leave this open; nothing more is needed from you."),

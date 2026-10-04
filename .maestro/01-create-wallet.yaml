@@ -7,5 +7,5 @@ tags:
 ---
 - runFlow: subflows/launch-fresh.yaml
 - runFlow: subflows/create-wallet.yaml
-- assertVisible: "How to add money"
+- assertVisible: "Add money"
 - assertVisible: "Home"

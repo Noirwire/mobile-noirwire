@@ -14,7 +14,8 @@ type ResultScreenProps = {
   /** The funding address of the opened set, shown only when asked for. */
   fundingAddress: string;
   onContinue: () => void;
-  onOtherSet: () => void;
+  /** Absent when nothing was found under either set of addresses: there was no choice to go back to. */
+  onOtherSet?: () => void;
   /** Looks further along the phrase's addresses for a portfolio that is missing. */
   lookFurther: (activity: SchemeActivity) => Promise<SchemeActivity>;
   /** What the further scan answered, when it found more than the first. */
@@ -105,13 +106,24 @@ export function ResultScreen({
         <Text tone="dim">{view.body}</Text>
       </View>
       <View style={styles.actions}>
-        <Button label={commonCopy.continue} disabled={active} onPress={onContinue} />
         <Button
-          label={onboardingCopy.import.otherSet}
-          variant="quiet"
-          disabled={active}
-          onPress={onOtherSet}
+          label={commonCopy.continue}
+          disabled={further.continuePaused !== null}
+          onPress={onContinue}
         />
+        {further.continuePaused !== null && (
+          <Text variant="faint" accessibilityLiveRegion="polite">
+            {further.continuePaused}
+          </Text>
+        )}
+        {onOtherSet && (
+          <Button
+            label={onboardingCopy.import.otherSet}
+            variant="quiet"
+            disabled={active}
+            onPress={onOtherSet}
+          />
+        )}
         <View style={styles.reveal}>
           <Button
             label={asked ? copy.hideAddress : copy.showAddress}

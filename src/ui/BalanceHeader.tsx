@@ -10,11 +10,13 @@ type BalanceHeaderProps = {
   label: string;
   /** The figure, already formatted: "$8,729.89", or "Value unavailable". */
   value: string;
-  /** The line under it, already formatted: "+$98.79 (1.2%) held trackers · 24h indicative". */
+  /** The line under it, already formatted: "+$98.79 (1.2%) held trackers · 24h approximate". */
   change?: string;
   changeTone?: ColorToken;
   /** The figure could not be priced: it is set at body size, never as a display number. */
   unavailable?: boolean;
+  /** The arc is a share of something: with a total of zero there is nothing to draw. */
+  arc?: boolean;
 };
 
 /**
@@ -30,11 +32,12 @@ export function BalanceHeader({
   change,
   changeTone = "dim",
   unavailable = false,
+  arc = true,
 }: BalanceHeaderProps) {
   const spoken = [label, value, change].filter(Boolean).join(", ");
   return (
     <View style={styles.header}>
-      <SignatureArc />
+      {arc && <SignatureArc />}
       <View {...readAsOne} accessibilityLabel={spoken} style={styles.copy}>
         <Text variant="faint">{label}</Text>
         {unavailable ? <Text>{value}</Text> : <FittedFigure value={value} />}

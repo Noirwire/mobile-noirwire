@@ -28,10 +28,10 @@ test("send to the wallet's own funding address warns that it links the two", asy
   await expect(sheet.getByText("Confirm that you understand the link this creates.")).toBeHidden();
 });
 
-test("fund privately reviews what leaves the funding wallet, fees included", async ({ page }) => {
-  await page.getByRole("button", { name: "Move money to Investing" }).click();
+test("a private move reviews what leaves the funding wallet, fees included", async ({ page }) => {
+  await page.getByRole("button", { name: "Move to Investing" }).click();
   const sheet = page.getByRole("dialog");
-  await expect(sheet.getByRole("heading", { name: "Add money privately" })).toBeVisible();
+  await expect(sheet.getByRole("heading", { name: "Move to portfolio" })).toBeVisible();
   await expect(sheet).toContainText(/Available in funding wallet\s*500\.00 USDC/);
   const amount = sheet.getByRole("textbox", { name: "Amount in USDC" });
   // A comma typed as the decimal separator stays as typed and is read as one.
@@ -45,7 +45,7 @@ test("fund privately reviews what leaves the funding wallet, fees included", asy
   await expect(sheet.getByRole("heading", { name: "Review" })).toBeVisible();
   await expect(sheet).toContainText(/Arrives in Investing\s*100\.00 USDC/);
   await expect(sheet).toContainText(/Total leaving your funding wallet\s*100\.30 USDC/);
-  await expect(sheet.getByRole("button", { name: "Confirm" })).toBeEnabled();
+  await expect(sheet.getByRole("button", { name: "Move privately" })).toBeEnabled();
 });
 
 test("Earn deposit reaches its review from a chosen portfolio", async ({ page }) => {
@@ -55,13 +55,13 @@ test("Earn deposit reaches its review from a chosen portfolio", async ({ page })
 
   await page.getByRole("button", { name: "Deposit" }).first().click();
   const sheet = page.getByRole("dialog");
-  await sheet.getByRole("radio", { name: "Investing, $457.33 cash" }).click();
+  await sheet.getByRole("radio", { name: "Investing, $457.33 ready to invest" }).click();
   await sheet.getByRole("button", { name: "Continue" }).click();
   await sheet.getByRole("textbox", { name: "Amount in USDC" }).fill("100");
   await sheet.getByRole("button", { name: "Review" }).click();
 
   await expect(sheet.getByRole("heading", { name: "Review" })).toBeVisible();
-  await expect(sheet).toContainText(/Leaves Investing's cash\s*100\.00 USDC/);
+  await expect(sheet).toContainText(/Leaves Investing\s*100\.00 USDC/);
   await expect(sheet).toContainText(/Goes into Earn\s*100\.00 USDC/);
   await expect(sheet.getByRole("button", { name: "Deposit 100.00 USDC" })).toBeVisible();
 });

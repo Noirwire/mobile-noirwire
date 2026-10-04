@@ -2,7 +2,7 @@ appId: com.noirwire.app
 ---
 # Imports the funded test wallet named by FUNDED_PHRASE (see README).
 - runFlow: launch-fresh.yaml
-- tapOn: "Import an existing wallet"
+- tapOn: "Restore a wallet"
 - tapOn: "Recovery phrase"
 - inputText: "${FUNDED_PHRASE}"
 - hideKeyboard

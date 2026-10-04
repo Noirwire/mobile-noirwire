@@ -18,7 +18,7 @@ const BALANCES_STALE =
 
 async function typePhrase(page: import("@playwright/test").Page) {
   await page.goto("/");
-  await page.getByRole("button", { name: "Import an existing wallet" }).click();
+  await page.getByRole("button", { name: "Restore a wallet" }).click();
   await page.getByRole("textbox", { name: "Recovery phrase" }).fill(TEST_ONLY_PHRASE);
 }
 
@@ -41,11 +41,15 @@ test.describe("import", () => {
     await expect(page.getByRole("button", { name: "Continue" })).toBeDisabled();
     await expect(page.getByRole("button", { name: "Cancel" })).toBeVisible();
     await expect(page.getByRole("progressbar")).toBeVisible({ timeout: 2_000 });
+    // The one quiet line under the button says what is happening and about how long it takes.
+    await expect(
+      page.getByText("Checking what this phrase holds. This can take up to a minute."),
+    ).toBeVisible();
     await expectNothingTechnical(page);
 
-    await expect(
-      page.getByRole("heading", { name: "Where did this phrase come from?" }),
-    ).toBeVisible({ timeout: 60_000 });
+    await expect(page.getByRole("heading", { name: "Wallet imported." })).toBeVisible({
+      timeout: 60_000,
+    });
   });
 
   test("can be cancelled while it runs, with the phrase kept", async ({ page, api }) => {
@@ -80,14 +84,14 @@ test.describe("import", () => {
 
     api.healthy("/v1/rpc");
     await page.getByRole("button", { name: "Continue" }).click();
-    await expect(
-      page.getByRole("heading", { name: "Where did this phrase come from?" }),
-    ).toBeVisible({ timeout: 60_000 });
+    await expect(page.getByRole("heading", { name: "Wallet imported." })).toBeVisible({
+      timeout: 60_000,
+    });
   });
 
   test("says why a phrase is refused instead of holding Continue back", async ({ page }) => {
     await page.goto("/");
-    await page.getByRole("button", { name: "Import an existing wallet" }).click();
+    await page.getByRole("button", { name: "Restore a wallet" }).click();
     const phrase = page.getByRole("textbox", { name: "Recovery phrase" });
     await phrase.fill(TEST_ONLY_PHRASE.split(" ").slice(0, 11).join(" "));
     await expect(page.getByText("11 words", { exact: true })).toBeVisible();
@@ -151,8 +155,7 @@ test.describe("Home", () => {
 });
 
 test.describe("Markets", () => {
-  const PRICES_MISSING =
-    "We couldn't load prices. They are missing or out of date here, and are asked for again every half minute.";
+  const PRICES_MISSING = "We couldn't update prices. What you see may be out of date.";
 
   test("holds the list's place while prices are slow, then shows them", async ({
     page,

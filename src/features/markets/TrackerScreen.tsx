@@ -1,9 +1,9 @@
 import { mobileSettingsCopy } from "@noirwire/shared/copy";
 import { PRICE_RANGES, type PriceRange } from "@noirwire/shared/domain";
-import { trackerView, type TrackerAction } from "@noirwire/shared/presentation";
+import { chartReadout, trackerView, type TrackerAction } from "@noirwire/shared/presentation";
 import { screenReads } from "@noirwire/shared/wallet";
 import { StarIcon } from "phosphor-react-native/src/icons/Star";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { ScrollView, StyleSheet, useWindowDimensions, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
@@ -24,6 +24,7 @@ import {
 import { selectionHaptic } from "@/ui/haptics";
 import { colors, fonts, layout, size } from "@/ui/theme";
 import { TrackerMark } from "@/ui/TrackerMark";
+import { useMoney } from "../network/money";
 import { useServices } from "../services";
 import { useLivePrices, usePriceHistory, useWalletSnapshot } from "./useMarketData";
 import { toggleWatch } from "./watchlist";
@@ -33,7 +34,6 @@ export type TrackerIntent =
   | { kind: "createWallet" }
   | { kind: "createPortfolio" }
   | { kind: "portfolio"; id: string }
-  | { kind: "risks" }
   | { kind: "issuer" }
   | { kind: "markets" };
 
@@ -58,9 +58,11 @@ export function TrackerScreen({ symbol, visitor = false, onIntent }: TrackerScre
   const [risksOpen, setRisksOpen] = useState(false);
   const history = usePriceHistory(symbol, range);
   const { fontScale } = useWindowDimensions();
+  const smallestOrderUsd = useMoney().tradeChain.gaslessFromUsd;
   const priceWaiting = useWaiting(updatedAt === null && history.status === "loading", "content");
   const chartWaiting = useWaiting(history.status === "loading", "check");
   useTopLoader(updatedAt === null || history.status === "loading");
+  const loading = updatedAt === null && history.status === "loading" && !priceWaiting.overdue;
   const view = trackerView(screenReads, {
     symbol,
     wallet: visitor ? null : wallet,
@@ -68,8 +70,17 @@ export function TrackerScreen({ symbol, visitor = false, onIntent }: TrackerScre
     online,
     range,
     history,
+    smallestOrderUsd,
+    loading,
     platform: "mobile",
   });
+  const readout = useCallback(
+    (x: number) =>
+      history.status === "ready"
+        ? chartReadout(history.points, x, { range, readAt: history.readAt })
+        : null,
+    [history, range],
+  );
 
   if (view.kind === "notFound") {
     return (
@@ -88,6 +99,7 @@ export function TrackerScreen({ symbol, visitor = false, onIntent }: TrackerScre
     <View style={[styles.bar, fontScale > STACK_FONT_SCALE && styles.barStacked]}>
       {view.offline && <Text variant="faint">{view.offline}</Text>}
       {view.bottomNote && <Text variant="faint">{view.bottomNote}</Text>}
+      {view.minimum && <Text variant="faint">{view.minimum}</Text>}
       <View style={[styles.actions, fontScale > STACK_FONT_SCALE && styles.barStacked]}>
         {view.actions.map((action) => (
           <ActionButton key={action.kind} action={action} onIntent={onIntent} />
@@ -102,8 +114,10 @@ export function TrackerScreen({ symbol, visitor = false, onIntent }: TrackerScre
         <View style={styles.identity}>
           <TrackerMark symbol={symbol} size="lg" />
           <View style={styles.names}>
-            <Text style={styles.name}>{view.name}</Text>
-            <Text variant="faint">{view.caption}</Text>
+            <Text accessibilityRole="header" style={styles.name}>
+              {view.name}
+            </Text>
+            <Text variant="note">{view.caption}</Text>
           </View>
           {view.star && (
             <IconButton
@@ -121,12 +135,10 @@ export function TrackerScreen({ symbol, visitor = false, onIntent }: TrackerScre
             </IconButton>
           )}
         </View>
+        <Text tone="dim">{view.follows}</Text>
 
         <View style={styles.hero}>
-          {updatedAt === null &&
-          view.price.live === false &&
-          history.status === "loading" &&
-          !priceWaiting.overdue ? (
+          {loading && view.price.live === false ? (
             <WaitingPlaceholder waiting={priceWaiting}>
               <Skeleton width={180} height={42} />
             </WaitingPlaceholder>
@@ -152,13 +164,32 @@ export function TrackerScreen({ symbol, visitor = false, onIntent }: TrackerScre
             </View>
           )}
           <Text variant="faint">{view.orderNote}</Text>
+          {view.stale && (
+            <Text variant="faint" accessibilityLiveRegion="polite">
+              {view.stale}
+            </Text>
+          )}
         </View>
 
         <View style={styles.chart}>
           {view.chart.kind === "ready" ? (
             <>
-              <Chart points={view.chart.points} height={CHART_HEIGHT} label={view.chart.label} />
-              <Text variant="faint">{view.chart.source}</Text>
+              <Chart
+                points={view.chart.points}
+                height={CHART_HEIGHT}
+                label={view.chart.label}
+                readout={readout}
+              />
+              <View style={styles.extremes}>
+                {[view.chart.high, view.chart.low].map((extreme) => (
+                  <Text key={extreme.label} variant="note" style={styles.tabular}>
+                    {extreme.label} {extreme.value}
+                  </Text>
+                ))}
+                <Text variant="faint" style={styles.source}>
+                  {view.chart.source}
+                </Text>
+              </View>
             </>
           ) : view.chart.kind === "loading" ? (
             <View style={styles.chartEmpty}>
@@ -210,10 +241,20 @@ export function TrackerScreen({ symbol, visitor = false, onIntent }: TrackerScre
           <View style={styles.links}>
             <Button
               variant="quiet"
-              label={view.about.readRisks}
-              onPress={() => (visitor ? setRisksOpen(!risksOpen) : onIntent({ kind: "risks" }))}
+              label={view.risks.title}
+              aria-expanded={risksOpen}
+              onPress={() => setRisksOpen(!risksOpen)}
             />
-            {visitor && risksOpen && <RisksText />}
+            {risksOpen && (
+              <>
+                {view.risks.lines.map((line) => (
+                  <Text key={line} tone="dim">
+                    {line}
+                  </Text>
+                ))}
+                <RisksText />
+              </>
+            )}
             <Button
               variant="quiet"
               label={view.about.issuerDetails}
@@ -227,7 +268,7 @@ export function TrackerScreen({ symbol, visitor = false, onIntent }: TrackerScre
   );
 }
 
-/** A visitor has no Settings, so the Risks screen's text opens in place. */
+/** The Risks screen's text, opened in place: a visitor has no Settings to read it in. */
 function RisksText() {
   return mobileSettingsCopy.risks.sections.map((section) => (
     <View key={section.title} style={styles.risk}>
@@ -277,6 +318,8 @@ const styles = StyleSheet.create({
   priceLine: { flexDirection: "row", alignItems: "baseline", gap: layout.tight, flexWrap: "wrap" },
   tabular: { fontVariant: ["tabular-nums"] },
   chart: { gap: layout.inset },
+  extremes: { flexDirection: "row", flexWrap: "wrap", alignItems: "baseline", gap: layout.group },
+  source: { flexGrow: 1, textAlign: "right" },
   chartEmpty: { height: CHART_HEIGHT, justifyContent: "center", alignItems: "center" },
   section: { gap: layout.inset },
   heading: { fontFamily: fonts.medium },

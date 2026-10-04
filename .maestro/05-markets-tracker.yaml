@@ -12,7 +12,7 @@ tags:
 - inputText: "nvda"
 - hideKeyboard
 - tapOn: "NVIDIA, NVDAx.*"
-- assertVisible: "Historical prices · Jupiter"
+- assertVisible: "Historical prices"
 - tapOn: "1W"
 - tapOn: "Buy"
 - assertVisible: "Buy NVIDIA tracker"

@@ -137,6 +137,9 @@ describe("ImportScreen", () => {
     expect(field().props.editable).toBe(false);
     expect(screen.getByRole("button", { name: "Continue" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Cancel" })).toBeOnTheScreen();
+    expect(
+      screen.getByText("Checking what this phrase holds. This can take up to a minute."),
+    ).toBeOnTheScreen();
     expect(lookup.resolveImport).not.toHaveBeenCalled();
     await settle();
     expect(lookup.resolveImport).toHaveBeenCalledTimes(1);

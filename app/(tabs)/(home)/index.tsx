@@ -1,29 +1,16 @@
-import {
-  fundingReceiveParams,
-  portfolioParams,
-  type HomeTarget,
-} from "@noirwire/shared/presentation";
+import type { HomeTarget } from "@noirwire/shared/presentation";
 import { useRouter } from "expo-router";
 import { HomeScreen } from "@/features/home/HomeScreen";
 import { lockNow } from "@/features/wallet/walletActions";
 import { portfolioHref, trackerHref } from "@/navigation/detailRoutes";
+import { moneyHref } from "@/navigation/moneyRoutes";
 
 export default function Home() {
   const router = useRouter();
 
   function navigate(target: HomeTarget) {
-    switch (target.to) {
-      case "markets":
-        return router.navigate("/markets");
-      case "fund":
-        return router.push(
-          target.portfolioId
-            ? { pathname: "/fund", params: portfolioParams(target.portfolioId) }
-            : { pathname: "/fund" },
-        );
-      case "receive":
-        return router.push({ pathname: "/receive", params: fundingReceiveParams(target.reveal) });
-    }
+    if (target.to === "markets") return router.navigate("/markets");
+    router.push(moneyHref(target));
   }
 
   return (

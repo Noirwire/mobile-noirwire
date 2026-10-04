@@ -33,10 +33,10 @@ describe("EarnScreen", () => {
     expect(await screen.findByText("4.16%")).toBeOnTheScreen();
     expect(screen.getByLabelText("Current variable rate, 4.16 percent a year")).toBeOnTheScreen();
     expect(
-      screen.getByText("Your cash could earn 4.16% a year at today's rate."),
+      screen.getByText("Your USDC could earn 4.16% a year at today's rate."),
     ).toBeOnTheScreen();
     expect(screen.getByText("Supply 3.79% · rewards 0.37%. The rate changes.")).toBeOnTheScreen();
-    expect(screen.getByText("$457.33 cash available")).toBeOnTheScreen();
+    expect(screen.getByText("$457.33 ready to invest")).toBeOnTheScreen();
     expect(await screen.findByText("$0.00")).toBeOnTheScreen();
     expect(screen.queryByRole("button", { name: "Withdraw" })).toBeNull();
     expect(screen.getByText("Lending carries risk and the rate changes.")).toBeOnTheScreen();
@@ -72,7 +72,9 @@ describe("EarnScreen", () => {
     await openEarn(chain);
     await screen.findByText("$0.00");
     await fireEvent.press(screen.getByRole("button", { name: "Deposit" }));
-    await fireEvent.press(screen.getByRole("radio", { name: "Investing, $457.33 cash" }));
+    await fireEvent.press(
+      screen.getByRole("radio", { name: "Investing, $457.33 ready to invest" }),
+    );
     await fireEvent.press(screen.getByRole("button", { name: "Continue with Investing" }));
     expect(screen.getByText("Lend USDC from Investing.")).toBeOnTheScreen();
     expect(await screen.findByText("457.31 USDC")).toBeOnTheScreen();
@@ -84,10 +86,10 @@ describe("EarnScreen", () => {
       ),
     ).toBeOnTheScreen();
     await fireEvent.press(screen.getByRole("button", { name: "Review" }));
-    expect(screen.getByText("Leaves Investing's cash")).toBeOnTheScreen();
+    expect(screen.getByText("Leaves Investing")).toBeOnTheScreen();
     expect(screen.getByText("Goes into Earn")).toBeOnTheScreen();
     expect(screen.getByText("0.02 USDC")).toBeOnTheScreen();
-    expect(screen.getByLabelText("Total leaving Investing's cash, 100.02 USDC")).toBeOnTheScreen();
+    expect(screen.getByLabelText("Total leaving Investing, 100.02 USDC")).toBeOnTheScreen();
     expect(
       screen.getByText(
         "USDC is lent through Jupiter Lend. It is not a bank deposit, and withdrawals can be delayed.",
@@ -111,28 +113,28 @@ describe("EarnScreen", () => {
     expect(await screen.findByText("$120.00")).toBeOnTheScreen();
     expect(screen.getByRole("button", { name: "Deposit" })).toBeDisabled();
     expect(
-      screen.getByText("No portfolio has cash to deposit. Add money to a portfolio first."),
+      screen.getByText("No portfolio has USDC to deposit. Move money into a portfolio first."),
     ).toBeOnTheScreen();
 
     await fireEvent.press(
-      screen.getByRole("button", { name: "Long term, $0.00 cash available, $120.00 in Earn" }),
+      screen.getByRole("button", { name: "Long term, $0.00 ready to invest, $120.00 in Earn" }),
     );
     expect(screen.getByText("Return USDC to Long term.")).toBeOnTheScreen();
     await fireEvent.press(await screen.findByRole("button", { name: "Max" }));
     expect(amountField()).toHaveDisplayValue("120");
     await fireEvent.press(screen.getByRole("button", { name: "Review" }));
     expect(screen.getByText("Leaves Earn")).toBeOnTheScreen();
-    expect(screen.getByLabelText("Arrives in Long term's cash, 119.98 USDC")).toBeOnTheScreen();
+    expect(screen.getByLabelText("Arrives in Long term, 119.98 USDC")).toBeOnTheScreen();
     expect(
       screen.getByText(
-        "The network cost is paid out of the USDC this returns, so no cash is needed first.",
+        "The network cost is paid out of the USDC this returns, so no USDC is needed first.",
       ),
     ).toBeOnTheScreen();
     const confirm = screen.getByRole("button", { name: "Withdraw 120.00 USDC" });
     expect(confirm).toBeEnabled();
     await fireEvent.press(confirm);
     expect(await screen.findByText("Withdrew 119.98 USDC")).toBeOnTheScreen();
-    expect(screen.getByText("Back in Long term's cash.")).toBeOnTheScreen();
+    expect(screen.getByText("Back in Long term, ready to invest.")).toBeOnTheScreen();
   });
 
   it("refuses a withdrawal smaller than its own network cost", async () => {
@@ -161,7 +163,7 @@ describe("EarnScreen", () => {
     await openEarn(chain);
     await fireEvent.press(
       await screen.findByRole("button", {
-        name: "Long term, $0.00 cash available, $120.00 in Earn",
+        name: "Long term, $0.00 ready to invest, $120.00 in Earn",
       }),
     );
     await fireEvent.changeText(amountField(), "50");
@@ -181,7 +183,7 @@ describe("EarnScreen", () => {
     await walletWith(chain);
     await openEarn(chain);
     await fireEvent.press(
-      await screen.findByRole("button", { name: /^Investing, \$457\.33 cash available/ }),
+      await screen.findByRole("button", { name: /^Investing, \$457\.33 ready to invest/ }),
     );
     await fireEvent.changeText(amountField(), "100");
     await fireEvent.press(await screen.findByRole("button", { name: "Review" }));
@@ -205,7 +207,7 @@ describe("EarnScreen", () => {
     await walletWith(chain);
     await openEarn(chain);
     await fireEvent.press(
-      await screen.findByRole("button", { name: /^Investing, \$457\.33 cash available/ }),
+      await screen.findByRole("button", { name: /^Investing, \$457\.33 ready to invest/ }),
     );
     await fireEvent.changeText(amountField(), "100");
     await fireEvent.press(await screen.findByRole("button", { name: "Review" }));
@@ -236,7 +238,7 @@ describe("EarnScreen", () => {
     await openEarn(chain);
     await fireEvent.press(
       await screen.findByRole("button", {
-        name: "Investing, $457.33 cash available, $0.00 in Earn",
+        name: "Investing, $457.33 ready to invest, $0.00 in Earn",
       }),
     );
     await fireEvent.changeText(amountField(), "10");
@@ -246,7 +248,7 @@ describe("EarnScreen", () => {
     await fireEvent.press(screen.getByText("Close"));
 
     await fireEvent.press(
-      await screen.findByRole("button", { name: /^Investing, .* cash available/ }),
+      await screen.findByRole("button", { name: /^Investing, .* ready to invest/ }),
     );
     await fireEvent.changeText(amountField(), "5");
     await fireEvent.press(await screen.findByRole("button", { name: "Review" }));
@@ -277,7 +279,7 @@ describe("EarnScreen", () => {
     expect(await screen.findByText("Unavailable")).toBeOnTheScreen();
     expect(
       screen.getByRole("button", {
-        name: "Investing, $457.33 cash available, Unavailable in Earn",
+        name: "Investing, $457.33 ready to invest, Unavailable in Earn",
       }),
     ).toBeDisabled();
     expect(getSnapshot()).not.toBeNull();
@@ -291,7 +293,7 @@ describe("EarnScreen", () => {
     await openEarn(chain);
     await screen.findByText("$0.00");
     await fireEvent.press(
-      screen.getByRole("button", { name: "Investing, $457.33 cash available, $0.00 in Earn" }),
+      screen.getByRole("button", { name: "Investing, $457.33 ready to invest, $0.00 in Earn" }),
     );
     await screen.findByText("457.31 USDC");
     await fireEvent.changeText(amountField(), "100");

@@ -1,39 +1,42 @@
-import { onboardingCopy, mobileOnboardingCopy } from "@noirwire/shared/copy";
+import { welcomeView, type WelcomeAction } from "@noirwire/shared/presentation";
 import { StyleSheet, View } from "react-native";
 import { Button, Mark, Screen, Text } from "@/ui";
 import { layout } from "@/ui/theme";
 
 type WelcomeScreenProps = {
-  onCreate: () => void;
-  onImport: () => void;
-  onLookAround: () => void;
-  /** Development builds only: the UI kit gallery. */
-  onOpenKit?: () => void;
+  onAction: (kind: WelcomeAction["kind"]) => void;
 };
 
-const copy = onboardingCopy.welcome;
-
-/** Spec 2.1: what NoirWire is in one line, and the ways in. */
-export function WelcomeScreen({ onCreate, onImport, onLookAround, onOpenKit }: WelcomeScreenProps) {
+/** Spec 2.1: what NoirWire is for, the three ways in, and the one line about who holds the wallet. */
+export function WelcomeScreen({ onAction }: WelcomeScreenProps) {
+  const view = welcomeView("mobile");
   return (
     <Screen>
       <View style={styles.brand}>
         <Mark size={28} />
-        <Text variant="label">{copy.brand}</Text>
+        <Text variant="label">{view.brand}</Text>
       </View>
       <View style={styles.intro}>
         <Text variant="display" accessibilityRole="header">
-          {copy.title}
+          {view.title}
         </Text>
-        <Text tone="dim">{copy.lead}</Text>
+        {view.lines.map((line) => (
+          <Text key={line} tone="dim">
+            {line}
+          </Text>
+        ))}
       </View>
       <View style={styles.actions}>
-        <Button label={copy.create} onPress={onCreate} />
-        <Button label={copy.import} variant="quiet" onPress={onImport} />
-        <Button label={copy.lookAround} variant="quiet" onPress={onLookAround} />
-        {onOpenKit && <Button label="Open the UI kit" variant="quiet" onPress={onOpenKit} />}
+        {view.actions.map((action) => (
+          <Button
+            key={action.kind}
+            label={action.label}
+            variant={action.filled ? "primary" : "quiet"}
+            onPress={() => onAction(action.kind)}
+          />
+        ))}
       </View>
-      <Text variant="faint">{mobileOnboardingCopy.welcome.trust}</Text>
+      <Text variant="faint">{view.trust}</Text>
     </Screen>
   );
 }

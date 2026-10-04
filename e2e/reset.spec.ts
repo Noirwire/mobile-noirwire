@@ -23,7 +23,7 @@ test("Settings reset deletes the wallet only after RESET is typed", async ({ pag
   await remove.click();
 
   await expect(page).toHaveURL(/\/welcome$/);
-  await expect(page.getByRole("button", { name: "Create my wallet" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Create a wallet" })).toBeVisible();
   // Nothing of the wallet is left. The session it was used with went with
   // it: at most a new one is there, started by whatever the app asked next.
   const left = await page.evaluate(() =>

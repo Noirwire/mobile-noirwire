@@ -20,6 +20,8 @@ afterEach(async () => {
 
 type Setup = {
   portfolios?: PortfolioSpec[];
+  /** The funding wallet's USDC. */
+  funding?: number;
   side?: "buy" | "sell";
   symbol?: string | null;
   fromPortfolio?: boolean;
@@ -35,10 +37,11 @@ async function open(setup: Setup = {}) {
   setup.chain?.(chain);
   const wallet = await walletWith(chain, {
     portfolios: setup.portfolios ?? [{ label: "Investing", cash: 457.33 }],
+    funding: setup.funding,
   });
   const ids = wallet.portfolios.map((portfolio) => portfolio.id);
   const onClose = jest.fn();
-  const onAddMoney = jest.fn();
+  const onNoMoney = jest.fn();
   await renderWithMoney(
     await testServices({ useOnline: () => setup.online ?? true }),
     testMoney(chain),
@@ -47,10 +50,10 @@ async function open(setup: Setup = {}) {
       symbol={setup.symbol === undefined ? "NVDAx" : setup.symbol}
       portfolioId={setup.fromPortfolio ? ids[0] : null}
       onClose={onClose}
-      onAddMoney={onAddMoney}
+      onNoMoney={onNoMoney}
     />,
   );
-  return { chain, onClose, onAddMoney, ids };
+  return { chain, onClose, onNoMoney, ids };
 }
 
 /** A portfolio that has never held the tracker: the relayer opens its holding first. */
@@ -115,7 +118,7 @@ describe("TradeSheet", () => {
     expect(screen.getByText("The smallest order is about 12 USDC.")).toBeOnTheScreen();
     expect(screen.getByRole("button", { name: "Review buy" })).toBeDisabled();
     await typeAmount("500");
-    expect(screen.getByText("More than your available cash.")).toBeOnTheScreen();
+    expect(screen.getByText("More than this portfolio has to invest.")).toBeOnTheScreen();
     expect(screen.getByRole("button", { name: "Review buy" })).toBeDisabled();
   });
 
@@ -126,11 +129,45 @@ describe("TradeSheet", () => {
     expect(screen.getByRole("button", { name: "Review buy" })).toBeEnabled();
   });
 
-  it("leads to adding money when the portfolio has no cash", async () => {
-    const { onAddMoney, ids } = await open({ portfolios: [{ label: "Investing", cash: 0 }] });
-    expect(await screen.findByText("This portfolio has no cash to invest.")).toBeOnTheScreen();
+  it("says there is no money on the first step and leads to adding it, with none waiting", async () => {
+    const { onNoMoney } = await open({
+      portfolios: [{ label: "Investing", cash: 0 }],
+      funding: 0,
+      fromPortfolio: true,
+    });
+    expect(await screen.findByText("No money in this portfolio yet")).toBeOnTheScreen();
+    expect(
+      screen.getByText(
+        "Your money arrives in your funding wallet. Then you move it into a portfolio.",
+      ),
+    ).toBeOnTheScreen();
+    expect(screen.queryByLabelText(/^Amount/)).toBeNull();
     await press("Add money");
-    expect(onAddMoney).toHaveBeenCalledWith(ids[0]);
+    expect(onNoMoney).toHaveBeenCalledWith({ to: "addMoney" });
+  });
+
+  it("leads to moving money in when USDC is waiting in the funding wallet", async () => {
+    const { onNoMoney, ids } = await open({
+      portfolios: [{ label: "Investing", cash: 0 }],
+      fromPortfolio: true,
+    });
+    expect(await screen.findByText("No money in this portfolio yet")).toBeOnTheScreen();
+    await press("Move to portfolio");
+    expect(onNoMoney).toHaveBeenCalledWith({ to: "fund", portfolioId: ids[0] });
+  });
+
+  it("says so before a portfolio is chosen when none of them has anything to invest", async () => {
+    const { onNoMoney } = await open({
+      portfolios: [
+        { label: "Investing", cash: 0 },
+        { label: "Long term", cash: 0 },
+      ],
+      funding: 0,
+    });
+    expect(await screen.findByText("No money in your portfolios yet")).toBeOnTheScreen();
+    expect(screen.queryByRole("radio")).toBeNull();
+    await press("Add money");
+    expect(onNoMoney).toHaveBeenCalledWith({ to: "addMoney" });
   });
 
   it("reviews a trade in an existing holding: cost included in the fee, one line on the tracker, then a result", async () => {

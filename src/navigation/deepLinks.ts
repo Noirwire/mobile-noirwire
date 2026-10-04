@@ -13,7 +13,7 @@ import { findStock } from "@noirwire/shared/infrastructure";
  *
  * Every parameter a link carries is dropped, so none can prefill an amount, a
  * recipient or a side, name a portfolio, or ask for an address to be shown.
- * No sheet is reachable: not receive, fund, send, trade or any other. What a
+ * No sheet is reachable: not add money, receive, fund, send, trade or any other. What a
  * link may open still depends on the wallet: `visitorLink` is what a phone
  * with no wallet shows for it, and a locked wallet holds it until it is
  * unlocked (WalletGate).

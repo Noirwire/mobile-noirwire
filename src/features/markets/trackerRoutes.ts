@@ -22,7 +22,6 @@ export function followTrackerIntent(
     createWallet: () => router.replace("/welcome"),
     createPortfolio: () => router.push("/new-portfolio"),
     portfolio: () => intent.kind === "portfolio" && router.push(portfolioHref(stack, intent.id)),
-    risks: () => router.push("/settings/risks"),
     issuer: () => void Linking.openURL(ISSUER_FAQ),
     markets: () => router.replace("/markets"),
   };

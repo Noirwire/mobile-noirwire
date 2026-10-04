@@ -10,14 +10,32 @@ export default function Welcome() {
   useEffect(() => getPlatform().track("onboarding_step", { step: "welcome" }), []);
 
   return (
-    <WelcomeScreen
-      onCreate={() => {
-        flow.startCreate();
-        router.push("/create");
-      }}
-      onImport={() => router.push("/import")}
-      onLookAround={() => router.push("/look-around")}
-      onOpenKit={__DEV__ ? () => router.push("/dev/ui") : undefined}
-    />
+    <>
+      <WelcomeScreen
+        onAction={(kind) => {
+          switch (kind) {
+            case "create":
+              flow.startCreate();
+              return router.push("/create");
+            case "restore":
+              return router.push("/import");
+            case "explore":
+              return router.push("/look-around");
+          }
+        }}
+      />
+      <DevCorner onOpenKit={() => router.push("/dev/ui")} />
+    </>
   );
+}
+
+function DevCorner({ onOpenKit }: { onOpenKit: () => void }) {
+  if (__DEV__) {
+    // Required inside the development branch so a production bundle, where
+    // __DEV__ is the constant false, drops the link and its words altogether.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { DevKitLink } = require("@/dev/DevKitLink") as typeof import("@/dev/DevKitLink");
+    return <DevKitLink onPress={onOpenKit} />;
+  }
+  return null;
 }

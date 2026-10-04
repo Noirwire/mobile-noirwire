@@ -2,7 +2,7 @@ appId: com.noirwire.app
 ---
 # Creates a wallet: reveals the phrase, remembers every word, passes the
 # three-question check and sets the password in ${PASSWORD}.
-- tapOn: "Create my wallet"
+- tapOn: "Create a wallet"
 - runFlow: remember-phrase.yaml
 - tapOn: "I have saved these words for the next step."
 - tapOn: "Continue"

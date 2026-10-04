@@ -1,5 +1,5 @@
 import { mobileWalletCopy, walletCopy } from "@noirwire/shared/copy";
-import { isWrongPassword, unlockProblemText } from "@noirwire/shared/presentation";
+import { unlockProblemText, unlockProblemView } from "@noirwire/shared/presentation";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { StyleSheet, View, type TextInput } from "react-native";
 import type { BiometricMethod } from "@/platform/biometricKeystore";
@@ -15,8 +15,11 @@ import {
   useTopLoader,
   useWaiting,
 } from "@/ui";
+import { ActionNotice } from "@/ui/ActionNotice";
 import { errorHaptic, successHaptic } from "@/ui/haptics";
+import { selectAll } from "@/ui/selectAll";
 import { layout } from "@/ui/theme";
+import { useUnreachable } from "../network/NetworkGate";
 import { takeResetRefused } from "../reset/resetOutcome";
 import { useServices } from "../services";
 import { noteUnlocked, unlockWithPassword } from "../wallet/walletActions";
@@ -30,10 +33,12 @@ const copy = walletCopy.unlock;
 /**
  * Spec 2.10: opens the stored wallet. Shows nothing about it: no balance, no
  * name, no address, no count. No attempt counter and no lockout; the
- * password's strength is the protection.
+ * password's strength is the protection. Unlocking reads only this device, so
+ * it works with NoirWire out of reach, which the screen then says in a notice.
  */
 export function UnlockScreen({ onReset }: UnlockScreenProps) {
   const { biometric } = useServices();
+  const unreachable = useUnreachable();
   const setting = useSyncExternalStore(biometric.subscribe, biometric.setting);
   const [method, setMethod] = useState<BiometricMethod | null>(null);
   const [password, setPassword] = useState("");
@@ -97,11 +102,11 @@ export function UnlockScreen({ onReset }: UnlockScreenProps) {
     }
     setBusy(false);
     errorHaptic();
-    if (isWrongPassword(problem)) {
-      setFieldError(problem);
-      setPassword("");
-      field.current?.focus();
-    } else setMessage({ tone: "danger", text: unlockProblemText(problem, "mobile") });
+    const view = unlockProblemView(problem, "mobile");
+    if (view.underField) setFieldError(view.text);
+    else setMessage({ tone: "danger", text: view.text });
+    field.current?.focus();
+    if (view.typed === "keepSelected") selectAll(field.current, password.length);
   }
 
   return (
@@ -113,6 +118,15 @@ export function UnlockScreen({ onReset }: UnlockScreenProps) {
         </Text>
         <Text tone="dim">{mobileWalletCopy.unlock.lead}</Text>
       </View>
+      {unreachable && (
+        <ActionNotice
+          action={
+            <Button variant="quiet" label={unreachable.retry} onPress={unreachable.onRetry} />
+          }
+        >
+          {unreachable.message}
+        </ActionNotice>
+      )}
       {message && <Notice tone={message.tone}>{message.text}</Notice>}
       <View style={styles.group}>
         <Field

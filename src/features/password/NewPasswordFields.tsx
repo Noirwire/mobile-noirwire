@@ -1,4 +1,5 @@
 import { walletCopy, mobileOnboardingCopy } from "@noirwire/shared/copy";
+import { newPasswordView } from "@noirwire/shared/presentation";
 import { useRef } from "react";
 import { StyleSheet, View, type TextInput } from "react-native";
 import { Button, Field, Text } from "@/ui";
@@ -17,7 +18,11 @@ type NewPasswordFieldsProps = {
 const copy = walletCopy.newPassword;
 const REVEAL = { show: copy.show, hide: mobileOnboardingCopy.password.hide };
 
-/** "New password" with its strength line, "Confirm password" with its mismatch line, and the write-it-down line. */
+/**
+ * The rule a password has to meet, said before anything is typed; then "New
+ * password" with its strength line, "Confirm password" with its mismatch
+ * line, and the write-it-down line.
+ */
 export function NewPasswordFields({ model, editable, onSubmit }: NewPasswordFieldsProps) {
   const confirmField = useRef<TextInput>(null);
   const protection = useCaptureProtection(model.revealed);
@@ -26,6 +31,7 @@ export function NewPasswordFields({ model, editable, onSubmit }: NewPasswordFiel
 
   return (
     <View style={styles.block}>
+      <Text tone="dim">{newPasswordView("mobile").rule}</Text>
       <View style={styles.group}>
         <View style={styles.suggest}>
           <Button

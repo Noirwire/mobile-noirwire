@@ -41,7 +41,7 @@ Components this spec needs that are not in the kit, each with its reason:
 | Acknowledge | Phrase saved, linking warning, look-alike address                             | An explicit, labelled checkbox with a 44pt target. A toggle Switch reads as a setting, not as consent.                                                                                                |
 | Switch      | Biometric unlock, usage analytics                                             | A binary setting. Platform-standard control on both systems.                                                                                                                                          |
 | Stepper     | Pie builder                                                                   | Minus, a numeric field, plus, for a whole percent. Field alone gives no one-tap adjustment.                                                                                                           |
-| StepList    | Fund privately, pie order progress                                            | A vertical list of stages with waiting, running, done and failed marks. Rows have no status mark.                                                                                                     |
+| StepList    | Move to portfolio, pie order progress                                         | A vertical list of stages with waiting, running, done and failed marks. Rows have no status mark.                                                                                                     |
 | PieRing     | Portfolio detail (pie), pie builder                                           | A ring divided by weight with a centre label. Chart is a time series.                                                                                                                                 |
 | QRCode      | Receive                                                                       | Renders an address as a QR code on device.                                                                                                                                                            |
 | Scanner     | Send                                                                          | Camera view that reads a QR code.                                                                                                                                                                     |
@@ -77,7 +77,7 @@ Each screen lists these states. "Standard" means the pattern in section 3 applie
 │   ├─ import/found
 │   ├─ password
 │   └─ biometric
-├─ (visitor)                         shown from Welcome via "Look around first"
+├─ (visitor)                         shown from Welcome via "Explore trackers"
 │   ├─ markets
 │   └─ markets/[symbol]
 ├─ unlock                            full screen gate, shown when a wallet is stored and locked
@@ -92,13 +92,15 @@ Each screen lists these states. "Standard" means the pattern in section 3 applie
 │       ├─ settings/recovery-phrase  stack screen
 │       ├─ settings/password         stack screen
 │       ├─ settings/funding-wallet   stack screen
+│       ├─ settings/costs            stack screen; also opened from "What does it cost?"
 │       ├─ settings/privacy          stack screen
 │       ├─ settings/risks            stack screen; also shown as a step inside a money sheet
 │       ├─ settings/about            stack screen
 │       └─ settings/reset            stack screen
 └─ (sheets)                          modal bottom sheets, presented over the tabs
     ├─ fund                          params: portfolio id
-    ├─ receive                       params: "funding" or portfolio id
+    ├─ add-money                     the three steps, with the funding wallet address inside the second
+    ├─ receive                       params: portfolio id
     ├─ trade                         params: side, symbol (optional), portfolio id (optional)
     ├─ send                          params: portfolio id
     ├─ earn-action                   params: portfolio id, "deposit" or "withdraw"
@@ -113,14 +115,14 @@ Each screen lists these states. "Standard" means the pattern in section 3 applie
 
 ### 1.2 Full screen or sheet, and why
 
-| Surface                                                                                                             | Form                                        | Reason                                                                                                                                                                  |
-| ------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Onboarding steps                                                                                                    | Full screens in a stack                     | A multi-step, one-time flow that holds the phrase. Apple's guidance is to avoid sheets for prolonged flows, and a full screen can be protected from capture as a whole. |
-| Unlock                                                                                                              | Full screen gate                            | It replaces the app, it does not sit over it. Nothing behind it may be visible.                                                                                         |
-| Tabs                                                                                                                | Full screens with a tab bar                 | Five peer destinations. Both platforms put three to five destinations in a bottom bar with labels always shown.                                                         |
-| Portfolio detail, tracker detail                                                                                    | Pushed stack screens, tab bar stays visible | They are places in the hierarchy, not tasks. Apple asks that the tab bar stay visible while navigating within a section.                                                |
-| Settings sub-pages                                                                                                  | Pushed stack screens                        | Reading and security tasks that need the whole screen. Recovery phrase needs capture protection for the entire screen.                                                  |
-| Trade, send, fund, receive, earn action, pie order, pie builder, new portfolio, portfolio settings, activity detail | Modal bottom sheets                         | Each is one self-contained task the user completes or cancels before returning to the parent, which is what a sheet is for on both platforms. They cover the tab bar.   |
+| Surface                                                                                                                        | Form                                        | Reason                                                                                                                                                                  |
+| ------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Onboarding steps                                                                                                               | Full screens in a stack                     | A multi-step, one-time flow that holds the phrase. Apple's guidance is to avoid sheets for prolonged flows, and a full screen can be protected from capture as a whole. |
+| Unlock                                                                                                                         | Full screen gate                            | It replaces the app, it does not sit over it. Nothing behind it may be visible.                                                                                         |
+| Tabs                                                                                                                           | Full screens with a tab bar                 | Five peer destinations. Both platforms put three to five destinations in a bottom bar with labels always shown.                                                         |
+| Portfolio detail, tracker detail                                                                                               | Pushed stack screens, tab bar stays visible | They are places in the hierarchy, not tasks. Apple asks that the tab bar stay visible while navigating within a section.                                                |
+| Settings sub-pages                                                                                                             | Pushed stack screens                        | Reading and security tasks that need the whole screen. Recovery phrase needs capture protection for the entire screen.                                                  |
+| Trade, send, fund, add money, receive, earn action, pie order, pie builder, new portfolio, portfolio settings, activity detail | Modal bottom sheets                         | Each is one self-contained task the user completes or cancels before returning to the parent, which is what a sheet is for on both platforms. They cover the tab bar.   |
 
 Sheet rules, one behaviour on both platforms:
 
@@ -180,7 +182,7 @@ Thirty-five surfaces are specified, numbered 2.0 to 2.33. Steps inside a sheet (
 
 ### 2.0 Network gate
 
-**Purpose.** Refuse to show balances or offer signing until the app has proved which network it is talking to.
+**Purpose.** Refuse to show balances or offer signing until the app has proved which network it is talking to, without holding back what needs no network: unlocking a wallet the phone already stores.
 
 **Entry points.** Cold start, before any other screen. Retry from this screen.
 
@@ -194,8 +196,10 @@ Thirty-five surfaces are specified, numbered 2.0 to 2.33. Steps inside a sheet (
 **States.**
 
 - Loading: the splash stays up, and waits by the waiting standard (3.11): nothing for the first 300 ms, then a Text `caption` "Getting things ready..." under the Mark, then the calm "still checking" line. A check that has not answered after 20 seconds counts as unreachable.
-- Error, unreachable: "We can't show your balances right now. Your money has not moved. Try again." with "Try again".
-- Error, wrong network: "NoirWire is not connected to Solana mainnet as it should be. Your money has not moved, and nothing can be sent until this is fixed. Try again later." No button.
+- Error, unreachable, no wallet stored: "Can't reach NoirWire. Check your connection and try again." with "Try again". The balances wording is never said to someone with no wallet.
+- Error, unreachable, a wallet stored and locked: the gate opens for Unlock (2.10), which shows the same sentence as a Notice `info` with its own "Try again". Unlocking reads only the phone. After the unlock the app is open: Home and every other screen that reads the chain show their own waiting and their own failure ("We couldn't update your balances..."), the network is asked again every 15 seconds, and a pass removes the notice. Every signature is still refused until the network has been proved, by the check that runs before it.
+- Error, unreachable, a wallet already unlocked as the app opens: "We can't show your balances right now. Your money has not moved. Try again." with "Try again".
+- Error, wrong network: "NoirWire is not connected to Solana mainnet as it should be. Your money has not moved, and nothing can be sent until this is fixed. Try again later." No button. This closes the app even when it was opened for an unlock.
 - Offline: same as unreachable.
 - Empty, Populated, Price unavailable, Relayer unavailable, Locked mid-flow: not applicable.
 
@@ -207,40 +211,43 @@ Thirty-five surfaces are specified, numbered 2.0 to 2.33. Steps inside a sheet (
 
 **Accessibility.** The message is announced on appearance. "Try again" is the only focusable control.
 
-**Never shows.** A balance, an address, the unlock form.
+**Never shows.** A balance or an address. The unlock form only for a stored, locked wallet.
 
-**Shared logic.** Verify the network identity.
+**Shared logic.** Verify the network identity. `unreachableView` chooses the words and whether Unlock is offered.
 
 ---
 
 ### 2.1 Welcome
 
-**Purpose.** Say what NoirWire is in one line and offer the two ways in.
+**Purpose.** Say what NoirWire is for in one line and offer the three ways in.
 
 **Entry points.** Cold start with no wallet. After a reset.
 
-**Layout.**
+**Layout.** Drawn from `welcomeView("mobile")`.
 
 1. Screen, scrollable, gutter 20pt. Top inset 48pt.
 2. Mark, 28pt, with Text `caption` "NoirWire" beside it.
-3. Text `display`: "Keep your investing separate from your everyday wallet."
-4. Text `body` (dim): "Each portfolio is its own address. Fund it through the private route and nothing on chain ties it to your funding wallet. The trades themselves still happen in public."
-5. 32pt space.
-6. Button `primary`, full width: "Create my wallet".
-7. Button `quiet`, full width: "Import an existing wallet".
-8. Button `quiet`, text only: "Look around first".
-9. 32pt space.
-10. Text `caption` (faint): "Your keys and recovery phrase stay on this phone. Network requests are relayed by NoirWire's server, which stores and logs nothing. Tracker issuers keep control over their own tokens."
+3. Text `display`: "Invest in US stock trackers. Privately."
+4. Text `body` (dim): "Trackers follow share prices like Apple, Tesla or the S&P 500. You do not own the shares."
+5. Text `body` (dim): "Each portfolio is separate from your funding wallet. Trades themselves are public."
+6. 32pt space.
+7. Button `primary`, full width: "Create a wallet". It is the only filled button.
+8. Button `quiet`, full width: "Restore a wallet".
+9. Button `quiet`, full width: "Explore trackers".
+10. 32pt space.
+11. Text `caption` (faint): "No account and no ID check. Only your recovery words can restore your wallet."
 
-The web app's example portfolio card is not carried over: the phone keeps this screen to one idea. If marketing later wants it back it must carry the label "Example".
+How requests reach the network is not explained here; it is in Settings, Privacy (2.32). The web app's example portfolio card is not carried over: the phone keeps this screen to one idea.
+
+A development build adds one small link, "UI kit", in the top trailing corner, outside the column above. No other build draws it, and it is never part of the column.
 
 **States.** Loading, Empty, Error, Price unavailable, Relayer unavailable, Locked mid-flow: not applicable. Offline: the screen works; creating a wallet needs no network. Populated: as above.
 
 **Interactions.**
 
-- "Create my wallet" generates a new twelve-word phrase in memory and goes to 2.3. Nothing is stored until a password is set, so leaving onboarding leaves nothing behind.
-- "Import an existing wallet" goes to 2.5.
-- "Look around first" goes to 2.2.
+- "Create a wallet" generates a new twelve-word phrase in memory and goes to 2.3. Nothing is stored until a password is set, so leaving onboarding leaves nothing behind.
+- "Restore a wallet" goes to 2.5.
+- "Explore trackers" goes to 2.2.
 
 **Disabled.** Nothing.
 
@@ -248,17 +255,17 @@ The web app's example portfolio card is not carried over: the phone keeps this s
 
 **Accessibility.** Reading order top to bottom as listed. The headline is the screen's heading. All three actions are buttons with their visible text as the label.
 
-**Never shows.** A price, a rate, a real balance, an unlabelled example figure.
+**Never shows.** A price, a rate, a real balance, an unlabelled example figure, anything about servers.
 
 **Shared logic.** Create a wallet draft.
 
 ---
 
-### 2.2 Look around first (markets without a wallet)
+### 2.2 Explore trackers (markets without a wallet)
 
 **Purpose.** Let a visitor browse trackers and prices before committing to a wallet.
 
-**Entry points.** "Look around first" on Welcome. A markets deep link with no wallet stored.
+**Entry points.** "Explore trackers" on Welcome. A markets deep link with no wallet stored.
 
 **Layout.** The Markets screen (2.18) and Tracker detail (2.19) in visitor mode, with these differences:
 
@@ -370,7 +377,7 @@ There is no Copy button. The web app offers one and clears the clipboard after 3
 
 **Purpose.** Take a 12 or 24 word phrase and check it.
 
-**Entry points.** "Import an existing wallet" on Welcome. The reset path, after the wallet is wiped.
+**Entry points.** "Restore a wallet" on Welcome. The reset path, after the wallet is wiped.
 
 **Layout.**
 
@@ -385,7 +392,7 @@ There is no Copy button. The web app offers one and clears the clipboard after 3
 **States.**
 
 - Empty: as above.
-- Loading (after "Continue"): the form stays on screen exactly as it was. The field holds what was typed and is read-only; "Continue" is disabled and keeps its own label; a Button `quiet` "Cancel" appears next to it; the app's one top loader (3.11) runs under the status bar. Back stays available. After eight seconds a Text `caption` appears under the button: "Still working. A wallet with many portfolios takes a little longer." Cancel and Back return to the form with the phrase kept; what the lookup answers afterwards is ignored.
+- Loading (after "Continue"): the form stays on screen exactly as it was. The field holds what was typed and is read-only; "Continue" is disabled and keeps its own label; a Button `quiet` "Cancel" appears next to it; the app's one top loader (3.11) runs under the status bar; and one quiet line sits under the button for as long as it runs: "Checking what this phrase holds. This can take up to a minute." Back stays available. After eight seconds a Text `caption` appears under the button: "Still working. A wallet with many portfolios takes a little longer." Cancel and Back return to the form with the phrase kept; what the lookup answers afterwards is ignored.
 - Error, validation: Text `caption` (danger) under the field, once the field has been left, the keyboard closed or the button pressed, saying exactly what is wrong: "A recovery phrase is 12 or 24 words. This has 11.", "Word 7, \"abotu\", is not a recovery phrase word. Check its spelling." or "These are all real words, but together they are not a recovery phrase. Check that every word is the right one and in the right order."
 - Error, network, going offline while it runs, or a lookup that has not finished after three minutes: back to the form with a Notice `danger`: "We couldn't finish importing your wallet. Nothing was saved on this phone. Try again."
 - Offline: the button is disabled with Text `caption`: "You're offline. Nothing was saved on this phone. Go back online to import your wallet."
@@ -397,7 +404,7 @@ There is no Copy button. The web app offers one and clears the clipboard after 3
 - Input is read as people paste a phrase: capitals, commas, line breaks, tabs and the numbers of a numbered list only separate words. Exactly 12 or 24 words and a valid checksum are required. The return key submits; it never adds a line.
 - "Paste" reads the clipboard once and fills the field. The clipboard is not read at any other time.
 - A phrase can open two different sets of addresses, because wallet apps do not all turn a phrase into addresses the same way. Both sets are checked, each candidate address in a request of its own and in shuffled order, so the two sets are never named together.
-- On success go to 2.6.
+- On success go to 2.6. When nothing was found under either set of addresses there is nothing to choose between: 2.6 is skipped, NoirWire's own set is opened, and 2.7 says "Nothing found yet. This phrase will open a new, empty wallet."
 
 **Disabled.** "Continue" only while offline. For a phrase that is refused it stays pressable, and pressing it shows the reason.
 
@@ -453,17 +460,17 @@ There is no Copy button. The web app offers one and clears the clipboard after 3
 
 **Purpose.** Confirm what was found before a password is set.
 
-**Entry points.** "Open this wallet" on 2.6.
+**Entry points.** "Open this wallet" on 2.6, or straight from 2.5 when nothing was found.
 
 **Layout.**
 
 1. Screen with a top bar: leading Back.
 2. Text `display`: "Wallet reunited with its funds." when anything was found, otherwise "Wallet imported."
-3. Text `body` (dim): found: "Found 2 portfolios this phrase already had on chain." Not found: "Nothing was found on chain for these addresses yet. Add money whenever you're ready."
+3. Text `body` (dim): found: "Found 2 portfolios this phrase already had on chain." Not found: "Nothing found yet. This phrase will open a new, empty wallet."
 4. Button `primary`, full width: "Continue" (to 2.8).
-5. Button `quiet`, full width: "Open the other set instead" (back to 2.6).
-6. Button `quiet`, text only: "Show funding address". Tapped, the funding address appears beneath in groups of four characters, with "Hide". It is offered so a user can recognise their wallet; it is never shown unasked.
-7. Button `quiet`, text only: "Missing a portfolio? Look further". It scans on from where the import stopped, past up to a hundred unused addresses in a row. While it runs: "Looking further for your portfolios..." with "Cancel", and "Continue" waits. Afterwards a line says "Found 2 more portfolios.", "No more portfolios were found for this phrase." or "We couldn't finish looking. Nothing was changed. Try again." It needs the network.
+5. Button `quiet`, full width: "Open the other set instead" (back to 2.6). Not shown when 2.6 was skipped.
+6. Button `quiet`, text only: "Show my funding wallet address". Tapped, the funding address appears beneath in groups of four characters, with "Hide". It is offered so a user can recognise their wallet; it is never shown unasked.
+7. Button `quiet`, text only: "Missing a portfolio? Look further". It scans on from where the import stopped, past up to a hundred unused addresses in a row. While it runs: "Looking further for your portfolios..." with "Cancel"; "Continue" is disabled and the line under it says why: "Continue is paused while we look." The scan is paced to what the service allows one session, so it can run past a minute; the line and "Cancel" stay for as long as it does. Afterwards a line says "Found 2 more portfolios.", "No more portfolios were found for this phrase." or "We couldn't finish looking. Nothing was changed. Try again." It needs the network.
 
 Recovered portfolios are named "Portfolio 1", "Portfolio 2" and so on; names live only on the device, so they cannot be recovered.
 
@@ -473,7 +480,7 @@ Recovered portfolios are named "Portfolio 1", "Portfolio 2" and so on; names liv
 
 **Accessibility.** The headline is the heading. The address, once shown, is read in groups of four.
 
-**Never shows.** An address before "Show funding address" is tapped. Capture-protected while the address is shown.
+**Never shows.** An address before "Show my funding wallet address" is tapped. Capture-protected while the address is shown.
 
 **Shared logic.** Create a wallet from a phrase.
 
@@ -489,7 +496,7 @@ Recovered portfolios are named "Portfolio 1", "Portfolio 2" and so on; names liv
 
 1. Screen with a top bar: leading Back.
 2. Text `display`: "Set a password"
-3. Text `body` (dim): "Your wallet is encrypted with this password before it is stored on this phone. We never see it and it is never sent anywhere. Anyone who gets a copy of this phone's data can try to guess it, so it has to be hard to guess."
+3. Text `body` (dim), the rule, shown before anything is typed: "Choose a password of at least 12 characters. It locks the wallet on this phone. We never see it." The number is the store's own minimum (`newPasswordView`). The same line opens the new-password block in 2.30.
 4. Field, secure, label "New password", with a trailing show or hide control. Above its trailing edge, Button `quiet` text only: "Suggest a passphrase".
 5. Text `caption`, live, under the field: the strength line.
 6. Field, secure, label "Confirm password".
@@ -587,7 +594,8 @@ Other states. Relayer unavailable, Price unavailable: not applicable. Locked mid
 
 - Empty: as above. With biometric unlock on, the system prompt appears as soon as the screen is active, and the keyboard stays down until the prompt is dismissed.
 - Loading: the button keeps reading "Unlock" (disabled) and the field is read-only. The app's one top loader (3.11) runs, with the standard's "still working" line under the button if it runs long.
-- Error, wrong password: Text `caption` (danger) under the field: "That password does not match this wallet." The field is cleared and refocused.
+- Error, wrong password: Text `caption` (danger) under the field: "That password does not match this wallet." What was typed is kept and selected, so one keystroke replaces it and a slip is corrected without typing it all again (`unlockProblemView`). The field is never cleared by a failed unlock.
+- NoirWire cannot be reached (2.0): Notice `info` above the field, "Can't reach NoirWire. Check your connection and try again." with Button `quiet` "Try again". The form works as usual.
 - Error, biometric failed or cancelled: no message; the password field takes focus. After the system locks biometrics out, Notice `info`: "Face ID is unavailable right now. Enter your password."
 - Error, biometrics changed on the device (a face or fingerprint was added or removed): the stored key is no longer usable (3.14), biometric unlock is off, and Notice `info`: "Face ID settings changed on this phone, so it was turned off for NoirWire. Enter your password." After the password unlock succeeds, one inline offer appears on Home: "Turn Face ID unlock back on?" with Button `quiet` "Turn on" and a close X.
 - Pending action from before the lock: settled after unlock and before any Confirm for the same portfolio is enabled (3.3).
@@ -665,8 +673,8 @@ Other states. Loading, Empty, Error, Price unavailable, Relayer unavailable: not
 2. Balance block, about 130pt, unbordered and type-led (no Panel around it):
    - Text `caption` (faint): "Total value"
    - Money `display`, 42pt: for example "$8,729.89". The digits do not animate when the value changes; they are replaced.
-   - One line: Delta, then Text `caption` (faint) "held trackers · 24h indicative".
-   - Button `quiet`, text only, caption size: "Shown together only here". It opens an inline explanation that expands under the block: "This total is added up on this phone. Nothing on chain ties your portfolios to each other or to your funding wallet, and NoirWire's server never receives the sum." Tapping again collapses it.
+   - One line: Delta, then Text `caption` (faint) "held trackers · 24h approximate".
+   - Button `quiet`, text only, caption size: "Only you see this total". It opens an inline explanation that expands under the block: "This total is added up on this phone. Nothing on chain ties your portfolios to each other or to your funding wallet, and NoirWire's server never receives the sum." Tapping again collapses it.
 3. One Row, 48pt: "Cash available to invest" · Money. When any portfolio has money in Earn, a second Row, 48pt, tappable to the Earn tab: "Earning" · Money. There are no side-by-side statistic tiles: three tiles do not fit 390pt without a fourth, smaller type size.
 4. Actions row, 52pt, two buttons of equal width: Button `primary` "Find trackers" (goes to the Markets tab) and Button `quiet` "Add money".
 5. 32pt space. Section heading Text `title` "Portfolios" with a trailing Button `quiet` "New".
@@ -677,18 +685,14 @@ Other states. Loading, Empty, Error, Price unavailable, Relayer unavailable: not
 
 The watchlist and market shelves that sit on the web home live in the Markets tab on the phone.
 
-**Layout (empty wallet).** When Total value, Earn balances and the funding wallet are all zero, the screen still leads with the balance, then two actions:
+**Layout (empty wallet).** When Total value, Earn balances and the funding wallet are all zero, the screen leads with the balance and one way to bring money in:
 
-1. Balance block as above, reading "$0.00", with no Delta line.
-2. Actions row: Button `primary` "Add USDC" and Button `quiet` "Show funding address". Both open Receive for the funding wallet (2.15): the first with the address still masked, the second with it shown.
-3. Button `quiet`, text only: "How to add money". It expands a Panel in place:
-   - "1. Get USDC on Solana" · Text `caption` (dim): "Buy it on an exchange you already use and withdraw it on the Solana network. USDC is all you need: network costs are a few cents and are paid out of it."
-   - "2. Send it to your funding address" · Text `caption` (dim): "This first transfer is public and may link the sending address to you."
-   - "3. Move USDC into a portfolio privately" · Text `caption` (dim): "Once it arrives, move it in through the private route so it is not linked to a portfolio on chain."
-   - Text `caption` (faint): "Moving USDC privately has a service fee and may take time to arrive. Trades stay public."
+1. Balance block as above, reading "$0.00", with no Delta line and no signature arc: the arc is a share of something, and at zero there is nothing to draw (`showArc`). The Row under it reads "Ready to invest" · "$0.00".
+2. One Button `primary`, full width: "Add money". It opens the add-money sheet (2.15a). There is no second button and no separate control for the address.
+3. One line under it, Text `note`: "Your money arrives in your funding wallet. Then you move it into a portfolio."
 4. The Portfolios section follows as usual. "Find trackers" is offered as a Button `quiet`, text only, under the list: "Look at trackers first".
 
-**Layout (money waiting in the funding wallet).** A Notice `info` sits directly under the balance block: "$250.00 USDC has arrived in your funding wallet. Move it to a portfolio before buying." with Button `primary` inside it: "Move money to Investing" (the first active portfolio). In this state it is the screen's one primary button, and both buttons in the actions row render as `quiet`.
+**Layout (money waiting in the funding wallet).** A Notice `info` sits directly under the balance block: "$250.00 USDC has arrived in your funding wallet. Move it to a portfolio before buying." with Button `primary` inside it: "Move to Investing" (the first active portfolio). In this state it is the screen's one primary button, and both buttons in the actions row render as `quiet`.
 
 **States.**
 
@@ -705,7 +709,7 @@ The watchlist and market shelves that sit on the web home live in the Markets ta
 
 **Interactions.**
 
-- "Add money": if the funding wallet holds USDC, opens the fund sheet (2.16). Otherwise opens Receive (2.15) for the funding wallet, address masked.
+- "Add money": if the funding wallet holds USDC, opens the move sheet (2.16). Otherwise opens the add-money sheet (2.15a).
 - Portfolio row: pushes 2.13.
 - "New": opens 2.14.
 - "Restore": restores at once, with an inline line "Restored." under the row for two seconds.
@@ -716,7 +720,7 @@ The watchlist and market shelves that sit on the web home live in the Markets ta
 
 **Haptics.** Light impact on pull-to-refresh release. None on value changes.
 
-**Accessibility.** The total is read as "Total value, 8,729 dollars and 89 cents". The Delta is read as "up 98 dollars 79 cents, 1.2 percent, over 24 hours, indicative". Each portfolio row is one element: name, second line, value, change. Long numbers follow 3.8: the total scales down to fit one line and never truncates. At large text sizes the two action buttons stack.
+**Accessibility.** The total is read as "Total value, 8,729 dollars and 89 cents". The Delta is read as "up 98 dollars 79 cents, 1.2 percent, over 24 hours, approximate". Each portfolio row is one element: name, second line, value, change. Long numbers follow 3.8: the total scales down to fit one line and never truncates. At large text sizes the two action buttons stack.
 
 **Never shows.** An address. Chain status or network names as the organising idea of the screen. A tracker logo standing in for a portfolio's identity: a portfolio is always its own glyph. A profit figure for tokens the app did not see bought. A stale price. A change of exactly zero in the loss colour (3.8). The network's own currency as a cost.
 
@@ -738,8 +742,8 @@ The watchlist and market shelves that sit on the web home live in the Markets ta
 4. Money `display`. Digits are replaced, not animated.
 5. Text `caption` (dim): "457.33 USDC cash to invest". When money is in Earn, a second line, tappable to the Earn tab: "$120.00 earning through Jupiter Lend".
 6. Action block:
-   - One Button `primary`, full width, chosen by state: "Move money here" when cash is zero; "Invest" for a pie with cash; "Buy a tracker" for a plain portfolio with cash.
-   - A row of up to three Button `quiet`, equal width: "Receive", "Send", and "Add money" (shown only when cash is above zero, since otherwise the primary already does it). For a pie whose mix has drifted, a Button `quiet` "Rebalance" goes on its own line above this row.
+   - One Button `primary`, full width, chosen by state: "Move to portfolio" when there is nothing to invest; "Invest" for a pie with cash; "Buy a tracker" for a plain portfolio with cash.
+   - A row of up to three Button `quiet`, equal width: "Receive", "Send", and "Move to portfolio" (shown only when there is something to invest, since otherwise the primary already does it). For a pie whose mix has drifted, a Button `quiet` "Rebalance" goes on its own line above this row.
 7. For a pie, section "Your mix" (heading with trailing Button `quiet` "Edit mix"):
    - PieRing, 120pt, smaller than on the web because the rows below carry the information. Centre label "Invested" with Money, or "Target" with "4 trackers" while nothing is held, or "Unpriced" when held but not priceable.
    - One row per slice: tone dot, IdentityMark, name, Text `caption` "Target 50% · Now 46.9%", trailing Money or "Not bought" or "Unpriced", and a trailing Button `quiet` "Sell" when held. Under the row, a 4pt bar filled to the current share with a tick at the target.
@@ -772,8 +776,8 @@ The watchlist and market shelves that sit on the web home live in the Markets ta
 **States.**
 
 - Loading: stored values render at once; a first load shows Skeleton for the value and four rows.
-- Empty, plain portfolio: instead of the Holdings list, an EmptyState: a PieRing at 0 percent (an empty outline), Text `body` "Nothing here yet.", and Button `primary` "Add your first tracker". With no cash the button reads "Move money here" and the caption under it reads "Add money first, then choose a tracker." In this state the action block's own primary button is not rendered, so one primary remains.
-- Empty, pie: the ring shows the target mix as outlines at 0 percent invested, with centre label "Target" and "4 trackers", and the action block's primary reads "Invest" (or "Move money here" with no cash).
+- Empty, plain portfolio: instead of the Holdings list, an EmptyState: a PieRing at 0 percent (an empty outline), Text `body` "Nothing here yet.", and Button `primary` "Add your first tracker". With nothing to invest the button reads "Move to portfolio", full width like a pie's, and the caption under it reads "Move money in first, then choose a tracker." In this state the action block's own primary button is not rendered, so one primary remains.
+- Empty, pie: the ring shows the target mix as outlines at 0 percent invested, with centre label "Target" and "4 trackers", and the action block's primary reads "Invest" (or "Move to portfolio" with nothing to invest).
 - Empty, activity: "Nothing has moved yet. Fund or receive into this portfolio to begin."
 - Populated: as above.
 - Error: "That portfolio does not exist." as an EmptyState with Button `quiet` "Back to Home" (a stale route after a reset or restore).
@@ -795,7 +799,7 @@ The watchlist and market shelves that sit on the web home live in the Markets ta
 
 **Disabled.**
 
-- "Send" is disabled when the portfolio holds nothing. Reason, as Text `caption` under the row: "Nothing to send yet."
+- "Send" is disabled when the portfolio holds nothing. Reason, as Text `caption` under the Send button itself, in its own column and not under Receive: "Nothing to send yet."
 - All actions are disabled while offline.
 
 **Haptics.** Medium impact when the long press enters public view. Light impact on Copy. None otherwise.
@@ -810,7 +814,7 @@ The watchlist and market shelves that sit on the web home live in the Markets ta
 
 ### 2.14 New portfolio and new pie (sheet)
 
-Three rules sit on top of what follows. The create button can always be pressed and says what is missing ("Type a name first.", or the mix's own problem). A name another portfolio already has, archived ones included, is refused as it is typed: "You already have a portfolio with that name. Choose another name."; renaming in Portfolio settings holds to the same. And once the wallet ends in ten portfolios in a row that were never used, no further one is created: "You have several portfolios that were never used. Use one of those first. An archived one can be restored.", because one made past them could be out of reach of an import.
+Three rules sit on top of what follows. The create button can always be pressed and says what is missing ("Type a name first.", or the mix's own problem). "Type a name first." is dropped when the kind is switched between portfolio and pie, and the mix's problem is said once, by the mix editor. A name another portfolio already has, archived ones included, is refused as it is typed: "You already have a portfolio with that name. Choose another name."; renaming in Portfolio settings holds to the same. And once the wallet ends in ten portfolios in a row that were never used, no further one is created: "You have several portfolios that were never used. Use one of those first. An archived one can be restored.", because one made past them could be out of reach of an import.
 
 **Purpose.** Create a portfolio, or a pie, with a name only the user sees.
 
@@ -851,26 +855,42 @@ Other states. Price unavailable, Relayer unavailable: not applicable; creating a
 
 ---
 
+### 2.15a Add money (sheet)
+
+**Purpose.** Tell someone who has never held USDC how to bring money in, in three steps, with the address they need already in front of them.
+
+**Entry points.** "Add money" on an empty Home, in Settings, Funding wallet, in the move sheet when the funding wallet is empty, and on a buy with nothing to invest anywhere (2.20).
+
+**Layout.** Drawn from `addMoneyView(wallet)`.
+
+1. Sheet, title "Add digital dollars". Close X.
+2. Step 1, "Get USDC": "USDC is a digital dollar: 1 USDC = $1. NoirWire cannot take card payments yet. Buy USDC in any app or service that can send it on the Solana network. No account with us is needed."
+3. Step 2, "Send it to your funding wallet": "Copy the address below. In the other app choose USDC and the Solana network, and check the address before sending. This transfer is public." Under it, in a Panel: the funding wallet address in groups of four over two lines, shown as the sheet opens with nothing to tap first; Text `caption` (faint) "Network: Solana"; Button `primary` "Copy address".
+4. Step 3, "Move it into a portfolio": "When it arrives, choose a portfolio and tap Move to portfolio. A private move is not linked to your funding wallet in the public record." followed by what it costs and how long it takes, both read from the constants the review charges by.
+5. Button `quiet`: "What does it cost?" It closes the sheet and opens Costs (2.31a).
+
+No service is named anywhere on the sheet.
+
+**States.** Populated only; it works offline. **Haptics.** Light impact on copy.
+
+**Accessibility.** The sheet's title and the three step titles are headings. The address is read character by character. Copy is labelled "Copy funding wallet address".
+
+**Capture.** This is the one wallet surface that may be captured: the address is the person's own and is what they give to another service (`captureAllowed`). Every other protected surface stays protected (3.6).
+
+**Shared logic.** `addMoneyView`.
+
+---
+
 ### 2.15 Receive (sheet)
 
-**Purpose.** Show one address, as text and as a QR code, with the one warning that applies to it.
+**Purpose.** Show one portfolio's address, as text and as a QR code, with the one warning that applies to it.
 
-**Entry points.** "Show my funding address" and "Add money" on Home (funding wallet). "Receive" on Portfolio detail (that portfolio). Settings, Funding wallet.
-
-**Layout, funding wallet.**
-
-1. Sheet, title "Your funding address". Close X.
-2. Notice `warning`: "This first transfer is public and may link the sending address to you."
-3. When opened by "Add USDC" or "Add money", the address is masked: a Panel reading "Your funding address is hidden." with Button `primary` "Show address". When opened by "Show funding address", it is shown at once.
-4. Once shown: QRCode, 220pt, ink on base with a surface border, centred; then Text `body`, the full address, monospaced digits, in groups of four characters over two lines, centred.
-5. Button `primary`, full width: "Copy address".
-6. Text `caption` (faint): "Only send USDC on Solana. Other assets or networks may be lost."
-7. Text `caption` (faint): "Once it arrives, move it into a portfolio through the private route."
+**Entry points.** "Receive" on Portfolio detail (that portfolio). The funding wallet's own address is in the add-money sheet (2.15a).
 
 **Layout, portfolio.**
 
 1. Sheet, title "Receive in [name]". Close X.
-2. Notice `warning`: "A transfer straight to this address is public and ties the sender to this portfolio. To move in your own money, use Add money instead."
+2. Notice `warning`: "A transfer straight to this address is public and ties the sender to this portfolio. To move in your own money, use Move to portfolio instead."
 3. QRCode. 4. Address. 5. "Copy address".
 4. Text `caption` (faint): "[name]'s own address on Solana, derived from your recovery phrase. Only send Solana assets to it. Funds sent from another network are lost."
 
@@ -890,16 +910,16 @@ Other states. Price unavailable, Relayer unavailable: not applicable; creating a
 
 ---
 
-### 2.16 Fund privately (sheet)
+### 2.16 Move to portfolio (sheet)
 
 **Purpose.** Move USDC from the funding wallet into one portfolio without publishing a transfer between the two.
 
-**Entry points.** "Move money here" or "Add money" on Portfolio detail. "Move money to [name]" and "Add money" on Home. "Add money" inside the trade sheet when the portfolio has no cash (the trade sheet closes first).
+**Entry points.** "Move to portfolio" on Portfolio detail. "Move to [name]" and "Add money" on Home once USDC is waiting. "Move to portfolio" inside the trade sheet when the portfolio has nothing to invest and USDC is waiting (the trade sheet closes first).
 
 **Step 1, amount.**
-When the sheet is opened from Home with more than one active portfolio, it starts with a portfolio step: title "Add money to", one Row per active portfolio (IdentityMark, name, cash), and Button `primary` "Continue with [name]" for the selected row. Opened from a portfolio, that step is skipped.
+When the sheet is opened from Home with more than one active portfolio, it starts with a portfolio step: title "Choose a portfolio", one Row per active portfolio (IdentityMark, name, cash), and Button `primary` "Continue with [name]" for the selected row. Opened from a portfolio, that step is skipped.
 
-1. Sheet, title "Add money privately", with the identity line and header mark of the receiving portfolio (section 3.9). Close X.
+1. Sheet, title "Move to portfolio", with the identity line and header mark of the receiving portfolio (section 3.9). Close X.
 2. Text `body` (dim): "Move USDC into [name] without publishing a transfer between your funding wallet and it."
 3. Row "Available in funding wallet" · "500.00 USDC".
 4. Field, numeric decimal keyboard, large, label "Amount in USDC", placeholder "0.00".
@@ -931,7 +951,7 @@ Amounts on the review are exact, to as many decimals as are non-zero up to six, 
 
 **Step 3, progress.** Title "Moving 100.00 USDC into [name]". No close, no Back. StepList:
 
-1. "Sent to the private route" · caption "Signed by your funding wallet and handed to the settlement queue."
+1. "Private move sent" · caption "Signed by your funding wallet and handed to the settlement queue."
 2. "Waiting in the queue" · caption "Delivered after 2 to 15 seconds, split across several entries."
 3. "Arrived in [name]" · caption "Confirmed by reading this portfolio's real balance."
 
@@ -1013,7 +1033,9 @@ Other states. Loading, Error, Price unavailable, Relayer unavailable: not applic
 
 **Purpose.** Find a tracker.
 
-**Entry points.** Markets tab. "Look around first" (visitor mode, 2.2). Deep link.
+**Stale prices.** When prices could not be read or have aged out, one quiet line sits above the shelves: "We couldn't update prices. What you see may be out of date." It is the notice Home has for balances, and it does not show over a first load.
+
+**Entry points.** Markets tab. "Explore trackers" (visitor mode, 2.2). Deep link.
 
 **Layout.**
 
@@ -1066,34 +1088,34 @@ Tracker Row, 72pt: IdentityMark with a small safe dot when the price is live; na
 **Layout.**
 
 1. Screen, scrollable. Top bar: leading Back; trailing star icon button.
-2. Row: IdentityMark, Text `title` name, Text `caption` (faint) "NVDAx · xStocks".
-3. Money `display`, generous (42pt): the live price per token, with Text `caption` (faint) "Indicative" on the same baseline, trailing.
-4. Delta, then Text `caption` (faint) "past 24h".
-5. Text `caption` (faint): "Your order price is confirmed at review."
-6. Chart, about 220pt tall, starting directly under line 5 so the plot sits in the upper half of the screen. A single restrained stroke, 1.5pt, in safe when the range ended higher than it started, danger when lower, and dim when it ended exactly where it started; a faint fill beneath. Press and drag shows a crosshair, and the price and time of the touched point replace line 5 while the finger is down.
-7. Text `caption` (faint), directly under the plot: "Historical prices · Jupiter"
-8. Segmented, 40pt below the plot: "1D", "1W", "1M". These are the only ranges the price source provides; no longer range is offered.
+2. Row: IdentityMark, Text `title` name ("NVIDIA", the page's heading), Text `note` "NVIDIA tracker · NVDAx".
+3. Text `body` (dim): "Follows NVIDIA's share price. You do not own a share." These three lines are the first things on the page.
+4. Money `display`, generous (42pt): the live price per token, with Text `caption` (faint) "Approximate price" on the same baseline, trailing. Then Delta and Text `caption` (faint) "past 24h".
+5. Text `caption` (faint): "The final price is shown before you buy." When prices could not be read or have aged out, a second quiet line: "We couldn't update prices. What you see may be out of date."
+6. Chart, about 220pt tall. A single restrained stroke, in safe when the range ended higher than it started, danger when lower, and dim when it ended exactly where it started; a faint fill beneath. Press and hold (a quarter of a second, so a scroll that starts on the chart still scrolls) marks the nearest point with a hairline and shows its price and date in a line above the plot for as long as the finger is down; dragging moves it. A month's points show a date, the shorter ranges a date and a time (`chartReadout`).
+7. Directly under the plot, one row: "High $236.20", "Low $229.90", the range's high and low, and trailing Text `caption` (faint) "Historical prices".
+8. Segmented, below the plot: "1D", "1W", "1M". These are the only ranges the price source provides; no longer range is offered.
 9. Section "Your holding":
-   - Text `title` quantity: "5.1075 NVDAx". Text `caption` (faint): "$1,204.82 indicative value".
+   - Text `title` quantity: "5.1075 NVDAx". Text `caption` (faint): "$1,204.82 approximate value".
    - One Row per portfolio that holds it: portfolio name · quantity. Tapping pushes that portfolio.
    - When nothing is held: Text `caption` (faint) "You do not own this tracker yet."
 10. Section "About and risk":
     - Text `body` (dim): "NVDAx is an xStocks tracker certificate that follows NVIDIA. It is not a direct company or ETF share and gives no voting rights."
-    - Text `body` (dim): "The issuer can freeze, move or burn these tokens without your signature. Trades, amounts and timing are visible on chain."
-    - Text `body` (dim): "Dividends are not paid out in cash. The issuer reinvests them by raising a multiplier on the token, so the balance shown here grows instead. Splits change the balance the same way."
+    - Text `body` (dim): "Trades, amounts and timing are visible on chain."
+    - Text `body` (dim): "Dividends are not paid out. The issuer reinvests them, so the balance shown here grows instead. Stock splits change the balance the same way."
     - Text `caption` (faint): "xStocks are not offered in the United States, to US persons or in the issuer's prohibited countries."
-    - Button `quiet` text only: "Read the risks" (2.34).
+    - Button `quiet` text only: "Read the risks". It opens in place: first "The company that issues this tracker can freeze or remove it.", then the Risks text (2.34). What the issuer can do is said here and not in the main column.
     - Button `quiet` text only: "Read issuer details" (opens the issuer's FAQ in the system browser; the link carries nothing about the user).
-11. Bottom bar, pinned above the tab bar and staying put while the page scrolls: Button `primary` "Buy", 56pt tall, and, when any active portfolio holds this tracker, Button `quiet` "Sell" beside it.
+11. Bottom bar, pinned above the tab bar and staying put while the page scrolls: Text `caption` (faint) "The smallest order is about $10.", the figure the trade sheet holds an order to; then Button `primary` "Buy", 56pt tall, and, when any active portfolio holds this tracker, Button `quiet` "Sell" beside it.
 
 **States.**
 
 - Loading: price Skeleton; chart area shows Text `caption` (faint) "Loading price history...".
-- Empty (chart): "No verified 1W chart available." (naming the selected range). No placeholder line is drawn.
+- Empty (chart): "Chart unavailable right now." No placeholder line is drawn.
 - Populated: as above.
 - Error: unknown symbol: EmptyState "No such investment." with Button `quiet` "Back to Markets".
 - Offline: standard banner; price unavailable state; Buy and Sell disabled.
-- Price unavailable: the price reads "At review" in `body` size with Text `caption` (faint) "Current price unavailable" and no "Indicative" tag; line 5 reads "Your order price comes from a live quote at review."; the holding caption reads "Value available when a current price loads". Buy and Sell stay enabled: an order is priced by its own live quote.
+- Price unavailable: the price reads "At review" in `body` size with Text `caption` (faint) "Current price unavailable" and no "Approximate price" tag; line 5 keeps "The final price is shown before you buy." and adds the stale line; the holding caption reads "Value available when a current price loads". Buy and Sell stay enabled: an order is priced by its own live quote.
 - Retired tracker: Notice `warning` in the About section: "NVDAx is no longer offered to buy here. What you hold can still be sold or sent." The bottom bar shows only "Sell" when held; when not held it shows Text `caption` (faint) "No longer offered to buy."
 - No portfolio exists: the bottom bar shows Button `primary` "Create a portfolio" (opens 2.14).
 - Relayer unavailable: not surfaced here.
@@ -1143,7 +1165,7 @@ On Continue the chosen portfolio's glyph travels into the sheet header (220 ms) 
 3. Field, numeric decimal keyboard, very large (the screen's `display` size), placeholder "0.00", label "Spend, in dollars" (or "Receive about, in dollars" when selling in dollars; "NVDAx tokens" in tokens).
 4. Button `quiet`, text only, trailing the field: "Max" (sell: "Sell all").
 5. Row "Available" · "457.33 USDC" (sell: "5.1075 NVDAx").
-6. Row "Estimate" · "0.4239 NVDAx" with Text `caption` (faint) "Indicative price" beside it (sell in tokens: the dollar estimate).
+6. Row "Estimate" · "0.4239 NVDAx" with Text `caption` (faint) "Approximate price" beside it (sell in tokens: the dollar estimate).
 7. Text `caption` (faint): "The smallest order is about 12 USDC. Your order price is shown at review."
 8. Button `primary`, full width: "Review buy" (sell: "Review sell").
 
@@ -1192,7 +1214,7 @@ From the moment step 1 is done, that network cost has been paid and cannot be re
 **States.**
 
 - Loading: "Review buy" reads "Getting a live price..." while the quote and its network cost are worked out. Nothing else on the sheet moves.
-- Empty (buy, no cash): step 2 replaces the Field with EmptyState "This portfolio has no cash to invest." and Button `primary` "Add money". It closes this sheet and opens fund (2.16), or Receive for the funding wallet when that is empty too.
+- Empty (buy, nothing to invest): said on the sheet's first step, whichever it is, and never three steps in (`noMoneyView`). EmptyState "No money in this portfolio yet" (or "No money in your portfolios yet" when the buy starts from a tracker's page and none of them has anything). With USDC waiting in the funding wallet the detail reads "Move money into this portfolio first." and the Button `primary` reads "Move to portfolio" (closes this sheet, opens 2.16). With none waiting the detail reads "Your money arrives in your funding wallet. Then you move it into a portfolio." and the button reads "Add money" (closes this sheet, opens 2.15a).
 - Error at pricing, shown as Notice `danger` on step 2: "Could not get a price for this trade." · "The live price exceeds your available cash. Enter a smaller amount." · "This quote is more than 10% worse than the current market price. Not offered." · "Could not check the network cost of this order. Get a new price."
 - Offline: "Review" and "Confirm" are disabled; standard banner inside the sheet.
 - Price unavailable: buying is possible in Dollars only and selling in tokens only; the other segment is disabled with caption "No live price to convert with." The Estimate row reads "At review". On the review, when the quote could not be compared with a live price, Notice `warning`: "No live price was available to compare this quote against. Check the price per token above before you confirm."
@@ -1277,7 +1299,7 @@ After the sells of a rebalance land, the flow goes straight to pricing the buys 
 **States.**
 
 - Loading: step 2.
-- Empty (invest, no cash): EmptyState "This pie has no cash to invest." with Button `primary` "Add money".
+- Empty (invest, nothing to invest): EmptyState "No money in this pie yet" with the same detail and button as a buy with nothing to invest (2.20).
 - Empty (rebalance, nothing to sell): "Nothing is far enough above target to sell." and the primary is disabled.
 - Error at pricing: returns to step 1 with Notice `danger`: "NVDAx: Could not get a price for this trade." or "Could not check the network cost of these orders. Try again." or "QQQx is no longer offered to buy. Edit the mix to remove it first."
 - Offline: primaries disabled, standard banner.
@@ -1450,7 +1472,7 @@ A scanned code is accepted when it is a plain Solana address, or a `solana:` pay
 - Price unavailable: the Value row is omitted and the send counts as large, so the last-four field is required.
 - Amount cannot be shown truthfully: "This token's balance cannot be shown right now. Try again in a moment." Review disabled.
 - Relayer unavailable: Notice `warning` on the review: "This can't be done right now. Nothing was charged. Please try again in a few minutes." Send disabled.
-- Not enough cash for the cost (sending a tracker from a portfolio with too little cash): Notice `warning`: "This portfolio needs at least 0.02 USDC of cash to pay the network cost, and would have 0.00 USDC to spare." with Button `quiet` "Move money here" (closes this sheet, opens fund).
+- Not enough cash for the cost (sending a tracker from a portfolio with too little cash): Notice `warning`: "This portfolio needs at least 0.02 USDC to pay the network cost, and would have 0.00 USDC to spare." with Button `quiet` "Move to portfolio" (closes this sheet, opens fund).
 - Network cost rose: "The network cost rose before this could be sent. Nothing was sent." The row shows the new figure; a new tap on Send is required.
 - Recipient changed between review and signing: on Send, the recipient is read again immediately before signing. If it has become something that cannot receive (a token account, a program), the send is refused with the matching message from the checks below and nothing is sent. If whether the recipient already has an account for this token has changed, the network cost has changed with it: nothing is sent, the review is shown again with the new cost and its reason line, with Notice `warning` "The recipient's account changed while you were reviewing, so the network cost is different. Nothing was sent.", and for a Max send the amount is worked out again from the new cost. A new tap on Send is required. If nothing about the cost changed, the send goes ahead.
 - Locked mid-flow: section 3.4.
@@ -1511,6 +1533,7 @@ Classification for the review: own address (the funding wallet or any portfolio,
    - "Lock now" · no chevron; tapping locks at once.
 3. Section "Wallet":
    - "Funding wallet" · trailing Money (its USDC balance) · chevron (2.31)
+   - "Costs" · caption "What buying, moving and sending cost" · chevron (2.31a)
 4. Section "Privacy":
    - "Privacy and your funds" · caption "What others can see, on chain and off" · chevron (2.32)
    - "Usage analytics" · Switch, on by default. Caption: "Counts which screens and actions are used. Never an address, a name, an amount, a tracker or anything you type."
@@ -1583,7 +1606,7 @@ Classification for the review: own address (the funding wallet or any portfolio,
 
 **Disabled.**
 
-- "Deposit" is disabled when no active portfolio has cash to deposit. Reason, Text `caption` under it: "No portfolio has cash to deposit. Add money to a portfolio first." A Deposit action is never offered when there is nothing to deposit.
+- "Deposit" is disabled when no active portfolio has cash to deposit. Reason, Text `caption` under it: "No portfolio has USDC to deposit. Move money into a portfolio first." A Deposit action is never offered when there is nothing to deposit.
 - "Withdraw" is not rendered when nothing is in Earn.
 
 **Haptics.** None beyond pull to refresh.
@@ -1619,7 +1642,7 @@ Classification for the review: own address (the funding wallet or any portfolio,
 **Step 3, review.**
 
 1. Panel of Rows. Deposit: "Leaves Long term's cash" · "100.00 USDC"; "Goes into Earn" · "100.00 USDC"; "Network cost" · the figure; Divider; "Total leaving Long term's cash" · "100.01 USDC". Withdraw: "Leaves Earn" · "100.00 USDC"; "Network cost" · the figure; Divider; "Arrives in Long term's cash" · "99.99 USDC".
-2. The network cost reason line, when there is one: "The network cost includes opening this holding, a one-time cost." Withdraw: "The network cost is paid out of the USDC this returns, so no cash is needed first."
+2. The network cost reason line, when there is one: "The network cost includes opening this holding, a one-time cost." Withdraw: "The network cost is paid out of the USDC this returns, so no USDC is needed first."
 3. Deposit only, one line, Text `caption` (dim): "USDC is lent through Jupiter Lend. It is not a bank deposit, and withdrawals can be delayed." with Button `quiet`, text only: "Read the risks" (2.34, shown as a step inside this sheet).
 4. The pending note, when there is one.
 5. Button `primary`, full width: "Deposit 100.00 USDC" or "Withdraw 100.00 USDC". The action is called "Withdraw" everywhere: on the Earn screen, in the sheet title and on this button.
@@ -1792,10 +1815,10 @@ Other states. Empty, Price unavailable, Relayer unavailable: not applicable.
 2. Text `caption` (faint): "Waiting to be moved"
 3. Money `display`: the USDC balance, shown as "250.00 USDC".
 4. Text `body` (dim): "Money sent here must be moved into a portfolio before you can invest."
-5. Button `primary`, full width: "Move to a portfolio" (opens fund, 2.16). Rendered as `quiet` and disabled when the balance is zero.
-6. Button `quiet`, full width: "Show my funding address" (opens Receive for the funding wallet).
+5. Button `primary`, full width: "Move to portfolio" (opens 2.16). Rendered as `quiet` and disabled when the balance is zero.
+6. Button `quiet`, full width: "Add money" (opens the add-money sheet, 2.15a).
 
-**States.** Loading: Skeleton for the balance. Empty: balance "0.00 USDC" and line 4 reads "Nothing is waiting. Send USDC on Solana to your funding address to add money." Error: "Could not refresh. Pull down to try again." Offline: standard banner, last read value with the banner as its qualifier. Price unavailable, Relayer unavailable: not applicable. Locked mid-flow: standard.
+**States.** Loading: Skeleton for the balance. Empty: balance "0.00 USDC" and line 4 reads "Nothing is waiting. Add money to your funding wallet first." Error: "Could not refresh. Pull down to try again." Offline: standard banner, last read value with the banner as its qualifier. Price unavailable, Relayer unavailable: not applicable. Locked mid-flow: standard.
 
 **Interactions.** As listed.
 
@@ -1808,6 +1831,26 @@ Other states. Empty, Price unavailable, Relayer unavailable: not applicable.
 **Never shows.** The address on this screen. Any portfolio's address next to it.
 
 **Shared logic.** Refresh funding balances.
+
+---
+
+### 2.31a Settings: costs
+
+**Purpose.** Say what things cost before any money is moved.
+
+**Entry points.** "Costs" in Settings. "What does it cost?" in the add-money sheet.
+
+**Layout.** Screen, pushed, title "Costs", leading Back. Five lines of Text `body`, from `costsView({ tradeFeeBps })`:
+
+1. "Buying or selling a tracker: 0.5% of the trade." Where no trading fee is set, the line says the fee is shown in the review and states no number.
+2. "Moving money into a portfolio privately: 0.1% + $0.20." followed by how long it usually takes.
+3. "Network cost: a few cents, paid automatically from your USDC."
+4. "Getting USDC from another service: that service may charge its own fee."
+5. "The exact amount is always shown before you confirm."
+
+Every figure is read from the constant the review charges by. None is typed in the app.
+
+**States.** Populated only; it works offline. Nothing to press.
 
 ---
 
@@ -1857,7 +1900,7 @@ Other states. Loading, Empty, Error, Price unavailable, Relayer unavailable: not
 
 1. Screen, pushed, title "About", leading Back.
 2. Mark, 40pt, and Text `title` "NoirWire".
-3. Rows: "Version" · "1.0.0"; "Build" · the build number; "Network" · "Solana"; "Tracker list updated" · the catalog's date.
+3. Rows: "Version" · "1.0.0"; "Build" · the build number; "Network" · "Solana"; "Help" · "ph1l1ph@proton.me"; "Website" · "noirwire.com".
 4. Rows with chevrons: "Risks" (2.34); "Terms" and "Privacy policy" (system browser); "Open-source licences" (an in-app list).
 
 **States.** Populated only. Works offline except the two external links, which are disabled offline with the banner as the reason. Loading, Empty, Error, Price unavailable, Relayer unavailable: not applicable. Locked mid-flow: standard.
@@ -1878,7 +1921,7 @@ Other states. Loading, Empty, Error, Price unavailable, Relayer unavailable: not
 
 **Purpose.** State once, plainly, what can go wrong.
 
-**Entry points.** "Risks" in Settings and in About. "Read the risks" on Tracker detail, on the Earn screen, and inside the trade, pie order and Earn reviews (there it is shown as a step inside the sheet, with Back returning to the review).
+**Entry points.** "Risks" in Settings and in About. "Read the risks" on Tracker detail (opened in place, after what the issuer can do), on the Earn screen, and inside the trade, pie order and Earn reviews (there it is shown as a step inside the sheet, with Back returning to the review).
 
 This is the only place in the app that carries this material at length. Other screens carry one line and the link. No screen leads with a warning about the app itself.
 
@@ -1942,7 +1985,7 @@ A Button `quiet`, text only, under the Panel reads "What is the network cost?" a
 - Relayer cannot be used: "This can't be done right now. Nothing was charged. Please try again in a few minutes."
 - Order too small to be placed: "The smallest order right now is about 12.00 USDC."
 - No price: "No price is available for this right now. Try again in a moment."
-- Not enough cash for the cost: "This portfolio needs at least 0.02 USDC of cash to pay the network cost, and would have 0.00 USDC to spare." with "Move money here".
+- Not enough cash for the cost: "This portfolio needs at least 0.02 USDC to pay the network cost, and would have 0.00 USDC to spare." with "Move to portfolio".
 
 There is no conversion step anywhere. The app never asks the user to hold anything other than USDC, and never suggests the funding wallet could pay: a cost paid from there would name both addresses in one transaction.
 
@@ -2010,10 +2053,11 @@ The idle timer does not fire while an action is in flight after Confirm; it is e
 ### 3.6 Privacy cover and capture protection
 
 - **App switcher cover.** Whenever the app is not active, a cover (base colour with the Mark, centred) is drawn over the whole app before the system takes its snapshot. This applies to every screen and sheet.
-- **Capture protection** applies to: 2.3, 2.4, 2.5, 2.7 while the address is shown, 2.8 while the password is visible, 2.15, 2.29, public view while the address is shown, and the review address in 2.24.
+- **Capture protection** applies to: 2.3, 2.4, 2.5, 2.7 while the address is shown, 2.8 while the password is visible, 2.15 (a portfolio's address), 2.29, public view while the address is shown, and the review address in 2.24.
   - Android: these screens set the secure window flag, so screenshots, recordings and screen sharing show black. This is reliable. A sheet is a window of its own and takes the flag over only when it is created, so a sheet that can show an address (Receive, Send, Activity detail) asks for the flag before it opens and keeps it for as long as it is open.
   - iOS: best effort. The protected content is drawn in a layer the system normally leaves out of screenshots and recordings, and when a recording or mirroring session is detected the content is concealed and replaced by Text `body` "Hidden while the screen is being recorded." The system gives no guarantee for the screenshot technique, and it can stop working in a new system version. The build must be tested for it on each supported version.
   - Because of that, no string in the app promises that screenshots are blocked. On iOS, when a screenshot is detected on a phrase screen, a Notice `warning` appears: "A screenshot was just taken. If it shows your words, anyone with your photos can read them. Delete it."
+- The add-money sheet (2.15a) is deliberately not protected: it shows the person's own funding wallet address, which is what they give to another service, so a screenshot of it is allowed. Nothing else on a wallet screen is.
 - Nothing sensitive is ever placed in a notification, a widget, a share sheet, or the system-wide search index.
 - Text fields that hold a phrase or a password disable autocorrect, predictive text and keyboard learning.
 - Clipboard: the app writes only addresses the user chose to copy, flagged as sensitive and local-only where the platform allows, and reads the clipboard only on an explicit Paste tap.
@@ -2027,8 +2071,8 @@ A price is live for two minutes after the last successful read. After that, or b
 - A total that depends on a missing price is itself unavailable, not partial, except where the missing part is named ("Excludes money in Earn, which could not be read yet").
 - Token amounts and USDC amounts still show, because they need no price.
 - A tracker amount needs the issuer's multiplier. While that cannot be read the amount reads "Unavailable", never the raw token count.
-- Charts are drawn only from real price history. With none: "No verified 1D chart available."
-- Changes over 24 hours are labelled "indicative".
+- Charts are drawn only from real price history. With none: "Chart unavailable right now."
+- Changes over 24 hours are labelled "approximate".
 
 ### 3.8 Numbers on a 390pt screen
 
@@ -2182,7 +2226,7 @@ Biometric unlock is opt-in and off by default.
 
 ### 5.3 Design input considered and not adopted
 
-- **"Across your portfolios" as the Home label.** The aggregate is called "Total value". The idea is kept in the "Shown together only here" explanation (2.12).
+- **"Across your portfolios" as the Home label.** The aggregate is called "Total value". The idea is kept in the "Only you see this total" explanation (2.12).
 - **Sell beside Buy only when the selected portfolio holds the tracker.** The web logic offers Sell when any portfolio holds it; the sheet's first step lists only the portfolios that hold it.
 - **Buying as three separate sheets.** Built as three steps of one sheet, each with one primary action, because a sheet should not present another sheet.
 - **A fixed 0.5% fee on the review.** The review shows the fee the live quote carries.
@@ -2200,7 +2244,7 @@ v1 contains every feature in this document. The order below ships the core loop 
 | 1. Shared core contracts     | The wallet record and its encryption; deriving the funding wallet and portfolios; the action contracts (plan, review, confirm, result) for fund, trade, send, Earn and pie orders; the activity log with six kinds; **durable pending outcomes** (3.3). | Nothing. Everything else depends on this.                                                                                                                                                        |
 | 2. Platform adapters         | Secure storage and the device keystore (3.14), biometrics, capture protection and the privacy cover (3.6), clipboard rules, camera, haptics, connectivity, the idle and background lock timers (3.4).                                                   | Stage 1, for the record format and the vault key.                                                                                                                                                |
 | 3. Onboarding and unlock     | 2.0 to 2.11. In parallel: Markets and Tracker detail, read-only (2.18, 2.19), including visitor mode (2.2).                                                                                                                                             | Stages 1 and 2. Markets needs only the price and catalog reads from stage 1, which is why it can run in parallel.                                                                                |
-| 4. Funding                   | Receive (2.15) and Fund privately (2.16), with the first review, progress and result steps (3.1, 3.2).                                                                                                                                                  | Stage 3 for an unlocked wallet. Establishes the sheet, review and pending patterns every later money flow reuses.                                                                                |
+| 4. Funding                   | Receive (2.15) and Move to portfolio (2.16), with the first review, progress and result steps (3.1, 3.2).                                                                                                                                               | Stage 3 for an unlocked wallet. Establishes the sheet, review and pending patterns every later money flow reuses.                                                                                |
 | 5. Trade                     | The trade sheet (2.20), including opening a holding and placing the order under one confirmation.                                                                                                                                                       | Stage 4, because a portfolio needs cash; stage 3's Tracker detail as its entry point; the relayer contract from stage 1.                                                                         |
 | 6. Portfolio detail and Home | 2.12, 2.13 with public view, New portfolio (2.14, portfolio only), Portfolio settings (2.17).                                                                                                                                                           | Stages 4 and 5, so the screens compose real balances, holdings and actions rather than placeholders.                                                                                             |
 | 7. Send                      | 2.24 with the scanner step.                                                                                                                                                                                                                             | Stage 6 for its entry point; the relayer contract; the recipient checks from stage 1.                                                                                                            |

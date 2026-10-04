@@ -1,4 +1,4 @@
-import { commonCopy, mobileFundingCopy as copy } from "@noirwire/shared/copy";
+import { commonCopy, fundingCopy, mobileFundingCopy as copy } from "@noirwire/shared/copy";
 import { resolvePortfolioIcon } from "@noirwire/shared/domain";
 import {
   FUND_PRESETS,
@@ -69,19 +69,14 @@ type FundScreenProps = {
   /** The portfolio to fund, or null to choose one inside the sheet. */
   portfolioId: string | null;
   onClose: () => void;
-  /** Closes this sheet and opens Receive for the funding wallet. */
-  onShowFundingAddress: () => void;
+  /** Closes this sheet and opens the add-money sheet. */
+  onAddMoney: () => void;
   /** Closes this sheet and opens the portfolio's public view. */
   onSeePublicView: (portfolioId: string) => void;
 };
 
-/** Spec 2.16: move USDC from the funding wallet into one portfolio by the private route. */
-export function FundScreen({
-  portfolioId,
-  onClose,
-  onShowFundingAddress,
-  onSeePublicView,
-}: FundScreenProps) {
+/** Spec 2.16: move USDC from the funding wallet into one portfolio with a private move. */
+export function FundScreen({ portfolioId, onClose, onAddMoney, onSeePublicView }: FundScreenProps) {
   const flow = useFundFlow(portfolioId);
   const { step, portfolio } = flow;
   const label = portfolio?.label ?? "";
@@ -119,10 +114,10 @@ export function FundScreen({
 
   const title = {
     choose: copy.chooseTitle,
-    amount: copy.title,
+    amount: fundingCopy.titlePrivate,
     review: review.title,
     progress: progressOf(flow, label).title,
-    result: copy.title,
+    result: fundingCopy.titlePrivate,
   }[step];
 
   const onBack =
@@ -147,9 +142,7 @@ export function FundScreen({
       {step !== "choose" && portfolio && step !== "result" && (
         <ActingFor name={portfolio.label} {...resolvePortfolioIcon(portfolio.icon)} />
       )}
-      {step === "amount" && (
-        <AmountStep flow={flow} view={amount} onShowFundingAddress={onShowFundingAddress} />
-      )}
+      {step === "amount" && <AmountStep flow={flow} view={amount} onAddMoney={onAddMoney} />}
       {step === "review" && (
         <>
           <Text tone="dim">{review.lead}</Text>
@@ -194,11 +187,11 @@ function ChooseStep({ flow }: { flow: FundFlow }) {
 function AmountStep({
   flow,
   view,
-  onShowFundingAddress,
+  onAddMoney,
 }: {
   flow: FundFlow;
   view: FundingAmountView;
-  onShowFundingAddress: () => void;
+  onAddMoney: () => void;
 }) {
   return (
     <>
@@ -220,7 +213,7 @@ function AmountStep({
         <EmptyState
           title={view.emptyNotice.title}
           detail={view.emptyNotice.detail}
-          action={<Button label={view.emptyNotice.action} onPress={onShowFundingAddress} />}
+          action={<Button label={view.emptyNotice.action} onPress={onAddMoney} />}
         />
       ) : (
         <>

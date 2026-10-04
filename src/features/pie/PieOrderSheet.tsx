@@ -15,6 +15,7 @@ import {
   chainErrorMessage,
   describeFailure,
   investFloorView,
+  noMoneyView,
   pieApprovalView,
   pieInvestView,
   pieLegSteps,
@@ -33,6 +34,7 @@ import {
   getSnapshot,
   piePriced,
   pieSlices,
+  screenReads,
   shownUnits,
 } from "@noirwire/shared/wallet";
 import { useState } from "react";
@@ -53,6 +55,7 @@ import {
 } from "@/ui";
 import { errorHaptic, heavyHaptic, lightHaptic, successHaptic, warningHaptic } from "@/ui/haptics";
 import { colors, fonts, layout } from "@/ui/theme";
+import type { MoneyTarget } from "@/navigation/moneyRoutes";
 import { useLivePrices, useWalletSnapshot } from "../markets/useMarketData";
 import { ActionOverdue } from "../network/ActionOverdue";
 import { PendingNote } from "../network/PendingNote";
@@ -67,7 +70,8 @@ type PieOrderSheetProps = {
   portfolioId: string;
   mode: PieOrderMode;
   onClose: () => void;
-  onAddMoney: (portfolioId: string) => void;
+  /** Nothing to invest: this sheet closes and the way to bring money in opens instead. */
+  onNoMoney: (target: MoneyTarget) => void;
 };
 
 type Step = "input" | "review" | "risks" | "progress" | "result";
@@ -90,7 +94,7 @@ const nameOf = (symbol: string) => asset(symbol)?.name ?? symbol;
 const symbolOf = (order: TradePlan): PieOrder => ({ ...order, symbol: order.stock.symbol });
 
 /** Spec 2.21: invest in a pie's mix, or bring a drifted pie back to it, as a reviewed set of orders. */
-export function PieOrderSheet({ portfolioId, mode, onClose, onAddMoney }: PieOrderSheetProps) {
+export function PieOrderSheet({ portfolioId, mode, onClose, onNoMoney }: PieOrderSheetProps) {
   const service = useTrading();
   const online = useServices().useOnline();
   const wallet = useWalletSnapshot();
@@ -300,9 +304,12 @@ export function PieOrderSheet({ portfolioId, mode, onClose, onAddMoney }: PieOrd
   let footer: React.ReactNode = undefined;
 
   if (step === "input" && mode === "invest") {
-    if (cash <= 0) {
-      body = <EmptyState title={copy.noCash} detail={copy.noCashDetail} />;
-      footer = <Button label={copy.addMoney} onPress={() => onAddMoney(portfolioId)} />;
+    const noMoney = wallet ? noMoneyView(screenReads, wallet, portfolioId) : null;
+    if (noMoney) {
+      body = <EmptyState title={copy.noMoney} detail={noMoney.detail} />;
+      footer = (
+        <Button label={noMoney.action.label} onPress={() => onNoMoney(noMoney.action.target)} />
+      );
     } else {
       body = (
         <>

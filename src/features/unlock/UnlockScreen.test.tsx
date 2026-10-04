@@ -11,7 +11,11 @@ import {
   storedLockedWallet,
   testServices,
 } from "../testServices";
+import { NetworkGate } from "../network/NetworkGate";
+import { selectAll } from "@/ui/selectAll";
 import { UnlockScreen } from "./UnlockScreen";
+
+jest.mock("@/ui/selectAll", () => ({ selectAll: jest.fn() }));
 
 afterEach(() => forgetWallet());
 
@@ -28,14 +32,15 @@ describe("UnlockScreen", () => {
     expect(screen.queryByRole("button", { name: /Face ID/ })).toBeNull();
   });
 
-  it("says a wrong password does not match, and clears the field", async () => {
+  it("says a wrong password does not match, and keeps what was typed, selected", async () => {
     const { events } = installTestPlatform();
     await storedLockedWallet();
     await renderWith(await testServices(), <UnlockScreen onReset={jest.fn()} />);
     await fireEvent.changeText(passwordField(), "not the password");
     await fireEvent.press(screen.getByRole("button", { name: "Unlock" }));
     expect(await screen.findByText("That password does not match this wallet.")).toBeOnTheScreen();
-    expect(passwordField().props.value).toBe("");
+    expect(passwordField().props.value).toBe("not the password");
+    expect(selectAll).toHaveBeenCalledWith(expect.anything(), "not the password".length);
     expect(isUnlocked()).toBe(false);
     expect(events).toContainEqual({ event: "unlock_failed" });
   });
@@ -59,6 +64,27 @@ describe("UnlockScreen", () => {
     await fireEvent.changeText(passwordField(), STRONG_PASSWORD);
     await fireEvent.press(screen.getByRole("button", { name: "Unlock" }));
     expect(await screen.findByText("That password does not match this wallet.")).toBeOnTheScreen();
+  });
+
+  it("still unlocks while NoirWire cannot be reached, and says so in a notice", async () => {
+    installTestPlatform();
+    await storedLockedWallet();
+    const check = jest.fn(async () => "unreachable" as const);
+    await renderWith(
+      await testServices(),
+      <NetworkGate check={check} network={() => "Solana mainnet"}>
+        <UnlockScreen onReset={jest.fn()} />
+      </NetworkGate>,
+    );
+    expect(
+      await screen.findByText("Can't reach NoirWire. Check your connection and try again."),
+    ).toBeOnTheScreen();
+    expect(screen.queryByText(/balances/)).toBeNull();
+    await fireEvent.press(screen.getByRole("button", { name: "Try again" }));
+    await waitFor(() => expect(check).toHaveBeenCalledTimes(2));
+    await fireEvent.changeText(passwordField(), STRONG_PASSWORD);
+    await fireEvent.press(screen.getByRole("button", { name: "Unlock" }));
+    await waitFor(() => expect(isUnlocked()).toBe(true));
   });
 
   it("leads to Reset with the forgotten-password guidance", async () => {

@@ -1,5 +1,5 @@
 import { MARKET_PAGE_SIZE as PAGE, type MarketCategory } from "@noirwire/shared/application";
-import { marketsCopy, mobileWaitingCopy } from "@noirwire/shared/copy";
+import { marketsCopy } from "@noirwire/shared/copy";
 import { livePricesVersion } from "@noirwire/shared/infrastructure";
 import { marketsView, STILL_WORKING_AFTER_MS } from "@noirwire/shared/presentation";
 import { screenReads } from "@noirwire/shared/wallet";
@@ -57,13 +57,13 @@ export function MarketsScreen({ onOpen, unknownTracker = false, visitor }: Marke
     (livePricesVersion() === 0
       ? !waiting.overdue
       : waiting.elapsedMs < STILL_WORKING_AFTER_MS.content);
-  const pricesMissing = updatedAt === null && !firstLoad;
   const view = marketsView(screenReads, {
     query,
     category,
     shown,
     watchlist: visitor ? null : (wallet?.watchlist ?? []),
     updatedAt,
+    loading: firstLoad,
     platform: "mobile",
   });
 
@@ -122,7 +122,11 @@ export function MarketsScreen({ onOpen, unknownTracker = false, visitor }: Marke
         <Loading waiting={waiting} />
       ) : (
         <>
-          {pricesMissing && <Notice tone="warning">{mobileWaitingCopy.overdue.prices}</Notice>}
+          {view.stale && (
+            <Text variant="faint" accessibilityLiveRegion="polite">
+              {view.stale}
+            </Text>
+          )}
           {view.moversWaiting && <Text variant="faint">{view.moversWaiting}</Text>}
           {view.shelves.map((shelf) => (
             <View key={shelf.key} style={styles.group}>

@@ -1,4 +1,4 @@
-import { mobileSettingsCopy } from "@noirwire/shared/copy";
+import { appCopy, mobileSettingsCopy } from "@noirwire/shared/copy";
 import * as Clipboard from "expo-clipboard";
 import { useState } from "react";
 import { StyleSheet, View } from "react-native";
@@ -30,7 +30,7 @@ export function AboutScreen({ version, build, onOpenRisks }: AboutScreenProps) {
     <Screen edges={["right", "bottom", "left"]}>
       <View style={styles.brand}>
         <Mark size={40} />
-        <Text variant="h2">NoirWire</Text>
+        <Text variant="h2">{appCopy.name}</Text>
       </View>
       <Panel style={styles.panel}>
         <ListRow
@@ -40,6 +40,8 @@ export function AboutScreen({ version, build, onOpenRisks }: AboutScreenProps) {
         />
         <ListRow label={copy.build} value={build} />
         <ListRow label={copy.network} value={copy.networkValue} />
+        <ListRow label={copy.help} value={copy.helpContact} />
+        <ListRow label={copy.website} value={copy.websiteValue} />
         <ListRow label={copy.risks} onPress={onOpenRisks} />
       </Panel>
     </Screen>

@@ -17,13 +17,13 @@ test("Home shows a funded wallet's portfolio and the USDC waiting in the funding
   await expect(page.getByText("Current variable rate")).toBeVisible();
   await expect(page.getByText("$25.00").first()).toBeVisible();
   await page.getByRole("tab", { name: "Home" }).click();
-  await expect(page.getByRole("button", { name: "Move money to Investing" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Move to Investing" })).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Investing, No investments yet, $457.33" }),
   ).toBeVisible();
 
   await page.getByRole("button", { name: "Investing, No investments yet, $457.33" }).click();
   await expect(page).toHaveURL(new RegExp(`/portfolio/${funded.portfolio.id}$`));
-  await expect(page.getByText("457.33 USDC cash to invest")).toBeVisible();
+  await expect(page.getByText("457.33 USDC ready to invest")).toBeVisible();
   expect(page.url()).not.toContain(funded.portfolio.address);
 });

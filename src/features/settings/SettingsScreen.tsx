@@ -11,7 +11,14 @@ import { useStorageHealth } from "../wallet/useWallet";
 import { lockNow } from "../wallet/walletActions";
 
 export type SettingsPage =
-  "recovery-phrase" | "password" | "funding-wallet" | "privacy" | "risks" | "about" | "reset";
+  | "recovery-phrase"
+  | "password"
+  | "funding-wallet"
+  | "costs"
+  | "privacy"
+  | "risks"
+  | "about"
+  | "reset";
 
 type SettingsScreenProps = {
   onOpen: (page: SettingsPage) => void;
@@ -55,6 +62,11 @@ export function SettingsScreen({ onOpen, appVersion }: SettingsScreenProps) {
 
       <Section title={FUNDING_WALLET_SECTION}>
         <FundingWalletRow onPress={() => onOpen("funding-wallet")} />
+        <ListRow
+          label={settingsCopy.costs.title}
+          caption={settingsCopy.costs.description}
+          onPress={() => onOpen("costs")}
+        />
       </Section>
 
       <Section title={sections.privacy.title}>

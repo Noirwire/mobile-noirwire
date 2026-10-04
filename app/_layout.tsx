@@ -1,3 +1,4 @@
+import { fundingCopy, portfolioCopy } from "@noirwire/shared/copy";
 import { useFonts } from "expo-font";
 import { Stack, usePathname } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -24,9 +25,10 @@ import { fontAssets } from "@/ui/typography";
 const SHEET_TITLES: Record<SheetRouteName, string> = {
   trade: "Trade",
   send: "Send",
-  receive: "Receive",
-  fund: "Fund",
-  "new-portfolio": "New portfolio",
+  receive: portfolioCopy.receive.title,
+  fund: fundingCopy.titlePrivate,
+  "add-money": portfolioCopy.addMoney.title,
+  "new-portfolio": portfolioCopy.create.titlePortfolio,
   "pie-builder": "Build a pie",
   "pie-order": "Pie order",
 };
@@ -83,7 +85,7 @@ function Routes() {
                       options={{ title: SHEET_TITLES[name], presentation: "modal" }}
                     />
                   ))}
-                  <Stack.Screen name="dev/ui" options={{ title: "UI kit" }} />
+                  {__DEV__ && <Stack.Screen name="dev/ui" options={{ title: "UI kit" }} />}
                 </Stack>
               </WalletGate>
             </SafeAreaProvider>

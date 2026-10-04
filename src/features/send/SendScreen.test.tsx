@@ -162,7 +162,7 @@ describe("SendScreen", () => {
 
     expect(
       await screen.findByText(
-        "0.02 USDC of this portfolio's cash pays the network cost, so 457.31 USDC is sent, not 457.33 USDC.",
+        "0.02 USDC  from this portfolio pays the network cost, so 457.31 USDC is sent, not 457.33 USDC.",
       ),
     ).toBeOnTheScreen();
     expect(screen.getByText("457.31 USDC")).toBeOnTheScreen();
@@ -214,10 +214,10 @@ describe("SendScreen", () => {
     await toReview(someone(), "0.005");
     expect(
       await screen.findByText(
-        "This portfolio needs at least 0.02 USDC of cash to pay the network cost, and would have 0.01 USDC to spare.",
+        "This portfolio needs at least 0.02 USDC to pay the network cost, and would have 0.01 USDC to spare.",
       ),
     ).toBeOnTheScreen();
-    await fireEvent.press(screen.getByRole("button", { name: "Move money here" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Move to portfolio" }));
     expect(handlers.onMoveMoney).toHaveBeenCalled();
   });
 

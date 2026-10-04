@@ -61,9 +61,7 @@ describe("MarketsScreen", () => {
       }),
     ).toBeOnTheScreen();
     expect(
-      screen.getByText(
-        "We couldn't load prices. They are missing or out of date here, and are asked for again every half minute.",
-      ),
+      screen.getByText("We couldn't update prices. What you see may be out of date."),
     ).toBeOnTheScreen();
     expect(screen.getAllByText("At review").length).toBeGreaterThan(0);
     expect(screen.getAllByText("No live price").length).toBeGreaterThan(0);

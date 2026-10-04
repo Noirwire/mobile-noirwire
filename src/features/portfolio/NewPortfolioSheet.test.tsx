@@ -62,9 +62,19 @@ describe("NewPortfolioSheet", () => {
     await fireEvent.changeText(screen.getByLabelText("Pie name"), "Core");
     expect(screen.queryByText("Type a name first.")).toBeNull();
     await fireEvent.press(screen.getByRole("button", { name: "Create pie" }));
-    expect(screen.getAllByText("Add at least one tracker.").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Add at least one tracker.")).toHaveLength(1);
     expect(on.onCreated).not.toHaveBeenCalled();
     expect(screen.getByLabelText("The pie's ring, its default mark")).toBeOnTheScreen();
+  });
+
+  it("drops the missing-name line when the kind is changed", async () => {
+    installTestPlatform();
+    await unlockedWallet();
+    await open();
+    await fireEvent.press(screen.getByRole("button", { name: "Create portfolio" }));
+    expect(screen.getByText("Type a name first.")).toBeOnTheScreen();
+    await fireEvent.press(screen.getByRole("radio", { name: "Pie" }));
+    expect(screen.queryByText("Type a name first.")).toBeNull();
   });
 
   it("refuses a name another portfolio already has, as it is typed", async () => {
