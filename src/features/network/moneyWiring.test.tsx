@@ -45,6 +45,9 @@ function holdAtSigning(chain: FakeChain) {
   return { atSigning, release: () => release() };
 }
 
+/** A test that waits out a real settle poll needs more than the default limit. */
+const ROOM_FOR_ONE_POLL_MS = SETTLE_POLL_MS + 16_000;
+
 /** Lets one whole settle poll of every mounted money screen go by. */
 const onePoll = () =>
   act(() => new Promise<void>((resolve) => setTimeout(resolve, SETTLE_POLL_MS + 250)));
@@ -132,42 +135,50 @@ describe("the one money wiring", () => {
     expect((await screen.findAllByText("Sent, but not confirmed")).length).toBeGreaterThan(0);
   });
 
-  it("does not let the trade screen's settle poll release a send's live, unsigned reservation", async () => {
-    const { chain, money, portfolio } = await mounted("send");
-    const hold = holdAtSigning(chain);
-    await confirmSend();
-    await act(() => hold.atSigning);
-    const reserved = pendingOf(portfolio.id);
-    expect(reserved?.status).toBe("reserved");
+  it(
+    "does not let the trade screen's settle poll release a send's live, unsigned reservation",
+    async () => {
+      const { chain, money, portfolio } = await mounted("send");
+      const hold = holdAtSigning(chain);
+      await confirmSend();
+      await act(() => hold.atSigning);
+      const reserved = pendingOf(portfolio.id);
+      expect(reserved?.status).toBe("reserved");
 
-    await onePoll();
-    expect(await money.pending.settlePending(portfolio.id)).toBe("pending");
-    expect(pendingOf(portfolio.id)).toEqual(reserved);
+      await onePoll();
+      expect(await money.pending.settlePending(portfolio.id)).toBe("pending");
+      expect(pendingOf(portfolio.id)).toEqual(reserved);
 
-    await act(async () => hold.release());
-    await waitFor(() => expect(pendingOf(portfolio.id)).toBeUndefined());
-    expect(chain.calls.filter((call) => call.kind === "send")).toHaveLength(1);
-  });
+      await act(async () => hold.release());
+      await waitFor(() => expect(pendingOf(portfolio.id)).toBeUndefined());
+      expect(chain.calls.filter((call) => call.kind === "send")).toHaveLength(1);
+    },
+    ROOM_FOR_ONE_POLL_MS,
+  );
 
-  it("does not let the trade screen's settle poll release a private funding's live, unsigned reservation", async () => {
-    const { chain, money, portfolio } = await mounted("fund");
-    const hold = holdAtSigning(chain);
-    await confirmFund();
-    await act(() => hold.atSigning);
-    const reserved = getSnapshot()!.funding.pendingAction;
-    expect(reserved?.status).toBe("reserved");
+  it(
+    "does not let the trade screen's settle poll release a private funding's live, unsigned reservation",
+    async () => {
+      const { chain, money, portfolio } = await mounted("fund");
+      const hold = holdAtSigning(chain);
+      await confirmFund();
+      await act(() => hold.atSigning);
+      const reserved = getSnapshot()!.funding.pendingAction;
+      expect(reserved?.status).toBe("reserved");
 
-    await onePoll();
-    expect(await money.pending.settlePending(FUNDING)).toBe("pending");
-    expect(await money.pending.settlePending(portfolio.id)).toBe("none");
-    expect(getSnapshot()!.funding.pendingAction).toEqual(reserved);
+      await onePoll();
+      expect(await money.pending.settlePending(FUNDING)).toBe("pending");
+      expect(await money.pending.settlePending(portfolio.id)).toBe("none");
+      expect(getSnapshot()!.funding.pendingAction).toEqual(reserved);
 
-    await act(async () => hold.release());
-    await waitFor(() => expect(chain.calls.some((call) => call.kind === "private")).toBe(true));
-    await waitFor(() => expect(chain.balances.get(portfolio.address)?.USDC).toBeCloseTo(467.33), {
-      timeout: 8_000,
-    });
-  });
+      await act(async () => hold.release());
+      await waitFor(() => expect(chain.calls.some((call) => call.kind === "private")).toBe(true));
+      await waitFor(() => expect(chain.balances.get(portfolio.address)?.USDC).toBeCloseTo(467.33), {
+        timeout: 8_000,
+      });
+    },
+    ROOM_FOR_ONE_POLL_MS,
+  );
 
   it("refuses to sign for a key with no reservation", async () => {
     const { chain, wallet } = await mounted("send");
