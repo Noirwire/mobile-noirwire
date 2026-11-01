@@ -20,6 +20,8 @@
 
 **This repository is the NoirWire app for iOS and Android: a non-custodial Solana wallet that keeps money in separate, purpose-based portfolios of USDC and tracker tokens, built with Expo and React Native.**
 
+NoirWire's main product is NoirWire Dark Pool, a private order book for SOL-PERP on Solana mainnet at https://terminal.noirwire.com. The NoirWire Wallet at https://app.noirwire.com also runs on mainnet.
+
 ### Why NoirWire Mobile
 
 - **Keys stay on the phone.** The recovery phrase and every key derived from it are created, stored and used on the device, in an encrypted vault that is kept out of backups.
